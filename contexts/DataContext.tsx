@@ -361,14 +361,26 @@ export const [DataProvider, useData] = createContextHook(() => {
     await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(data));
   }, []);
 
-  const addFuel = useCallback(
-    async (litersAdded: number) => {
+  const updateTankCapacity = useCallback(
+    async (newCapacity: number) => {
       if (!farmTank) return;
 
-      const newCurrentLiters = Math.min(
-        farmTank.currentLiters + litersAdded,
-        farmTank.capacityLiters
-      );
+      const updated: FarmTank = {
+        ...farmTank,
+        capacityLiters: newCapacity,
+      };
+
+      setFarmTank(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
+    },
+    [farmTank]
+  );
+
+  const registerUnloggedConsumption = useCallback(
+    async (litersConsumed: number) => {
+      if (!farmTank) return;
+
+      const newCurrentLiters = Math.max(farmTank.currentLiters - litersConsumed, 0);
 
       const updated: FarmTank = {
         ...farmTank,
@@ -377,6 +389,37 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       setFarmTank(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
+
+      if (newCurrentLiters <= farmTank.alertLevelLiters) {
+        console.log(
+          `ALERTA: Tanque de combustível baixo: restam apenas ${newCurrentLiters.toFixed(0)} litros`
+        );
+      }
+    },
+    [farmTank]
+  );
+
+  const addFuel = useCallback(
+    async (litersAdded: number) => {
+      if (!farmTank) return { success: false, overflow: 0 };
+
+      const potentialTotal = farmTank.currentLiters + litersAdded;
+      const overflow = Math.max(0, potentialTotal - farmTank.capacityLiters);
+
+      if (overflow > 0) {
+        return { success: false, overflow };
+      }
+
+      const newCurrentLiters = farmTank.currentLiters + litersAdded;
+
+      const updated: FarmTank = {
+        ...farmTank,
+        currentLiters: newCurrentLiters,
+      };
+
+      setFarmTank(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
+      return { success: true, overflow: 0 };
     },
     [farmTank]
   );
@@ -427,8 +470,10 @@ export const [DataProvider, useData] = createContextHook(() => {
       addServiceType,
       addMaintenanceItem,
       updateTankInitialData,
+      updateTankCapacity,
       addFuel,
       consumeFuel,
+      registerUnloggedConsumption,
     }),
     [
       machines,
@@ -452,8 +497,10 @@ export const [DataProvider, useData] = createContextHook(() => {
       addServiceType,
       addMaintenanceItem,
       updateTankInitialData,
+      updateTankCapacity,
       addFuel,
       consumeFuel,
+      registerUnloggedConsumption,
     ]
   );
 });

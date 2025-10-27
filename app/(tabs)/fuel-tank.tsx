@@ -16,10 +16,13 @@ import {
 const FUEL_TYPES: FuelType[] = ['Diesel comum', 'Diesel S10'];
 
 export default function FuelTankScreen() {
-  const { farmTank, updateTankInitialData, addFuel } = useData();
+  const { farmTank, updateTankInitialData, addFuel, updateTankCapacity, registerUnloggedConsumption } = useData();
 
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
   const [isAddFuelModalOpen, setIsAddFuelModalOpen] = useState<boolean>(false);
+  const [isOverflowModalOpen, setIsOverflowModalOpen] = useState<boolean>(false);
+  const [overflowAmount, setOverflowAmount] = useState<number>(0);
+  const [pendingLitersToAdd, setPendingLitersToAdd] = useState<number>(0);
 
   const [capacityLiters, setCapacityLiters] = useState<string>('');
   const [currentLiters, setCurrentLiters] = useState<string>('');
@@ -27,6 +30,8 @@ export default function FuelTankScreen() {
   const [alertLevelLiters, setAlertLevelLiters] = useState<string>('');
 
   const [litersToAdd, setLitersToAdd] = useState<string>('');
+  const [isConsumptionAdjustModalOpen, setIsConsumptionAdjustModalOpen] = useState<boolean>(false);
+  const [consumptionAdjustment, setConsumptionAdjustment] = useState<string>('');
 
   const handleSetupTank = async () => {
     const capacity = parseFloat(capacityLiters);
@@ -75,7 +80,21 @@ export default function FuelTankScreen() {
       return;
     }
 
-    await addFuel(liters);
+    const result = await addFuel(liters);
+
+    if (!result) {
+      Alert.alert('Erro', 'Não foi possível adicionar combustível');
+      return;
+    }
+
+    if (!result.success && result.overflow > 0) {
+      setOverflowAmount(result.overflow);
+      setPendingLitersToAdd(liters);
+      setIsAddFuelModalOpen(false);
+      setIsOverflowModalOpen(true);
+      return;
+    }
+
     setLitersToAdd('');
     setIsAddFuelModalOpen(false);
     Alert.alert('Sucesso', `${liters.toFixed(0)} litros adicionados ao tanque!`);
@@ -292,7 +311,148 @@ export default function FuelTankScreen() {
         </View>
       </Modal>
 
+      <Modal
+        visible={isOverflowModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsOverflowModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.overflowHeader}>
+              <AlertTriangle size={48} color="#FF5722" />
+              <Text style={styles.modalTitle}>Capacidade Excedida</Text>
+            </View>
 
+            <Text style={styles.overflowText}>
+              Você está tentando adicionar {pendingLitersToAdd.toFixed(0)} litros, mas o tanque
+              comporta apenas mais {(farmTank.capacityLiters - farmTank.currentLiters).toFixed(0)} litros.
+            </Text>
+
+            <Text style={styles.overflowText}>
+              Excedente: <Text style={styles.overflowHighlight}>{overflowAmount.toFixed(0)} litros</Text>
+            </Text>
+
+            <Text style={styles.overflowQuestion}>
+              O que você gostaria de fazer?
+            </Text>
+
+            <TouchableOpacity
+              style={styles.overflowOption}
+              onPress={async () => {
+                const newCapacity = farmTank.currentLiters + pendingLitersToAdd;
+                await updateTankCapacity(newCapacity);
+                await addFuel(pendingLitersToAdd);
+                setIsOverflowModalOpen(false);
+                setLitersToAdd('');
+                Alert.alert(
+                  'Capacidade Atualizada',
+                  `A capacidade do tanque foi aumentada para ${newCapacity.toFixed(0)} litros e o combustível foi adicionado.`
+                );
+              }}
+            >
+              <Text style={styles.overflowOptionTitle}>Aumentar capacidade do tanque</Text>
+              <Text style={styles.overflowOptionDesc}>
+                Nova capacidade: {(farmTank.currentLiters + pendingLitersToAdd).toFixed(0)} litros
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.overflowOption}
+              onPress={() => {
+                setIsOverflowModalOpen(false);
+                setIsConsumptionAdjustModalOpen(true);
+              }}
+            >
+              <Text style={styles.overflowOptionTitle}>Ajustar consumo não lançado</Text>
+              <Text style={styles.overflowOptionDesc}>
+                Registrar consumo que não foi lançado no sistema
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalButtonCancel}
+              onPress={() => {
+                setIsOverflowModalOpen(false);
+                setLitersToAdd('');
+              }}
+            >
+              <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isConsumptionAdjustModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsConsumptionAdjustModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Registrar Consumo Não Lançado</Text>
+
+            <Text style={styles.label}>
+              Quanto combustível foi consumido sem registro?
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={consumptionAdjustment}
+              onChangeText={setConsumptionAdjustment}
+              placeholder="Ex: 500"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
+
+            <Text style={styles.hint}>
+              Depois de registrar o consumo, você poderá adicionar o combustível novamente.
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={() => {
+                  setIsConsumptionAdjustModalOpen(false);
+                  setConsumptionAdjustment('');
+                  setLitersToAdd('');
+                }}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButtonSave}
+                onPress={async () => {
+                  const consumed = parseFloat(consumptionAdjustment);
+                  if (isNaN(consumed) || consumed <= 0) {
+                    Alert.alert('Erro', 'Por favor, insira uma quantidade válida');
+                    return;
+                  }
+
+                  await registerUnloggedConsumption(consumed);
+                  setIsConsumptionAdjustModalOpen(false);
+                  setConsumptionAdjustment('');
+
+                  Alert.alert(
+                    'Consumo Registrado',
+                    `${consumed.toFixed(0)} litros de consumo foram registrados. Agora você pode adicionar o combustível.`,
+                    [
+                      {
+                        text: 'OK',
+                        onPress: () => {
+                          setIsAddFuelModalOpen(true);
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={styles.modalButtonSaveText}>Registrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -572,5 +732,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFF',
+  },
+  overflowHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  overflowText: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 12,
+    lineHeight: 22,
+  },
+  overflowHighlight: {
+    fontWeight: '700' as const,
+    color: '#FF5722',
+  },
+  overflowQuestion: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#333',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  overflowOption: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+  },
+  overflowOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#2D5016',
+    marginBottom: 4,
+  },
+  overflowOptionDesc: {
+    fontSize: 14,
+    color: '#666',
   },
 });
