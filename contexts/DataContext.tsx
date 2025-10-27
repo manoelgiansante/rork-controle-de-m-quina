@@ -428,6 +428,7 @@ export const [DataProvider, useData] = createContextHook(() => {
     async (litersUsed: number) => {
       if (!farmTank) return;
 
+      const oldLiters = farmTank.currentLiters;
       const newCurrentLiters = Math.max(farmTank.currentLiters - litersUsed, 0);
 
       const updated: FarmTank = {
@@ -438,9 +439,9 @@ export const [DataProvider, useData] = createContextHook(() => {
       setFarmTank(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
 
-      if (newCurrentLiters <= farmTank.alertLevelLiters) {
+      if (newCurrentLiters <= farmTank.alertLevelLiters && oldLiters > farmTank.alertLevelLiters) {
         console.log(
-          `ALERTA: Tanque de combustível baixo: restam apenas ${newCurrentLiters.toFixed(0)} litros`
+          `⚠️ ALERTA: Tanque de combustível baixo: restam apenas ${newCurrentLiters.toFixed(0)} litros`
         );
       }
     },
