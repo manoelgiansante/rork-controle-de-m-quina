@@ -1,13 +1,16 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Redirect } from 'expo-router';
+import { View } from 'react-native';
 
 export default function Index() {
   const { isAuthenticated, hasAcceptedTerms, isLoading: authLoading } = useAuth();
   const { needsSubscription, needsTrialActivation, isLoading: subLoading } = useSubscription();
 
-  if (authLoading || subLoading) {
-    return null;
+  const isLoading = authLoading || subLoading;
+
+  if (isLoading) {
+    return <View style={{ flex: 1 }} />;
   }
 
   if (!isAuthenticated) {
