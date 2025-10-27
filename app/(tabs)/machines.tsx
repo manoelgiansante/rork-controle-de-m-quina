@@ -35,6 +35,7 @@ export default function MachinesScreen() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedType, setSelectedType] = useState<MachineType>('Trator');
   const [model, setModel] = useState<string>('');
+  const [initialHourMeter, setInitialHourMeter] = useState<string>('');
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
 
   const handleLogout = () => {
@@ -63,6 +64,7 @@ export default function MachinesScreen() {
         model: model.trim(),
       });
       setModel('');
+      setInitialHourMeter('');
       setSelectedType('Trator');
       setEditingMachine(null);
       setIsModalOpen(false);
@@ -92,13 +94,21 @@ export default function MachinesScreen() {
       return;
     }
 
+    const hourMeterValue = initialHourMeter.trim() ? parseFloat(initialHourMeter) : 0;
+    
+    if (initialHourMeter.trim() && (isNaN(hourMeterValue) || hourMeterValue < 0)) {
+      Alert.alert('Erro', 'Por favor, insira um horímetro válido');
+      return;
+    }
+
     await addMachine({
       type: selectedType,
       model: model.trim(),
-      currentHourMeter: 0,
+      currentHourMeter: hourMeterValue,
     });
 
     setModel('');
+    setInitialHourMeter('');
     setSelectedType('Trator');
     setIsModalOpen(false);
     Alert.alert('Sucesso', 'Máquina cadastrada com sucesso!');
@@ -108,6 +118,7 @@ export default function MachinesScreen() {
     setEditingMachine(machine);
     setSelectedType(machine.type);
     setModel(machine.model);
+    setInitialHourMeter('');
     setIsModalOpen(true);
   };
 
@@ -272,12 +283,27 @@ export default function MachinesScreen() {
               placeholderTextColor="#999"
             />
 
+            {!editingMachine && (
+              <>
+                <Text style={styles.label}>Horímetro Inicial (Opcional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={initialHourMeter}
+                  onChangeText={setInitialHourMeter}
+                  placeholder="Ex: 1500"
+                  placeholderTextColor="#999"
+                  keyboardType="numeric"
+                />
+              </>
+            )}
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalButtonCancel}
                 onPress={() => {
                   setIsModalOpen(false);
                   setModel('');
+                  setInitialHourMeter('');
                   setSelectedType('Trator');
                   setEditingMachine(null);
                 }}
