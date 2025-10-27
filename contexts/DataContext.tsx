@@ -116,7 +116,7 @@ export const [DataProvider, useData] = createContextHook(() => {
   }, [loadData]);
 
   const addMachine = useCallback(
-    async (machine: Omit<Machine, 'id' | 'createdAt' | 'updatedAt'>) => {
+    async (machine: Omit<Machine, 'id' | 'createdAt' | 'updatedAt' | 'propertyId'>) => {
       if (!currentPropertyId) {
         throw new Error('No property selected');
       }

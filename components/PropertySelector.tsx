@@ -9,14 +9,15 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { ChevronDown, Plus, X } from 'lucide-react-native';
+import { ChevronDown, Edit2, Plus, Trash2, X } from 'lucide-react-native';
 import { useProperty } from '@/contexts/PropertyContext';
 
 export default function PropertySelector() {
-  const { properties, currentProperty, switchProperty, addProperty } = useProperty();
+  const { properties, currentProperty, switchProperty, addProperty, updateProperty, deleteProperty } = useProperty();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [newPropertyName, setNewPropertyName] = useState<string>('');
+  const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
 
   const handleSelectProperty = async (propertyId: string) => {
     await switchProperty(propertyId);
@@ -30,15 +31,52 @@ export default function PropertySelector() {
     }
 
     try {
-      await addProperty(newPropertyName.trim());
-      setNewPropertyName('');
-      setIsAddingNew(false);
-      setIsModalOpen(false);
-      Alert.alert('Sucesso', 'Propriedade criada com sucesso!');
+      if (editingPropertyId) {
+        await updateProperty(editingPropertyId, { name: newPropertyName.trim() });
+        setNewPropertyName('');
+        setIsAddingNew(false);
+        setEditingPropertyId(null);
+        Alert.alert('Sucesso', 'Propriedade atualizada com sucesso!');
+      } else {
+        await addProperty(newPropertyName.trim());
+        setNewPropertyName('');
+        setIsAddingNew(false);
+        setIsModalOpen(false);
+        Alert.alert('Sucesso', 'Propriedade criada com sucesso!');
+      }
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível criar a propriedade');
-      console.error('Error adding property:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a propriedade');
+      console.error('Error saving property:', error);
     }
+  };
+
+  const handleEditProperty = (propertyId: string, propertyName: string) => {
+    setEditingPropertyId(propertyId);
+    setNewPropertyName(propertyName);
+    setIsAddingNew(true);
+  };
+
+  const handleDeleteProperty = (propertyId: string, propertyName: string) => {
+    if (properties.length === 1) {
+      Alert.alert('Erro', 'Você precisa ter pelo menos uma propriedade cadastrada.');
+      return;
+    }
+
+    Alert.alert(
+      'Excluir Propriedade',
+      `Tem certeza que deseja excluir "${propertyName}"?\n\nTodos os dados desta propriedade (máquinas, abastecimentos, manutenções) serão perdidos.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteProperty(propertyId);
+            Alert.alert('Sucesso', 'Propriedade excluída com sucesso!');
+          },
+        },
+      ]
+    );
   };
 
   if (!currentProperty) {
@@ -94,23 +132,38 @@ export default function PropertySelector() {
 
             <ScrollView style={styles.propertiesList}>
               {properties.map((property) => (
-                <TouchableOpacity
-                  key={property.id}
-                  style={[
-                    styles.propertyItem,
-                    currentProperty.id === property.id && styles.propertyItemActive,
-                  ]}
-                  onPress={() => handleSelectProperty(property.id)}
-                >
-                  <Text
+                <View key={property.id} style={styles.propertyItemWrapper}>
+                  <TouchableOpacity
                     style={[
-                      styles.propertyName,
-                      currentProperty.id === property.id && styles.propertyNameActive,
+                      styles.propertyItem,
+                      currentProperty.id === property.id && styles.propertyItemActive,
                     ]}
+                    onPress={() => handleSelectProperty(property.id)}
                   >
-                    {property.name}
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[
+                        styles.propertyName,
+                        currentProperty.id === property.id && styles.propertyNameActive,
+                      ]}
+                    >
+                      {property.name}
+                    </Text>
+                  </TouchableOpacity>
+                  <View style={styles.propertyActions}>
+                    <TouchableOpacity
+                      style={styles.propertyActionButton}
+                      onPress={() => handleEditProperty(property.id, property.name)}
+                    >
+                      <Edit2 size={18} color="#666" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.propertyActionButton}
+                      onPress={() => handleDeleteProperty(property.id, property.name)}
+                    >
+                      <Trash2 size={18} color="#FF5722" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ))}
 
               {!isAddingNew && (
@@ -125,6 +178,9 @@ export default function PropertySelector() {
 
               {isAddingNew && (
                 <View style={styles.addForm}>
+                  <Text style={styles.addFormTitle}>
+                    {editingPropertyId ? 'Editar Propriedade' : 'Nova Propriedade'}
+                  </Text>
                   <TextInput
                     style={styles.input}
                     placeholder="Nome da propriedade"
@@ -139,6 +195,7 @@ export default function PropertySelector() {
                       onPress={() => {
                         setIsAddingNew(false);
                         setNewPropertyName('');
+                        setEditingPropertyId(null);
                       }}
                     >
                       <Text style={styles.cancelButtonText}>Cancelar</Text>
@@ -211,11 +268,17 @@ const styles = StyleSheet.create({
   propertiesList: {
     padding: 16,
   },
+  propertyItemWrapper: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    marginBottom: 8,
+    gap: 8,
+  },
   propertyItem: {
+    flex: 1,
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderRadius: 12,
-    marginBottom: 8,
     backgroundColor: '#F8F8F8',
   },
   propertyItemActive: {
@@ -228,6 +291,15 @@ const styles = StyleSheet.create({
   },
   propertyNameActive: {
     color: '#FFF',
+  },
+  propertyActions: {
+    flexDirection: 'row' as const,
+    gap: 6,
+  },
+  propertyActionButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#F8F8F8',
   },
   addButton: {
     flexDirection: 'row' as const,
@@ -251,6 +323,12 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#F8F8F8',
     borderRadius: 12,
+  },
+  addFormTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#333',
+    marginBottom: 12,
   },
   input: {
     backgroundColor: '#FFF',

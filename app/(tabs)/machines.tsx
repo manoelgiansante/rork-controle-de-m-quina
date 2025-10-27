@@ -3,7 +3,7 @@ import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import type { Machine, MachineType } from '@/types';
 import { useRouter } from 'expo-router';
-import { AlertTriangle, LogOut, Plus, Tractor as TractorIcon } from 'lucide-react-native';
+import { AlertTriangle, Edit2, LogOut, Plus, Tractor as TractorIcon, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -27,14 +27,15 @@ const MACHINE_TYPES: MachineType[] = [
 ];
 
 export default function MachinesScreen() {
-  const { machines, addMachine, getAlertsForMachine } = useData();
+  const { machines, addMachine, updateMachine, deleteMachine, getAlertsForMachine } = useData();
   const { logout, isMaster } = useAuth();
-  const { canAddMachine, getRemainingMachineSlots, subscriptionInfo } = useSubscription();
+  const { canAddMachine, subscriptionInfo } = useSubscription();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedType, setSelectedType] = useState<MachineType>('Trator');
   const [model, setModel] = useState<string>('');
+  const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja realmente sair?', [
@@ -53,6 +54,19 @@ export default function MachinesScreen() {
   const handleAddMachine = async () => {
     if (!model.trim()) {
       Alert.alert('Erro', 'Por favor, preencha o modelo da máquina');
+      return;
+    }
+
+    if (editingMachine) {
+      await updateMachine(editingMachine.id, {
+        type: selectedType,
+        model: model.trim(),
+      });
+      setModel('');
+      setSelectedType('Trator');
+      setEditingMachine(null);
+      setIsModalOpen(false);
+      Alert.alert('Sucesso', 'Máquina atualizada com sucesso!');
       return;
     }
 
@@ -90,6 +104,31 @@ export default function MachinesScreen() {
     Alert.alert('Sucesso', 'Máquina cadastrada com sucesso!');
   };
 
+  const handleEditMachine = (machine: Machine) => {
+    setEditingMachine(machine);
+    setSelectedType(machine.type);
+    setModel(machine.model);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteMachine = (machine: Machine) => {
+    Alert.alert(
+      'Excluir Máquina',
+      `Tem certeza que deseja excluir ${machine.model}?\n\nTodos os abastecimentos e manutenções desta máquina também serão excluídos.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteMachine(machine.id);
+            Alert.alert('Sucesso', 'Máquina excluída com sucesso!');
+          },
+        },
+      ]
+    );
+  };
+
   const getMachineAlerts = (machineId: string) => {
     const alerts = getAlertsForMachine(machineId);
     const redAlerts = alerts.filter((a) => a.status === 'red').length;
@@ -102,7 +141,7 @@ export default function MachinesScreen() {
     const hasAlerts = alerts.red > 0 || alerts.yellow > 0;
 
     return (
-      <TouchableOpacity style={styles.machineCard}>
+      <View style={styles.machineCard}>
         <View style={styles.machineIcon}>
           <TractorIcon size={28} color="#2D5016" strokeWidth={1.5} />
         </View>
@@ -123,7 +162,23 @@ export default function MachinesScreen() {
             Horímetro: {item.currentHourMeter.toFixed(0)}h
           </Text>
         </View>
-      </TouchableOpacity>
+        {isMaster && (
+          <View style={styles.machineActions}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleEditMachine(item)}
+            >
+              <Edit2 size={20} color="#666" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleDeleteMachine(item)}
+            >
+              <Trash2 size={20} color="#FF5722" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -177,7 +232,9 @@ export default function MachinesScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Cadastrar Nova Máquina</Text>
+            <Text style={styles.modalTitle}>
+              {editingMachine ? 'Editar Máquina' : 'Cadastrar Nova Máquina'}
+            </Text>
 
             <Text style={styles.label}>Tipo do Maquinário</Text>
             <ScrollView
@@ -222,6 +279,7 @@ export default function MachinesScreen() {
                   setIsModalOpen(false);
                   setModel('');
                   setSelectedType('Trator');
+                  setEditingMachine(null);
                 }}
               >
                 <Text style={styles.modalButtonCancelText}>Cancelar</Text>
@@ -230,7 +288,9 @@ export default function MachinesScreen() {
                 style={styles.modalButtonSave}
                 onPress={handleAddMachine}
               >
-                <Text style={styles.modalButtonSaveText}>Cadastrar</Text>
+                <Text style={styles.modalButtonSaveText}>
+                  {editingMachine ? 'Salvar' : 'Cadastrar'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -282,6 +342,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    alignItems: 'center',
   },
   machineIcon: {
     width: 56,
@@ -330,6 +391,16 @@ const styles = StyleSheet.create({
   machineHours: {
     fontSize: 14,
     color: '#666',
+  },
+  machineActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 8,
+  },
+  actionButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
   },
   emptyState: {
     flex: 1,
