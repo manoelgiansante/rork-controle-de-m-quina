@@ -1,12 +1,26 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Redirect } from 'expo-router';
 
 export default function Index() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { needsSubscription, needsTrialActivation, isLoading: subLoading } = useSubscription();
 
-  if (isAuthenticated) {
-    return <Redirect href="/machines" />;
+  if (authLoading || subLoading) {
+    return null;
   }
 
-  return <Redirect href="/login" />;
+  if (!isAuthenticated) {
+    return <Redirect href="/login" />;
+  }
+
+  if (needsTrialActivation) {
+    return <Redirect href="/(tabs)/subscription" />;
+  }
+
+  if (needsSubscription) {
+    return <Redirect href="/subscription-required" />;
+  }
+
+  return <Redirect href="/machines" />;
 }

@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import type { Machine, MachineType } from '@/types';
 import { useRouter } from 'expo-router';
 import { AlertTriangle, LogOut, Plus, Tractor as TractorIcon } from 'lucide-react-native';
@@ -15,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MACHINE_TYPES: MachineType[] = [
   'Trator',
@@ -27,7 +29,9 @@ const MACHINE_TYPES: MachineType[] = [
 export default function MachinesScreen() {
   const { machines, addMachine, getAlertsForMachine } = useData();
   const { logout, isMaster } = useAuth();
+  const { canAddMachine, getRemainingMachineSlots, subscriptionInfo } = useSubscription();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedType, setSelectedType] = useState<MachineType>('Trator');
   const [model, setModel] = useState<string>('');
@@ -49,6 +53,28 @@ export default function MachinesScreen() {
   const handleAddMachine = async () => {
     if (!model.trim()) {
       Alert.alert('Erro', 'Por favor, preencha o modelo da máquina');
+      return;
+    }
+
+    if (!canAddMachine(machines.length)) {
+      const planName = subscriptionInfo.planType === 'basic' ? 'Básico' : 'Pro';
+      Alert.alert(
+        'Limite de Máquinas Atingido',
+        `Você atingiu o limite de ${subscriptionInfo.machineLimit} máquinas do plano ${planName}.\n\nPara continuar cadastrando máquinas, faça o upgrade para o plano Pro (máquinas ilimitadas).`,
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
+          },
+          {
+            text: 'Fazer upgrade agora',
+            onPress: () => {
+              setIsModalOpen(false);
+              router.push('/(tabs)/subscription');
+            },
+          },
+        ]
+      );
       return;
     }
 
@@ -103,8 +129,15 @@ export default function MachinesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Minhas Máquinas</Text>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <View>
+          <Text style={styles.headerTitle}>Minhas Máquinas</Text>
+          {subscriptionInfo.machineLimit !== -1 && (
+            <Text style={styles.headerSubtitle}>
+              {machines.length} de {subscriptionInfo.machineLimit} máquinas
+            </Text>
+          )}
+        </View>
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <LogOut size={22} color="#2D5016" />
         </TouchableOpacity>
@@ -226,6 +259,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700' as const,
     color: '#333',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
   logoutButton: {
     padding: 8,

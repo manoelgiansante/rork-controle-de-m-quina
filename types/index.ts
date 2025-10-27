@@ -68,14 +68,29 @@ export interface Alert {
 }
 
 export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'none';
+export type PlanType = 'basic' | 'pro';
+export type BillingCycle = 'monthly' | 'annual';
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  planType: PlanType;
+  billingCycle: BillingCycle;
+  machineLimit: number;
+  price: number;
+  description: string;
+}
 
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
-  trialStartDate?: string;
-  trialEndDate?: string;
+  planType?: PlanType;
+  billingCycle?: BillingCycle;
+  machineLimit: number;
+  isActive: boolean;
+  trialActive: boolean;
+  trialEndsAt?: string;
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
-  isActive: boolean;
   daysRemainingInTrial?: number;
 }
 

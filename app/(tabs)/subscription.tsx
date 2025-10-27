@@ -1,5 +1,6 @@
-import { useSubscription } from '@/contexts/SubscriptionContext';
-import { CreditCard } from 'lucide-react-native';
+import { SUBSCRIPTION_PLANS, useSubscription } from '@/contexts/SubscriptionContext';
+import type { BillingCycle, PlanType } from '@/types';
+import { Check, CreditCard } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SubscriptionScreen() {
   const {
@@ -21,43 +23,55 @@ export default function SubscriptionScreen() {
     needsTrialActivation,
   } = useSubscription();
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const insets = useSafeAreaInsets();
 
-  const handleActivateSubscription = async () => {
+  const handleSelectPlan = async (planType: PlanType, billingCycle: BillingCycle) => {
     setIsProcessing(true);
     try {
+      const plan = SUBSCRIPTION_PLANS.find(
+        (p) => p.planType === planType && p.billingCycle === billingCycle
+      );
+
+      if (!plan) {
+        Alert.alert('Erro', 'Plano não encontrado');
+        return;
+      }
+
       if (Platform.OS === 'web') {
         Alert.alert(
-          'Simulação de Pagamento',
-          'Em um app real, isso abriria o sistema de pagamento da loja. Por enquanto, vamos ativar sua assinatura para demonstração.',
+          'Confirmar Assinatura',
+          `Deseja assinar o plano ${plan.name} por R$${plan.price.toFixed(2)}?`,
           [
             {
               text: 'Cancelar',
               style: 'cancel',
             },
             {
-              text: 'Ativar Assinatura',
+              text: 'Confirmar',
               onPress: async () => {
-                await activateSubscription();
-                Alert.alert(
-                  'Assinatura Ativada!',
-                  'Sua assinatura mensal foi ativada com sucesso.'
-                );
+                const success = await activateSubscription(planType, billingCycle);
+                if (success) {
+                  Alert.alert(
+                    'Assinatura Ativada!',
+                    `Sua assinatura ${plan.name} foi ativada com sucesso.`
+                  );
+                }
               },
             },
           ]
         );
       } else {
-        const success = await activateSubscription();
+        const success = await activateSubscription(planType, billingCycle);
         if (success) {
           Alert.alert(
             'Assinatura Ativada!',
-            'Sua assinatura mensal foi ativada com sucesso.'
+            `Sua assinatura ${plan.name} foi ativada com sucesso.`
           );
         }
       }
     } catch (error) {
-      console.error('Error activating subscription:', error);
-      Alert.alert('Erro', 'Não foi possível ativar a assinatura. Tente novamente.');
+      console.error('Error selecting plan:', error);
+      Alert.alert('Erro', 'Não foi possível ativar o plano. Tente novamente.');
     } finally {
       setIsProcessing(false);
     }
@@ -69,7 +83,7 @@ export default function SubscriptionScreen() {
       await startTrial();
       Alert.alert(
         'Teste Gratuito Ativado!',
-        'Você tem 7 dias para testar todas as funcionalidades do Controle de Máquina.'
+        'Você tem 7 dias para testar todas as funcionalidades com máquinas ilimitadas.'
       );
     } catch (error) {
       console.error('Error starting trial:', error);
@@ -85,6 +99,73 @@ export default function SubscriptionScreen() {
     return date.toLocaleDateString('pt-BR');
   };
 
+  const renderPlanCard = (plan: typeof SUBSCRIPTION_PLANS[0], isCurrentPlan: boolean) => (
+    <View
+      key={plan.id}
+      style={[styles.planCard, isCurrentPlan && styles.planCardActive]}
+    >
+      <View style={styles.planHeader}>
+        <Text style={styles.planName}>{plan.name}</Text>
+        {isCurrentPlan && (
+          <View style={styles.currentBadge}>
+            <Check size={16} color="#FFF" />
+            <Text style={styles.currentBadgeText}>Atual</Text>
+          </View>
+        )}
+      </View>
+      
+      <Text style={styles.planPrice}>
+        R$ {plan.price.toFixed(2)}
+        <Text style={styles.planPriceUnit}>
+          /{plan.billingCycle === 'monthly' ? 'mês' : 'ano'}
+        </Text>
+      </Text>
+      
+      <Text style={styles.planDescription}>{plan.description}</Text>
+      
+      <View style={styles.planFeatures}>
+        <View style={styles.featureItem}>
+          <Check size={18} color="#2D5016" />
+          <Text style={styles.featureText}>
+            {plan.machineLimit === -1 ? 'Máquinas ilimitadas' : `Até ${plan.machineLimit} máquinas`}
+          </Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Check size={18} color="#2D5016" />
+          <Text style={styles.featureText}>Alertas automáticos</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Check size={18} color="#2D5016" />
+          <Text style={styles.featureText}>Controle de abastecimento</Text>
+        </View>
+        <View style={styles.featureItem}>
+          <Check size={18} color="#2D5016" />
+          <Text style={styles.featureText}>Relatórios completos</Text>
+        </View>
+        {plan.billingCycle === 'annual' && (
+          <View style={styles.featureItem}>
+            <Check size={18} color="#2D5016" />
+            <Text style={styles.featureText}>Economia de 2+ meses</Text>
+          </View>
+        )}
+      </View>
+
+      {!isCurrentPlan && subscriptionInfo.isActive && (
+        <TouchableOpacity
+          style={[styles.selectButton, isProcessing && styles.selectButtonDisabled]}
+          onPress={() => handleSelectPlan(plan.planType, plan.billingCycle)}
+          disabled={isProcessing}
+        >
+          {isProcessing ? (
+            <ActivityIndicator color="#FFF" size="small" />
+          ) : (
+            <Text style={styles.selectButtonText}>Selecionar Plano</Text>
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -95,47 +176,44 @@ export default function SubscriptionScreen() {
 
   if (needsTrialActivation) {
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top }}>
         <View style={styles.content}>
           <View style={styles.header}>
             <CreditCard size={64} color="#2D5016" />
             <Text style={styles.title}>Controle de Máquina</Text>
-            <Text style={styles.subtitle}>Plano Mensal</Text>
+            <Text style={styles.subtitle}>Escolha seu plano</Text>
           </View>
 
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Teste Grátis por 7 Dias</Text>
-            <Text style={styles.infoText}>
-              Controle tudo sobre seus tratores, caminhões e implementos com
-              praticidade.
+          <View style={styles.trialCard}>
+            <Text style={styles.trialTitle}>🎉 Teste Grátis por 7 Dias</Text>
+            <Text style={styles.trialText}>
+              Comece com acesso completo e máquinas ilimitadas por 7 dias gratuitamente.
             </Text>
-            <Text style={styles.infoText}>
-              • Receba alertas automáticos de manutenção{'\n'}
-              • Registre abastecimentos e acompanhe consumo{'\n'}
-              • Gerencie revisões e horímetros{'\n'}
-              • Acesso completo por 7 dias gratuitos
+            <Text style={styles.trialText}>
+              Você pode escolher seu plano a qualquer momento.
             </Text>
-            <Text style={styles.infoText}>
-              Após o período gratuito, continue por apenas:
-            </Text>
-            <Text style={styles.priceText}>R$ 19,90/mês</Text>
           </View>
 
           <TouchableOpacity
-            style={[styles.button, isProcessing && styles.buttonDisabled]}
+            style={[styles.trialButton, isProcessing && styles.trialButtonDisabled]}
             onPress={handleStartTrial}
             disabled={isProcessing}
           >
             {isProcessing ? (
               <ActivityIndicator color="#2D5016" />
             ) : (
-              <Text style={styles.buttonText}>Iniciar Teste Gratuito</Text>
+              <Text style={styles.trialButtonText}>Iniciar Teste Gratuito</Text>
             )}
           </TouchableOpacity>
 
+          <Text style={styles.sectionTitle}>Planos Disponíveis</Text>
+          <View style={styles.plansGrid}>
+            {SUBSCRIPTION_PLANS.map((plan) => renderPlanCard(plan, false))}
+          </View>
+
           <Text style={styles.disclaimer}>
-            Após 7 dias, a assinatura será renovada automaticamente por R$
-            19,90/mês. Você pode cancelar a qualquer momento.
+            Após o período de teste, você pode escolher o plano que melhor se adequa às suas necessidades.
+            Cancele a qualquer momento.
           </Text>
         </View>
       </ScrollView>
@@ -144,7 +222,7 @@ export default function SubscriptionScreen() {
 
   if (subscriptionInfo.status === 'trial') {
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top }}>
         <View style={styles.content}>
           <View style={styles.header}>
             <CreditCard size={64} color="#2D5016" />
@@ -154,7 +232,7 @@ export default function SubscriptionScreen() {
           <View style={styles.statusCard}>
             <Text style={styles.statusTitle}>Período de Teste</Text>
             <Text style={styles.statusText}>
-              Você tem acesso completo a todas as funcionalidades
+              Você tem acesso completo com máquinas ilimitadas
             </Text>
             <View style={styles.statusDetail}>
               <Text style={styles.statusLabel}>Dias restantes:</Text>
@@ -165,78 +243,66 @@ export default function SubscriptionScreen() {
             <View style={styles.statusDetail}>
               <Text style={styles.statusLabel}>Teste termina em:</Text>
               <Text style={styles.statusValue}>
-                {formatDate(subscriptionInfo.trialEndDate)}
+                {formatDate(subscriptionInfo.trialEndsAt)}
               </Text>
             </View>
           </View>
 
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Continue Aproveitando</Text>
-            <Text style={styles.infoText}>
-              Após o período de teste, continue com acesso completo por apenas:
-            </Text>
-            <Text style={styles.priceText}>R$ 19,90/mês</Text>
+          <Text style={styles.sectionTitle}>Escolha seu plano para continuar</Text>
+          <View style={styles.plansGrid}>
+            {SUBSCRIPTION_PLANS.map((plan) => renderPlanCard(plan, false))}
           </View>
-
-          <TouchableOpacity
-            style={[styles.button, isProcessing && styles.buttonDisabled]}
-            onPress={handleActivateSubscription}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator color="#2D5016" />
-            ) : (
-              <Text style={styles.buttonText}>Ativar Assinatura Agora</Text>
-            )}
-          </TouchableOpacity>
         </View>
       </ScrollView>
     );
   }
 
   if (subscriptionInfo.status === 'active') {
+    const currentPlan = SUBSCRIPTION_PLANS.find(
+      (p) => p.planType === subscriptionInfo.planType && p.billingCycle === subscriptionInfo.billingCycle
+    );
+
     return (
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top }}>
         <View style={styles.content}>
           <View style={styles.header}>
             <CreditCard size={64} color="#2D5016" />
             <Text style={styles.title}>Assinatura Ativa</Text>
           </View>
 
-          <View style={styles.statusCard}>
-            <Text style={styles.statusTitle}>Plano Mensal</Text>
-            <Text style={styles.statusText}>
-              Você tem acesso completo a todas as funcionalidades
-            </Text>
-            <View style={styles.statusDetail}>
-              <Text style={styles.statusLabel}>Valor mensal:</Text>
-              <Text style={styles.statusValue}>R$ 19,90</Text>
-            </View>
-            {subscriptionInfo.subscriptionEndDate && (
+          {currentPlan && (
+            <View style={styles.statusCard}>
+              <Text style={styles.statusTitle}>{currentPlan.name}</Text>
+              <Text style={styles.statusText}>{currentPlan.description}</Text>
               <View style={styles.statusDetail}>
-                <Text style={styles.statusLabel}>Próxima cobrança:</Text>
+                <Text style={styles.statusLabel}>Valor:</Text>
                 <Text style={styles.statusValue}>
-                  {formatDate(subscriptionInfo.subscriptionEndDate)}
+                  R$ {currentPlan.price.toFixed(2)}/{currentPlan.billingCycle === 'monthly' ? 'mês' : 'ano'}
                 </Text>
               </View>
-            )}
-          </View>
+              {subscriptionInfo.subscriptionEndDate && (
+                <View style={styles.statusDetail}>
+                  <Text style={styles.statusLabel}>Próxima cobrança:</Text>
+                  <Text style={styles.statusValue}>
+                    {formatDate(subscriptionInfo.subscriptionEndDate)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Benefícios da Assinatura</Text>
-            <Text style={styles.infoText}>
-              • Alertas automáticos de manutenção{'\n'}
-              • Registro completo de abastecimentos{'\n'}
-              • Controle de horímetros e consumo{'\n'}
-              • Relatórios detalhados{'\n'}
-              • Sincronização automática{'\n'}
-              • Acesso ilimitado
-            </Text>
+          <Text style={styles.sectionTitle}>Outros Planos</Text>
+          <View style={styles.plansGrid}>
+            {SUBSCRIPTION_PLANS.map((plan) => {
+              const isCurrentPlan = plan.planType === subscriptionInfo.planType && 
+                                   plan.billingCycle === subscriptionInfo.billingCycle;
+              return renderPlanCard(plan, isCurrentPlan);
+            })}
           </View>
 
           {Platform.OS !== 'web' && (
             <TouchableOpacity
-              style={[styles.secondaryButton]}
+              style={styles.manageButton}
               onPress={() => {
                 Alert.alert(
                   'Gerenciar Assinatura',
@@ -245,7 +311,7 @@ export default function SubscriptionScreen() {
                 );
               }}
             >
-              <Text style={styles.secondaryButtonText}>Gerenciar Assinatura</Text>
+              <Text style={styles.manageButtonText}>Gerenciar Assinatura</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -254,46 +320,28 @@ export default function SubscriptionScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: insets.top }}>
       <View style={styles.content}>
         <View style={styles.header}>
           <CreditCard size={64} color="#D32F2F" />
           <Text style={[styles.title, { color: '#D32F2F' }]}>
-            Período Gratuito Encerrado
+            Assinatura Necessária
           </Text>
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>
-            Continue Controlando Suas Máquinas
+        <View style={styles.warningCard}>
+          <Text style={styles.warningText}>
+            Seu período de teste terminou. Escolha um plano para continuar usando o app.
           </Text>
-          <Text style={styles.infoText}>
-            Para continuar usando o Controle de Máquina e ter acesso a:
-          </Text>
-          <Text style={styles.infoText}>
-            • Alertas automáticos de manutenção{'\n'}
-            • Registro de abastecimentos{'\n'}
-            • Controle de horímetros e consumo{'\n'}
-            • Relatórios completos
-          </Text>
-          <Text style={styles.infoText}>Assine o plano mensal por apenas:</Text>
-          <Text style={styles.priceText}>R$ 19,90/mês</Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.button, isProcessing && styles.buttonDisabled]}
-          onPress={handleActivateSubscription}
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <ActivityIndicator color="#2D5016" />
-          ) : (
-            <Text style={styles.buttonText}>Assinar Agora</Text>
-          )}
-        </TouchableOpacity>
+        <Text style={styles.sectionTitle}>Escolha seu plano</Text>
+        <View style={styles.plansGrid}>
+          {SUBSCRIPTION_PLANS.map((plan) => renderPlanCard(plan, false))}
+        </View>
 
         <Text style={styles.disclaimer}>
-          Renovação automática mensal. Cancele quando quiser.
+          Renovação automática. Cancele quando quiser.
         </Text>
       </View>
     </ScrollView>
@@ -313,10 +361,11 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center' as const,
-    marginBottom: 30,
+    marginBottom: 24,
     marginTop: 20,
   },
   title: {
@@ -332,16 +381,47 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center' as const,
   },
-  infoCard: {
-    backgroundColor: '#FFF',
+  trialCard: {
+    backgroundColor: '#E8F5E9',
     borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#2D5016',
+  },
+  trialTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#2D5016',
+    marginBottom: 12,
+    textAlign: 'center' as const,
+  },
+  trialText: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 22,
+    textAlign: 'center' as const,
+    marginBottom: 8,
+  },
+  trialButton: {
+    backgroundColor: '#FDD835',
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center' as const,
+    marginBottom: 32,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
     elevation: 3,
+  },
+  trialButtonDisabled: {
+    opacity: 0.6,
+  },
+  trialButtonText: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#2D5016',
   },
   statusCard: {
     backgroundColor: '#E8F5E9',
@@ -350,26 +430,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 2,
     borderColor: '#2D5016',
-  },
-  infoTitle: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: '#2D5016',
-    marginBottom: 12,
-  },
-  infoText: {
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 24,
-    marginBottom: 12,
-  },
-  priceText: {
-    fontSize: 36,
-    fontWeight: '700' as const,
-    color: '#2D5016',
-    textAlign: 'center' as const,
-    marginTop: 12,
-    marginBottom: 12,
   },
   statusTitle: {
     fontSize: 20,
@@ -400,36 +460,125 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#2D5016',
   },
-  button: {
-    backgroundColor: '#FDD835',
-    borderRadius: 12,
-    padding: 18,
-    alignItems: 'center' as const,
+  warningCard: {
+    backgroundColor: '#FFEBEE',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#D32F2F',
+  },
+  warningText: {
+    fontSize: 16,
+    color: '#D32F2F',
+    textAlign: 'center' as const,
+    lineHeight: 24,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: '#333',
     marginBottom: 16,
+    textAlign: 'center' as const,
+  },
+  plansGrid: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  planCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 3,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  planCardActive: {
+    borderColor: '#2D5016',
+    backgroundColor: '#F1F8E9',
   },
-  buttonText: {
-    fontSize: 18,
+  planHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: 12,
+  },
+  planName: {
+    fontSize: 20,
     fontWeight: '700' as const,
     color: '#2D5016',
   },
-  secondaryButton: {
+  currentBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: '#2D5016',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  currentBadgeText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#FFF',
+  },
+  planPrice: {
+    fontSize: 32,
+    fontWeight: '700' as const,
+    color: '#2D5016',
+    marginBottom: 8,
+  },
+  planPriceUnit: {
+    fontSize: 16,
+    fontWeight: '400' as const,
+    color: '#666',
+  },
+  planDescription: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 16,
+  },
+  planFeatures: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  featureItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  featureText: {
+    fontSize: 15,
+    color: '#333',
+  },
+  selectButton: {
+    backgroundColor: '#2D5016',
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center' as const,
+  },
+  selectButtonDisabled: {
+    opacity: 0.6,
+  },
+  selectButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFF',
+  },
+  manageButton: {
     backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 18,
     alignItems: 'center' as const,
-    marginBottom: 16,
+    marginTop: 16,
     borderWidth: 2,
     borderColor: '#2D5016',
   },
-  secondaryButtonText: {
+  manageButtonText: {
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#2D5016',
