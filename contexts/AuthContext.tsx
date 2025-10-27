@@ -70,6 +70,34 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   }, []);
 
+  const register = useCallback(async (
+    username: string,
+    password: string,
+    name: string
+  ): Promise<boolean> => {
+    const userExists = users.find((u) => u.username === username);
+    if (userExists) {
+      return false;
+    }
+
+    const newUser: User = {
+      id: Date.now().toString(),
+      username,
+      password,
+      role: 'master',
+      name,
+    };
+
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+
+    setCurrentUser(newUser);
+    await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
+
+    return true;
+  }, [users]);
+
   const createEmployee = useCallback(async (
     username: string,
     password: string,
@@ -140,6 +168,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     isLoading,
     login,
     logout,
+    register,
     createEmployee,
     updateEmployee,
     deleteEmployee,
@@ -147,5 +176,5 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     hasAcceptedTerms,
     isMaster,
     isAuthenticated,
-  }), [currentUser, users, isLoading, login, logout, createEmployee, updateEmployee, deleteEmployee, acceptTerms, hasAcceptedTerms, isMaster, isAuthenticated]);
+  }), [currentUser, users, isLoading, login, logout, register, createEmployee, updateEmployee, deleteEmployee, acceptTerms, hasAcceptedTerms, isMaster, isAuthenticated]);
 });

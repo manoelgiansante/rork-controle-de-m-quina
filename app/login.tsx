@@ -18,7 +18,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function LoginScreen() {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const { login, isAuthenticated } = useAuth();
+  const [name, setName] = useState<string>('');
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const { login, register, isAuthenticated } = useAuth();
   const { needsTrialActivation, startTrial } = useSubscription();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -50,6 +52,27 @@ export default function LoginScreen() {
     }
   };
 
+  const handleRegister = async () => {
+    if (!username || !password || !name) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      return;
+    }
+
+    const success = await register(username, password, name);
+    if (success) {
+      if (needsTrialActivation) {
+        await startTrial();
+        Alert.alert(
+          'Bem-vindo ao Controle de Máquina!',
+          'Conta criada com sucesso! Você tem 7 dias para testar o aplicativo gratuitamente. Após o teste, a assinatura é de apenas R$ 19,90/mês.'
+        );
+      }
+      router.replace('/machines' as any);
+    } else {
+      Alert.alert('Erro', 'Este usuário já existe. Escolha outro nome de usuário.');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -63,6 +86,21 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.form}>
+          {isRegistering && (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Nome Completo</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Digite seu nome completo"
+                placeholderTextColor="#999"
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+            </View>
+          )}
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Usuário</Text>
             <TextInput
@@ -90,16 +128,38 @@ export default function LoginScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Entrar</Text>
+          <TouchableOpacity 
+            style={styles.loginButton} 
+            onPress={isRegistering ? handleRegister : handleLogin}
+          >
+            <Text style={styles.loginButtonText}>
+              {isRegistering ? 'Criar Conta' : 'Entrar'}
+            </Text>
           </TouchableOpacity>
 
-          <View style={styles.info}>
-            <AlertCircle size={16} color="#666" />
-            <Text style={styles.infoText}>
-              Login padrão: mestre / senha: 1234
+          <TouchableOpacity 
+            style={styles.switchButton}
+            onPress={() => {
+              setIsRegistering(!isRegistering);
+              setName('');
+            }}
+          >
+            <Text style={styles.switchButtonText}>
+              {isRegistering 
+                ? 'Já tem uma conta? Entrar' 
+                : 'Não tem conta? Criar nova conta'
+              }
             </Text>
-          </View>
+          </TouchableOpacity>
+
+          {!isRegistering && (
+            <View style={styles.info}>
+              <AlertCircle size={16} color="#666" />
+              <Text style={styles.infoText}>
+                Login padrão: mestre / senha: 1234
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -165,6 +225,16 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: '#FFF',
     fontSize: 17,
+    fontWeight: '600' as const,
+  },
+  switchButton: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 12,
+  },
+  switchButtonText: {
+    fontSize: 15,
+    color: '#2D5016',
     fontWeight: '600' as const,
   },
   info: {
