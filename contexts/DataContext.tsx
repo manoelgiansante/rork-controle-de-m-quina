@@ -161,7 +161,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const addRefueling = useCallback(
     async (
-      refueling: Omit<Refueling, 'id' | 'createdAt' | 'averageConsumption'>
+      refueling: Omit<Refueling, 'id' | 'createdAt' | 'averageConsumption' | 'propertyId'>
     ) => {
       if (!currentPropertyId) {
         throw new Error('No property selected');

@@ -83,11 +83,22 @@ export default function RefuelingScreen() {
   };
 
   const saveRefueling = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.log('❌ Erro: currentUser não definido');
+      return;
+    }
 
     const litersValue = parseFloat(liters);
+    console.log('🔄 Iniciando salvamento de abastecimento:', {
+      selectedMachineId,
+      date,
+      litersValue,
+      hourMeter,
+      serviceType,
+    });
 
     if (!farmTank) {
+      console.log('❌ Tanque não configurado');
       Alert.alert(
         'Tanque não configurado',
         'Tanque de combustível ainda não configurado. Vá até a aba Tanque de Combustível para cadastrar a capacidade inicial.'
@@ -95,7 +106,14 @@ export default function RefuelingScreen() {
       return;
     }
 
+    console.log('📊 Estado do tanque:', {
+      capacidade: farmTank.capacityLiters,
+      atual: farmTank.currentLiters,
+      tentandoAbastecer: litersValue,
+    });
+
     if (farmTank.currentLiters < litersValue) {
+      console.log('❌ Combustível insuficiente no tanque');
       Alert.alert(
         'Combustível insuficiente',
         `O tanque possui apenas ${farmTank.currentLiters.toFixed(0)}L disponíveis. Não é possível abastecer ${litersValue.toFixed(0)}L.`,
@@ -106,21 +124,30 @@ export default function RefuelingScreen() {
       return;
     }
 
-    await addRefueling({
-      machineId: selectedMachineId,
-      date: date,
-      liters: litersValue,
-      hourMeter: parseFloat(hourMeter),
-      serviceType: serviceType || undefined,
-      userId: currentUser.id,
-      userName: currentUser.name,
-    });
+    try {
+      console.log('💾 Salvando abastecimento...');
+      await addRefueling({
+        machineId: selectedMachineId,
+        date: date,
+        liters: litersValue,
+        hourMeter: parseFloat(hourMeter),
+        serviceType: serviceType || undefined,
+        userId: currentUser.id,
+        userName: currentUser.name,
+      });
+      console.log('✅ Abastecimento salvo com sucesso');
 
-    await consumeFuel(litersValue);
+      console.log('⛽ Consumindo combustível do tanque...');
+      await consumeFuel(litersValue);
+      console.log('✅ Combustível consumido do tanque');
 
-    resetForm();
-    setIsModalOpen(false);
-    Alert.alert('Sucesso', 'Abastecimento registrado com sucesso!');
+      resetForm();
+      setIsModalOpen(false);
+      Alert.alert('Sucesso', 'Abastecimento registrado com sucesso!');
+    } catch (error) {
+      console.error('❌ Erro ao salvar abastecimento:', error);
+      Alert.alert('Erro', 'Não foi possível salvar o abastecimento. Tente novamente.');
+    }
   };
 
   return (
