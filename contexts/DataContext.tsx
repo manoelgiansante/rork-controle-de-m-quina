@@ -13,20 +13,7 @@ import type {
 } from '@/types';
 
 const DEFAULT_MAINTENANCE_ITEMS: MaintenanceItem[] = [
-  'Troca de óleo do motor',
-  'Troca de filtro de óleo do motor',
-  'Troca de filtro de ar',
-  'Troca de filtro de combustível',
-  'Troca de óleo da transmissão',
-  'Troca de óleo hidráulico',
-  'Limpeza / troca de filtro hidráulico',
-  'Engraxar pontos de lubrificação',
-  'Revisão de freios',
-  'Aperto geral de parafusos importantes',
-  'Calibragem / troca de pneu',
-  'Limpeza do radiador / sistema de arrefecimento',
-  'Verificação/troca de bateria / parte elétrica',
-  'Lavagem / limpeza geral',
+  'Troca de óleo em geral',
 ];
 
 const STORAGE_KEYS = {
