@@ -107,8 +107,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
   }, [users]);
 
-  const isMaster = currentUser?.role === 'master';
-  const isAuthenticated = currentUser !== null;
+  const isMaster = useMemo(() => currentUser?.role === 'master', [currentUser]);
+  const isAuthenticated = useMemo(() => currentUser !== null, [currentUser]);
 
   return useMemo(() => ({
     currentUser,
