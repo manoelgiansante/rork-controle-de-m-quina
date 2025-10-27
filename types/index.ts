@@ -1,5 +1,13 @@
 export type UserRole = 'master' | 'employee';
 
+export interface Property {
+  id: string;
+  name: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -12,6 +20,7 @@ export type MachineType = 'Trator' | 'Caminhão' | 'Pá Carregadeira' | 'Vagão'
 
 export interface Machine {
   id: string;
+  propertyId: string;
   type: MachineType;
   model: string;
   currentHourMeter: number;
@@ -23,6 +32,7 @@ export type ServiceType = string;
 
 export interface Refueling {
   id: string;
+  propertyId: string;
   machineId: string;
   date: string;
   liters: number;
@@ -43,6 +53,7 @@ export interface MaintenanceItemRevision {
 
 export interface Maintenance {
   id: string;
+  propertyId: string;
   machineId: string;
   hourMeter: number;
   items: MaintenanceItem[];
@@ -57,6 +68,7 @@ export type AlertStatus = 'green' | 'yellow' | 'red';
 
 export interface Alert {
   id: string;
+  propertyId: string;
   machineId: string;
   maintenanceId: string;
   maintenanceItem: MaintenanceItem;
@@ -97,6 +109,7 @@ export interface SubscriptionInfo {
 export type FuelType = 'Diesel comum' | 'Diesel S10';
 
 export interface FarmTank {
+  propertyId: string;
   capacityLiters: number;
   currentLiters: number;
   fuelType: FuelType;

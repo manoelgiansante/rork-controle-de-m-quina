@@ -1,8 +1,10 @@
 import { Tabs, useRouter } from 'expo-router';
 import { BookOpen, CreditCard, Droplet, Fuel, Settings, Tractor, HelpCircle } from 'lucide-react-native';
 import React, { useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import PropertySelector from '@/components/PropertySelector';
 
 export default function TabLayout() {
   const { isAuthenticated } = useAuth();
@@ -38,6 +40,11 @@ export default function TabLayout() {
         headerTitleStyle: {
           fontWeight: '600' as const,
         },
+        headerRight: () => (
+          <View style={styles.headerRight}>
+            <PropertySelector />
+          </View>
+        ),
         tabBarStyle: {},
         tabBarLabelStyle: {
           fontSize: 12,
@@ -97,3 +104,9 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  headerRight: {
+    marginRight: 16,
+  },
+});

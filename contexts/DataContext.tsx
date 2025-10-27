@@ -11,6 +11,7 @@ import type {
   Refueling,
   ServiceType,
 } from '@/types';
+import { useProperty } from '@/contexts/PropertyContext';
 
 const DEFAULT_MAINTENANCE_ITEMS: MaintenanceItem[] = [
   'Troca de óleo em geral',
@@ -27,14 +28,40 @@ const STORAGE_KEYS = {
 };
 
 export const [DataProvider, useData] = createContextHook(() => {
-  const [machines, setMachines] = useState<Machine[]>([]);
-  const [refuelings, setRefuelings] = useState<Refueling[]>([]);
-  const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const { currentPropertyId } = useProperty();
+  const [allMachines, setAllMachines] = useState<Machine[]>([]);
+  const [allRefuelings, setAllRefuelings] = useState<Refueling[]>([]);
+  const [allMaintenances, setAllMaintenances] = useState<Maintenance[]>([]);
+  const [allAlerts, setAllAlerts] = useState<Alert[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>(DEFAULT_MAINTENANCE_ITEMS);
-  const [farmTank, setFarmTank] = useState<FarmTank | null>(null);
+  const [allFarmTanks, setAllFarmTanks] = useState<FarmTank[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const machines = useMemo(
+    () => allMachines.filter(m => m.propertyId === currentPropertyId),
+    [allMachines, currentPropertyId]
+  );
+
+  const refuelings = useMemo(
+    () => allRefuelings.filter(r => r.propertyId === currentPropertyId),
+    [allRefuelings, currentPropertyId]
+  );
+
+  const maintenances = useMemo(
+    () => allMaintenances.filter(m => m.propertyId === currentPropertyId),
+    [allMaintenances, currentPropertyId]
+  );
+
+  const alerts = useMemo(
+    () => allAlerts.filter(a => a.propertyId === currentPropertyId),
+    [allAlerts, currentPropertyId]
+  );
+
+  const farmTank = useMemo(
+    () => allFarmTanks.find(t => t.propertyId === currentPropertyId) || null,
+    [allFarmTanks, currentPropertyId]
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -45,7 +72,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         alertsData,
         serviceTypesData,
         maintenanceItemsData,
-        farmTankData,
+        farmTanksData,
       ] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.MACHINES),
         AsyncStorage.getItem(STORAGE_KEYS.REFUELINGS),
@@ -56,10 +83,10 @@ export const [DataProvider, useData] = createContextHook(() => {
         AsyncStorage.getItem(STORAGE_KEYS.FARM_TANK),
       ]);
 
-      if (machinesData) setMachines(JSON.parse(machinesData));
-      if (refuelingsData) setRefuelings(JSON.parse(refuelingsData));
-      if (maintenancesData) setMaintenances(JSON.parse(maintenancesData));
-      if (alertsData) setAlerts(JSON.parse(alertsData));
+      if (machinesData) setAllMachines(JSON.parse(machinesData));
+      if (refuelingsData) setAllRefuelings(JSON.parse(refuelingsData));
+      if (maintenancesData) setAllMaintenances(JSON.parse(maintenancesData));
+      if (alertsData) setAllAlerts(JSON.parse(alertsData));
       if (serviceTypesData) setServiceTypes(JSON.parse(serviceTypesData));
       if (maintenanceItemsData) {
         setMaintenanceItems(JSON.parse(maintenanceItemsData));
@@ -69,8 +96,13 @@ export const [DataProvider, useData] = createContextHook(() => {
           JSON.stringify(DEFAULT_MAINTENANCE_ITEMS)
         );
       }
-      if (farmTankData) {
-        setFarmTank(JSON.parse(farmTankData));
+      if (farmTanksData) {
+        const tanks = JSON.parse(farmTanksData);
+        if (Array.isArray(tanks)) {
+          setAllFarmTanks(tanks);
+        } else {
+          setAllFarmTanks([tanks]);
+        }
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -85,48 +117,57 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const addMachine = useCallback(
     async (machine: Omit<Machine, 'id' | 'createdAt' | 'updatedAt'>) => {
+      if (!currentPropertyId) {
+        throw new Error('No property selected');
+      }
+
       const newMachine: Machine = {
         ...machine,
+        propertyId: currentPropertyId,
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      const updated = [...machines, newMachine];
-      setMachines(updated);
+      const updated = [...allMachines, newMachine];
+      setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
       return newMachine;
     },
-    [machines]
+    [allMachines, currentPropertyId]
   );
 
   const updateMachine = useCallback(
     async (machineId: string, updates: Partial<Machine>) => {
-      const updated = machines.map((m) =>
+      const updated = allMachines.map((m) =>
         m.id === machineId
           ? { ...m, ...updates, updatedAt: new Date().toISOString() }
           : m
       );
-      setMachines(updated);
+      setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
     },
-    [machines]
+    [allMachines]
   );
 
   const deleteMachine = useCallback(
     async (machineId: string) => {
-      const updated = machines.filter((m) => m.id !== machineId);
-      setMachines(updated);
+      const updated = allMachines.filter((m) => m.id !== machineId);
+      setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
     },
-    [machines]
+    [allMachines]
   );
 
   const addRefueling = useCallback(
     async (
       refueling: Omit<Refueling, 'id' | 'createdAt' | 'averageConsumption'>
     ) => {
-      const machineRefuelings = refuelings
+      if (!currentPropertyId) {
+        throw new Error('No property selected');
+      }
+
+      const machineRefuelings = allRefuelings
         .filter((r) => r.machineId === refueling.machineId)
         .sort((a, b) => b.hourMeter - a.hourMeter);
 
@@ -141,13 +182,14 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       const newRefueling: Refueling = {
         ...refueling,
+        propertyId: currentPropertyId,
         id: Date.now().toString(),
         averageConsumption,
         createdAt: new Date().toISOString(),
       };
 
-      const updated = [...refuelings, newRefueling];
-      setRefuelings(updated);
+      const updated = [...allRefuelings, newRefueling];
+      setAllRefuelings(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.REFUELINGS, JSON.stringify(updated));
 
       await updateMachine(refueling.machineId, {
@@ -156,7 +198,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       return newRefueling;
     },
-    [refuelings, updateMachine]
+    [allRefuelings, updateMachine, currentPropertyId]
   );
 
   const calculateAlertStatus = useCallback(
@@ -171,14 +213,19 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const addMaintenance = useCallback(
     async (maintenance: Omit<Maintenance, 'id' | 'createdAt'>) => {
+      if (!currentPropertyId) {
+        throw new Error('No property selected');
+      }
+
       const newMaintenance: Maintenance = {
         ...maintenance,
+        propertyId: currentPropertyId,
         id: Date.now().toString(),
         createdAt: new Date().toISOString(),
       };
 
-      const updated = [...maintenances, newMaintenance];
-      setMaintenances(updated);
+      const updated = [...allMaintenances, newMaintenance];
+      setAllMaintenances(updated);
       await AsyncStorage.setItem(
         STORAGE_KEYS.MAINTENANCES,
         JSON.stringify(updated)
@@ -188,10 +235,11 @@ export const [DataProvider, useData] = createContextHook(() => {
         currentHourMeter: maintenance.hourMeter,
       });
 
-      const machine = machines.find((m) => m.id === maintenance.machineId);
+      const machine = allMachines.find((m) => m.id === maintenance.machineId);
       if (machine) {
         const newAlerts: Alert[] = maintenance.itemRevisions.map((revision) => ({
           id: `${newMaintenance.id}-${revision.item}`,
+          propertyId: currentPropertyId,
           machineId: maintenance.machineId,
           maintenanceId: newMaintenance.id,
           maintenanceItem: revision.item,
@@ -206,8 +254,8 @@ export const [DataProvider, useData] = createContextHook(() => {
           createdAt: new Date().toISOString(),
         }));
 
-        const updatedAlerts = [...alerts, ...newAlerts];
-        setAlerts(updatedAlerts);
+        const updatedAlerts = [...allAlerts, ...newAlerts];
+        setAllAlerts(updatedAlerts);
         await AsyncStorage.setItem(
           STORAGE_KEYS.ALERTS,
           JSON.stringify(updatedAlerts)
@@ -216,52 +264,52 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       return newMaintenance;
     },
-    [maintenances, alerts, machines, updateMachine, calculateAlertStatus]
+    [allMaintenances, allAlerts, allMachines, updateMachine, calculateAlertStatus, currentPropertyId]
   );
 
   const updateMaintenance = useCallback(
     async (maintenanceId: string, updates: Partial<Maintenance>) => {
-      const updated = maintenances.map((m) =>
+      const updated = allMaintenances.map((m) =>
         m.id === maintenanceId ? { ...m, ...updates } : m
       );
-      setMaintenances(updated);
+      setAllMaintenances(updated);
       await AsyncStorage.setItem(
         STORAGE_KEYS.MAINTENANCES,
         JSON.stringify(updated)
       );
     },
-    [maintenances]
+    [allMaintenances]
   );
 
   const deleteMaintenance = useCallback(
     async (maintenanceId: string) => {
-      const updated = maintenances.filter((m) => m.id !== maintenanceId);
-      setMaintenances(updated);
+      const updated = allMaintenances.filter((m) => m.id !== maintenanceId);
+      setAllMaintenances(updated);
       await AsyncStorage.setItem(
         STORAGE_KEYS.MAINTENANCES,
         JSON.stringify(updated)
       );
 
-      const updatedAlerts = alerts.filter(
+      const updatedAlerts = allAlerts.filter(
         (a) => a.maintenanceId !== maintenanceId
       );
-      setAlerts(updatedAlerts);
+      setAllAlerts(updatedAlerts);
       await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts));
     },
-    [maintenances, alerts]
+    [allMaintenances, allAlerts]
   );
 
-  const alertsRef = useRef(alerts);
+  const alertsRef = useRef(allAlerts);
   
   useEffect(() => {
-    alertsRef.current = alerts;
-  }, [alerts]);
+    alertsRef.current = allAlerts;
+  }, [allAlerts]);
 
   useEffect(() => {
-    if (!isLoading && machines.length > 0 && alertsRef.current.length > 0) {
+    if (!isLoading && allMachines.length > 0 && alertsRef.current.length > 0) {
       const currentAlerts = alertsRef.current;
       const updatedAlerts = currentAlerts.map((alert) => {
-        const machine = machines.find((m) => m.id === alert.machineId);
+        const machine = allMachines.find((m) => m.id === alert.machineId);
         if (!machine) return alert;
 
         const newStatus = calculateAlertStatus(
@@ -281,11 +329,11 @@ export const [DataProvider, useData] = createContextHook(() => {
       const hasChanges = updatedAlerts.some((alert, idx) => alert.status !== currentAlerts[idx]?.status);
       
       if (hasChanges) {
-        setAlerts(updatedAlerts);
+        setAllAlerts(updatedAlerts);
         AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts));
       }
     }
-  }, [machines, isLoading, calculateAlertStatus]);
+  }, [allMachines, isLoading, calculateAlertStatus]);
 
   const getAlertsForMachine = useCallback(
     (machineId: string) => {
@@ -343,38 +391,55 @@ export const [DataProvider, useData] = createContextHook(() => {
     [maintenanceItems]
   );
 
-  const updateTankInitialData = useCallback(async (data: FarmTank) => {
-    setFarmTank(data);
-    await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(data));
-  }, []);
+  const updateTankInitialData = useCallback(async (data: Omit<FarmTank, 'propertyId'>) => {
+    if (!currentPropertyId) {
+      throw new Error('No property selected');
+    }
+
+    const tankData: FarmTank = {
+      ...data,
+      propertyId: currentPropertyId,
+    };
+
+    const updated = allFarmTanks.filter(t => t.propertyId !== currentPropertyId);
+    updated.push(tankData);
+    setAllFarmTanks(updated);
+    await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
+  }, [allFarmTanks, currentPropertyId]);
 
   const updateTankCapacity = useCallback(
     async (newCapacity: number) => {
-      if (!farmTank) return;
+      if (!farmTank || !currentPropertyId) return;
 
-      const updated: FarmTank = {
+      const updatedTank: FarmTank = {
         ...farmTank,
         capacityLiters: newCapacity,
       };
 
-      setFarmTank(updated);
+      const updated = allFarmTanks.map(t => 
+        t.propertyId === currentPropertyId ? updatedTank : t
+      );
+      setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
     },
-    [farmTank]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   const registerUnloggedConsumption = useCallback(
     async (litersConsumed: number) => {
-      if (!farmTank) return;
+      if (!farmTank || !currentPropertyId) return;
 
       const newCurrentLiters = Math.max(farmTank.currentLiters - litersConsumed, 0);
 
-      const updated: FarmTank = {
+      const updatedTank: FarmTank = {
         ...farmTank,
         currentLiters: newCurrentLiters,
       };
 
-      setFarmTank(updated);
+      const updated = allFarmTanks.map(t => 
+        t.propertyId === currentPropertyId ? updatedTank : t
+      );
+      setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
 
       if (newCurrentLiters <= farmTank.alertLevelLiters) {
@@ -383,12 +448,12 @@ export const [DataProvider, useData] = createContextHook(() => {
         );
       }
     },
-    [farmTank]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   const addFuel = useCallback(
     async (litersAdded: number) => {
-      if (!farmTank) return { success: false, overflow: 0 };
+      if (!farmTank || !currentPropertyId) return { success: false, overflow: 0 };
 
       const potentialTotal = farmTank.currentLiters + litersAdded;
       const overflow = Math.max(0, potentialTotal - farmTank.capacityLiters);
@@ -399,31 +464,37 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       const newCurrentLiters = farmTank.currentLiters + litersAdded;
 
-      const updated: FarmTank = {
+      const updatedTank: FarmTank = {
         ...farmTank,
         currentLiters: newCurrentLiters,
       };
 
-      setFarmTank(updated);
+      const updated = allFarmTanks.map(t => 
+        t.propertyId === currentPropertyId ? updatedTank : t
+      );
+      setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
       return { success: true, overflow: 0 };
     },
-    [farmTank]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   const consumeFuel = useCallback(
     async (litersUsed: number) => {
-      if (!farmTank) return;
+      if (!farmTank || !currentPropertyId) return;
 
       const oldLiters = farmTank.currentLiters;
       const newCurrentLiters = Math.max(farmTank.currentLiters - litersUsed, 0);
 
-      const updated: FarmTank = {
+      const updatedTank: FarmTank = {
         ...farmTank,
         currentLiters: newCurrentLiters,
       };
 
-      setFarmTank(updated);
+      const updated = allFarmTanks.map(t => 
+        t.propertyId === currentPropertyId ? updatedTank : t
+      );
+      setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
 
       if (newCurrentLiters <= farmTank.alertLevelLiters && oldLiters > farmTank.alertLevelLiters) {
@@ -432,7 +503,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         );
       }
     },
-    [farmTank]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   return useMemo(
