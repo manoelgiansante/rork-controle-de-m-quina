@@ -43,7 +43,7 @@ export default function FuelTankScreen() {
       return;
     }
 
-    if (isNaN(current) || current < 0) {
+    if (isNaN(current)) {
       Alert.alert('Erro', 'Por favor, insira uma quantidade atual válida');
       return;
     }
@@ -102,7 +102,9 @@ export default function FuelTankScreen() {
 
 
 
-  if (!farmTank) {
+  if (!farmTank || farmTank.capacityLiters === 0) {
+    const hasNegativeBalance = farmTank && farmTank.currentLiters < 0;
+
     return (
       <View style={styles.container}>
         <View style={styles.emptyState}>
@@ -112,6 +114,17 @@ export default function FuelTankScreen() {
             Configure o tanque de combustível da fazenda para começar a gerenciar o estoque de
             diesel
           </Text>
+          {hasNegativeBalance && (
+            <View style={styles.negativeBalanceCard}>
+              <AlertTriangle size={24} color="#FF5722" />
+              <Text style={styles.negativeBalanceText}>
+                Saldo atual: {farmTank.currentLiters.toFixed(0)}L (negativo)
+              </Text>
+              <Text style={styles.negativeBalanceHint}>
+                Configure o tanque para corrigir o saldo
+              </Text>
+            </View>
+          )}
           <TouchableOpacity style={styles.setupButton} onPress={() => setIsSetupModalOpen(true)}>
             <Text style={styles.setupButtonText}>Configurar Tanque</Text>
           </TouchableOpacity>
@@ -205,13 +218,25 @@ export default function FuelTankScreen() {
     );
   }
 
-  const percentFilled = (farmTank.currentLiters / farmTank.capacityLiters) * 100;
+  const percentFilled = Math.max(0, Math.min(100, (farmTank.currentLiters / farmTank.capacityLiters) * 100));
   const isLowFuel = farmTank.currentLiters <= farmTank.alertLevelLiters;
+  const isNegative = farmTank.currentLiters < 0;
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {isLowFuel && (
+        {isNegative && (
+          <View style={styles.alertCard}>
+            <AlertTriangle size={24} color="#FF5722" />
+            <View style={styles.alertTextContainer}>
+              <Text style={styles.alertTitle}>ATENÇÃO: Saldo negativo</Text>
+              <Text style={styles.alertText}>
+                O tanque está com saldo negativo de {Math.abs(farmTank.currentLiters).toFixed(0)} litros. Adicione combustível para regularizar.
+              </Text>
+            </View>
+          </View>
+        )}
+        {!isNegative && isLowFuel && (
           <View style={styles.alertCard}>
             <AlertTriangle size={24} color="#FF5722" />
             <View style={styles.alertTextContainer}>
@@ -771,5 +796,25 @@ const styles = StyleSheet.create({
   overflowOptionDesc: {
     fontSize: 14,
     color: '#666',
+  },
+  negativeBalanceCard: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF5722',
+    alignItems: 'center',
+    gap: 8,
+  },
+  negativeBalanceText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#FF5722',
+  },
+  negativeBalanceHint: {
+    fontSize: 14,
+    color: '#E64A19',
+    textAlign: 'center',
   },
 });

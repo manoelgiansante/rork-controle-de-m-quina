@@ -481,10 +481,26 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const consumeFuel = useCallback(
     async (litersUsed: number) => {
-      if (!farmTank || !currentPropertyId) return;
+      if (!currentPropertyId) return;
+
+      if (!farmTank) {
+        const virtualTank: FarmTank = {
+          propertyId: currentPropertyId,
+          capacityLiters: 0,
+          currentLiters: -litersUsed,
+          fuelType: 'Diesel comum',
+          alertLevelLiters: 0,
+        };
+
+        const updated = [...allFarmTanks, virtualTank];
+        setAllFarmTanks(updated);
+        await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
+        console.log(`⚠️ Tanque não configurado - criado com saldo negativo: ${virtualTank.currentLiters.toFixed(0)} litros`);
+        return;
+      }
 
       const oldLiters = farmTank.currentLiters;
-      const newCurrentLiters = Math.max(farmTank.currentLiters - litersUsed, 0);
+      const newCurrentLiters = farmTank.currentLiters - litersUsed;
 
       const updatedTank: FarmTank = {
         ...farmTank,

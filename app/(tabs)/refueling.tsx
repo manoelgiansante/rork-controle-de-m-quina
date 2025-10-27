@@ -97,31 +97,14 @@ export default function RefuelingScreen() {
       serviceType,
     });
 
-    if (!farmTank) {
-      console.log('❌ Tanque não configurado');
-      Alert.alert(
-        'Tanque não configurado',
-        'Tanque de combustível ainda não configurado. Vá até a aba Tanque de Combustível para cadastrar a capacidade inicial.'
-      );
-      return;
-    }
-
-    console.log('📊 Estado do tanque:', {
-      capacidade: farmTank.capacityLiters,
-      atual: farmTank.currentLiters,
-      tentandoAbastecer: litersValue,
-    });
-
-    if (farmTank.currentLiters < litersValue) {
-      console.log('❌ Combustível insuficiente no tanque');
-      Alert.alert(
-        'Combustível insuficiente',
-        `O tanque possui apenas ${farmTank.currentLiters.toFixed(0)}L disponíveis. Não é possível abastecer ${litersValue.toFixed(0)}L.`,
-        [
-          { text: 'OK', style: 'cancel' },
-        ]
-      );
-      return;
+    if (farmTank) {
+      console.log('📊 Estado do tanque:', {
+        capacidade: farmTank.capacityLiters,
+        atual: farmTank.currentLiters,
+        tentandoAbastecer: litersValue,
+      });
+    } else {
+      console.log('⚠️ Tanque não cadastrado - abastecimento será registrado mas tanque ficará negativo');
     }
 
     try {
