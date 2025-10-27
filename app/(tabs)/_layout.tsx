@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from 'expo-router';
-import { BookOpen, CreditCard, Droplet, Fuel, Settings, Tractor } from 'lucide-react-native';
+import { BookOpen, CreditCard, Droplet, Fuel, Settings, Tractor, HelpCircle } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -78,6 +78,13 @@ export default function TabLayout() {
         options={{
           title: 'Tanque',
           tabBarIcon: ({ color }) => <Fuel size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="tutorial"
+        options={{
+          title: 'Tutorial',
+          tabBarIcon: ({ color }) => <HelpCircle size={24} color={color} />,
         }}
       />
       <Tabs.Screen
