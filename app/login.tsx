@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useRouter } from 'expo-router';
-import { AlertCircle, Tractor } from 'lucide-react-native';
+import { Tractor } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -151,15 +151,6 @@ export default function LoginScreen() {
               }
             </Text>
           </TouchableOpacity>
-
-          {!isRegistering && (
-            <View style={styles.info}>
-              <AlertCircle size={16} color="#666" />
-              <Text style={styles.infoText}>
-                Login padrão: mestre / senha: 1234
-              </Text>
-            </View>
-          )}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -236,16 +227,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2D5016',
     fontWeight: '600' as const,
-  },
-  info: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-    gap: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#666',
   },
 });

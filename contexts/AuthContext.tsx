@@ -23,16 +23,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       let loadedUsers: User[] = [];
       if (usersData) {
         loadedUsers = JSON.parse(usersData);
-      } else {
-        const masterUser: User = {
-          id: '1',
-          username: 'mestre',
-          password: '1234',
-          role: 'master',
-          name: 'Administrador',
-        };
-        loadedUsers = [masterUser];
-        await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(loadedUsers));
       }
 
       setUsers(loadedUsers);
