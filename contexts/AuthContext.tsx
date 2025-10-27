@@ -107,6 +107,30 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
   }, [users]);
 
+  const acceptTerms = useCallback(async () => {
+    if (!currentUser) return;
+
+    const now = new Date().toISOString();
+    const updatedUser = { ...currentUser, acceptedTermsAt: now };
+
+    const updatedUsers = users.map((u) =>
+      u.id === currentUser.id ? updatedUser : u
+    );
+
+    setUsers(updatedUsers);
+    setCurrentUser(updatedUser);
+
+    await Promise.all([
+      AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers)),
+      AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser)),
+    ]);
+  }, [currentUser, users]);
+
+  const hasAcceptedTerms = useMemo(
+    () => currentUser?.acceptedTermsAt !== undefined,
+    [currentUser]
+  );
+
   const isMaster = useMemo(() => currentUser?.role === 'master', [currentUser]);
   const isAuthenticated = useMemo(() => currentUser !== null, [currentUser]);
 
@@ -119,7 +143,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     createEmployee,
     updateEmployee,
     deleteEmployee,
+    acceptTerms,
+    hasAcceptedTerms,
     isMaster,
     isAuthenticated,
-  }), [currentUser, users, isLoading, login, logout, createEmployee, updateEmployee, deleteEmployee, isMaster, isAuthenticated]);
+  }), [currentUser, users, isLoading, login, logout, createEmployee, updateEmployee, deleteEmployee, acceptTerms, hasAcceptedTerms, isMaster, isAuthenticated]);
 });

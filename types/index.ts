@@ -14,6 +14,7 @@ export interface User {
   password: string;
   role: UserRole;
   name: string;
+  acceptedTermsAt?: string;
 }
 
 export type MachineType = 'Trator' | 'Caminhão' | 'Pá Carregadeira' | 'Vagão' | 'Outro';

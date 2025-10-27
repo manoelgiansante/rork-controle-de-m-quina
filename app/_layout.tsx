@@ -17,6 +17,13 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Voltar" }}>
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen 
+        name="terms" 
+        options={{ 
+          headerShown: false,
+          gestureEnabled: false
+        }} 
+      />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen 
         name="subscription-required" 
