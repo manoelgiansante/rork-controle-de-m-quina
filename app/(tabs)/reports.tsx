@@ -4,7 +4,6 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle,
-  ChevronRight,
   Clock,
   Droplet,
   Settings,
@@ -12,7 +11,6 @@ import {
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,8 +29,6 @@ export default function ReportsScreen() {
   } = useData();
   const [selectedSection, setSelectedSection] =
     useState<ReportSection>('alerts');
-  const [selectedMachineId, setSelectedMachineId] = useState<string>('');
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const alertsData = useMemo(() => {
     const sorted = [...alerts].sort((a, b) => {
@@ -111,95 +107,6 @@ export default function ReportsScreen() {
     );
   };
 
-  const renderMaintenanceHistory = (machineId: string) => {
-    const maintenances = getMaintenancesForMachine(machineId);
-    if (maintenances.length === 0) {
-      return (
-        <Text style={styles.emptyText}>
-          Nenhuma manutenção registrada para esta máquina
-        </Text>
-      );
-    }
-
-    return maintenances.map((maintenance) => (
-      <View key={maintenance.id} style={styles.historyCard}>
-        <View style={styles.historyHeader}>
-          <Settings size={20} color="#2D5016" />
-          <Text style={styles.historyDate}>
-            {new Date(maintenance.createdAt).toLocaleDateString('pt-BR')}
-          </Text>
-        </View>
-        <Text style={styles.historyHourMeter}>
-          Horímetro: {maintenance.hourMeter}h
-        </Text>
-        <View style={styles.historyItems}>
-          {maintenance.items.map((item, idx) => (
-            <Text key={idx} style={styles.historyItem}>
-              • {item}
-            </Text>
-          ))}
-        </View>
-        {maintenance.observation && (
-          <Text style={styles.historyObservation}>
-            Obs: {maintenance.observation}
-          </Text>
-        )}
-        <Text style={styles.historyUser}>
-          Registrado por: {maintenance.userName}
-        </Text>
-      </View>
-    ));
-  };
-
-  const renderRefuelingHistory = (machineId: string) => {
-    const refuelings = getRefuelingsForMachine(machineId);
-    if (refuelings.length === 0) {
-      return (
-        <Text style={styles.emptyText}>
-          Nenhum abastecimento registrado para esta máquina
-        </Text>
-      );
-    }
-
-    return refuelings.map((refueling) => (
-      <View key={refueling.id} style={styles.historyCard}>
-        <View style={styles.historyHeader}>
-          <Droplet size={20} color="#2196F3" />
-          <Text style={styles.historyDate}>
-            {new Date(refueling.date).toLocaleDateString('pt-BR')}
-          </Text>
-        </View>
-        <View style={styles.refuelingDetails}>
-          <View style={styles.refuelingRow}>
-            <Text style={styles.refuelingLabel}>Litros:</Text>
-            <Text style={styles.refuelingValue}>{refueling.liters}L</Text>
-          </View>
-          <View style={styles.refuelingRow}>
-            <Text style={styles.refuelingLabel}>Horímetro:</Text>
-            <Text style={styles.refuelingValue}>{refueling.hourMeter}h</Text>
-          </View>
-          {refueling.averageConsumption && (
-            <View style={styles.refuelingRow}>
-              <Text style={styles.refuelingLabel}>Consumo médio:</Text>
-              <Text style={styles.refuelingValue}>
-                {refueling.averageConsumption.toFixed(2)} L/h
-              </Text>
-            </View>
-          )}
-          {refueling.serviceType && (
-            <View style={styles.refuelingRow}>
-              <Text style={styles.refuelingLabel}>Serviço:</Text>
-              <Text style={styles.refuelingValue}>{refueling.serviceType}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={styles.historyUser}>
-          Registrado por: {refueling.userName}
-        </Text>
-      </View>
-    ));
-  };
-
   const renderConsumptionReport = () => {
     const consumptionData = machines.map((machine) => {
       const refuelings = getRefuelingsForMachine(machine.id);
@@ -265,58 +172,135 @@ export default function ReportsScreen() {
 
       case 'maintenance':
         return (
-          <View style={styles.sectionContent}>
+          <ScrollView style={styles.sectionContent}>
             <Text style={styles.sectionTitle}>Histórico de Manutenção</Text>
             {machines.length === 0 ? (
               <Text style={styles.emptyText}>Nenhuma máquina cadastrada</Text>
             ) : (
-              <View style={styles.machineButtons}>
-                {machines.map((machine) => (
-                  <TouchableOpacity
-                    key={machine.id}
-                    style={styles.machineButton}
-                    onPress={() => {
-                      setSelectedMachineId(machine.id);
-                      setIsModalOpen(true);
-                    }}
-                  >
-                    <Text style={styles.machineButtonText}>
-                      [{machine.type}] {machine.model}
-                    </Text>
-                    <ChevronRight size={20} color="#666" />
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.historyContainer}>
+                {machines.map((machine) => {
+                  const maintenances = getMaintenancesForMachine(machine.id);
+                  return (
+                    <View key={machine.id} style={styles.machineSection}>
+                      <View style={styles.machineSectionHeader}>
+                        <Text style={styles.machineSectionTitle}>
+                          [{machine.type}] {machine.model}
+                        </Text>
+                        <Text style={styles.maintenanceCount}>
+                          {maintenances.length} manutenções
+                        </Text>
+                      </View>
+                      {maintenances.length === 0 ? (
+                        <Text style={styles.emptyText}>
+                          Nenhuma manutenção registrada
+                        </Text>
+                      ) : (
+                        maintenances.map((maintenance) => (
+                          <View key={maintenance.id} style={styles.historyCard}>
+                            <View style={styles.historyHeader}>
+                              <Settings size={20} color="#2D5016" />
+                              <Text style={styles.historyDate}>
+                                {new Date(maintenance.createdAt).toLocaleDateString('pt-BR')}
+                              </Text>
+                            </View>
+                            <Text style={styles.historyHourMeter}>
+                              Horímetro: {maintenance.hourMeter}h
+                            </Text>
+                            <View style={styles.historyItems}>
+                              {maintenance.items.map((item, idx) => (
+                                <Text key={idx} style={styles.historyItem}>
+                                  • {item}
+                                </Text>
+                              ))}
+                            </View>
+                            {maintenance.observation && (
+                              <Text style={styles.historyObservation}>
+                                Obs: {maintenance.observation}
+                              </Text>
+                            )}
+                            <Text style={styles.historyUser}>
+                              Registrado por: {maintenance.userName}
+                            </Text>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             )}
-          </View>
+          </ScrollView>
         );
 
       case 'refueling':
         return (
-          <View style={styles.sectionContent}>
+          <ScrollView style={styles.sectionContent}>
             <Text style={styles.sectionTitle}>Histórico de Abastecimento</Text>
             {machines.length === 0 ? (
               <Text style={styles.emptyText}>Nenhuma máquina cadastrada</Text>
             ) : (
-              <View style={styles.machineButtons}>
-                {machines.map((machine) => (
-                  <TouchableOpacity
-                    key={machine.id}
-                    style={styles.machineButton}
-                    onPress={() => {
-                      setSelectedMachineId(machine.id);
-                      setIsModalOpen(true);
-                    }}
-                  >
-                    <Text style={styles.machineButtonText}>
-                      [{machine.type}] {machine.model}
-                    </Text>
-                    <ChevronRight size={20} color="#666" />
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.historyContainer}>
+                {machines.map((machine) => {
+                  const refuelings = getRefuelingsForMachine(machine.id);
+                  return (
+                    <View key={machine.id} style={styles.machineSection}>
+                      <View style={styles.machineSectionHeader}>
+                        <Text style={styles.machineSectionTitle}>
+                          [{machine.type}] {machine.model}
+                        </Text>
+                        <Text style={styles.refuelingCount}>
+                          {refuelings.length} abastecimentos
+                        </Text>
+                      </View>
+                      {refuelings.length === 0 ? (
+                        <Text style={styles.emptyText}>
+                          Nenhum abastecimento registrado
+                        </Text>
+                      ) : (
+                        refuelings.map((refueling) => (
+                          <View key={refueling.id} style={styles.historyCard}>
+                            <View style={styles.historyHeader}>
+                              <Droplet size={20} color="#2196F3" />
+                              <Text style={styles.historyDate}>
+                                {new Date(refueling.date).toLocaleDateString('pt-BR')}
+                              </Text>
+                            </View>
+                            <View style={styles.refuelingDetails}>
+                              <View style={styles.refuelingRow}>
+                                <Text style={styles.refuelingLabel}>Litros:</Text>
+                                <Text style={styles.refuelingValue}>{refueling.liters}L</Text>
+                              </View>
+                              <View style={styles.refuelingRow}>
+                                <Text style={styles.refuelingLabel}>Horímetro:</Text>
+                                <Text style={styles.refuelingValue}>{refueling.hourMeter}h</Text>
+                              </View>
+                              {refueling.averageConsumption && (
+                                <View style={styles.refuelingRow}>
+                                  <Text style={styles.refuelingLabel}>Consumo médio:</Text>
+                                  <Text style={styles.refuelingValue}>
+                                    {refueling.averageConsumption.toFixed(2)} L/h
+                                  </Text>
+                                </View>
+                              )}
+                              {refueling.serviceType && (
+                                <View style={styles.refuelingRow}>
+                                  <Text style={styles.refuelingLabel}>Serviço:</Text>
+                                  <Text style={styles.refuelingValue}>{refueling.serviceType}</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={styles.historyUser}>
+                              Registrado por: {refueling.userName}
+                            </Text>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             )}
-          </View>
+          </ScrollView>
         );
 
       case 'consumption':
@@ -421,37 +405,6 @@ export default function ReportsScreen() {
       </View>
 
       {renderSectionContent()}
-
-      <Modal
-        visible={isModalOpen}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setIsModalOpen(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {selectedSection === 'maintenance'
-                ? 'Histórico de Manutenção'
-                : 'Histórico de Abastecimento'}
-            </Text>
-            <TouchableOpacity 
-              onPress={() => {
-                console.log('Botão fechar clicado');
-                setIsModalOpen(false);
-              }}
-              style={styles.closeButton}
-            >
-              <Text style={styles.modalClose}>Fechar</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.modalScroll}>
-            {selectedSection === 'maintenance'
-              ? renderMaintenanceHistory(selectedMachineId)
-              : renderRefuelingHistory(selectedMachineId)}
-          </ScrollView>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -684,36 +637,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
+  historyContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  modalHeader: {
+  machineSection: {
+    marginBottom: 24,
+  },
+  machineSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#2D5016',
+    borderRadius: 12,
+    marginBottom: 12,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: '#333',
-  },
-  modalClose: {
+  machineSectionTitle: {
     fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#FFF',
+  },
+  maintenanceCount: {
+    fontSize: 13,
     fontWeight: '600' as const,
-    color: '#2D5016',
+    color: '#E8F5E9',
   },
-  closeButton: {
-    padding: 8,
-    minWidth: 60,
-    alignItems: 'center',
-  },
-  modalScroll: {
-    flex: 1,
-    padding: 16,
+  refuelingCount: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#E8F5E9',
   },
 });

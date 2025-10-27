@@ -164,13 +164,14 @@ export default function RefuelingScreen() {
         }}
       >
         <View style={styles.modalOverlay}>
-          <ScrollView
-            contentContainerStyle={styles.modalScrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Registrar Abastecimento</Text>
-
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Registrar Abastecimento</Text>
+            
+            <ScrollView 
+              style={styles.modalScroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="always"
+            >
               <Text style={styles.label}>
                 Máquina <Text style={styles.required}>*</Text>
               </Text>
@@ -290,6 +291,9 @@ export default function RefuelingScreen() {
                 </TouchableOpacity>
               </View>
 
+            </ScrollView>
+            
+            <View style={styles.modalFooter}>
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={styles.modalButtonCancel}
@@ -308,7 +312,7 @@ export default function RefuelingScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </ScrollView>
+          </View>
         </View>
       </Modal>
 
@@ -408,23 +412,33 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalScrollContent: {
-    flexGrow: 1,
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
+    maxHeight: '90%',
+  },
+  modalScroll: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  modalFooter: {
+    backgroundColor: '#FFF',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: '700' as const,
     color: '#333',
-    marginBottom: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 8,
   },
   label: {
     fontSize: 15,
