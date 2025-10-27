@@ -73,7 +73,7 @@ export default function RefuelingScreen() {
         `O horímetro informado (${hourMeter}h) é menor que o horímetro atual da máquina (${machine.currentHourMeter}h). Deseja continuar?`,
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Continuar', onPress: () => saveRefueling() },
+          { text: 'Continuar', onPress: async () => await saveRefueling() },
         ]
       );
       return;

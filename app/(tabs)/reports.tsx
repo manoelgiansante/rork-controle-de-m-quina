@@ -425,6 +425,7 @@ export default function ReportsScreen() {
       <Modal
         visible={isModalOpen}
         animationType="slide"
+        transparent={false}
         onRequestClose={() => setIsModalOpen(false)}
       >
         <View style={styles.modalContainer}>
@@ -434,7 +435,13 @@ export default function ReportsScreen() {
                 ? 'Histórico de Manutenção'
                 : 'Histórico de Abastecimento'}
             </Text>
-            <TouchableOpacity onPress={() => setIsModalOpen(false)}>
+            <TouchableOpacity 
+              onPress={() => {
+                console.log('Botão fechar clicado');
+                setIsModalOpen(false);
+              }}
+              style={styles.closeButton}
+            >
               <Text style={styles.modalClose}>Fechar</Text>
             </TouchableOpacity>
           </View>
@@ -699,6 +706,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#2D5016',
+  },
+  closeButton: {
+    padding: 8,
+    minWidth: 60,
+    alignItems: 'center',
   },
   modalScroll: {
     flex: 1,
