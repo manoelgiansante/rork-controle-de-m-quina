@@ -22,7 +22,7 @@ Antes de publicar o aplicativo, você deve cadastrar estes Product IDs exatament
   - Sem cobrança durante o período de teste
 
 ### 2. Plano Básico Mensal
-- **Product ID**: `com.2m.vetra.basico.mensal`
+- **Product ID**: `com.2m.vetra.basico.mensal19`
 - **Nome visível**: "Plano Básico – R$19,99/mês"
 - **Preço**: R$ 19,99
 - **Tipo**: Assinatura Renovável Automaticamente
@@ -54,14 +54,14 @@ Antes de publicar o aplicativo, você deve cadastrar estes Product IDs exatament
 - **Preço**: R$ 49,90
 - **Tipo**: Assinatura Renovável Automaticamente
 - **Duração**: 1 mês
-- **Descrição**: Máquinas ilimitadas + IA
+- **Descrição**: Máquinas ilimitadas
 - **Benefícios**:
   - Máquinas ilimitadas
   - Controle de abastecimento
   - Manutenção completa
   - Alertas inteligentes
   - Relatórios avançados
-  - Suporte com IA
+  - Suporte prioritário
 
 ### 5. Plano Premium Anual
 - **Product ID**: `com.2m.vetra.premium.anual`
@@ -69,14 +69,14 @@ Antes de publicar o aplicativo, você deve cadastrar estes Product IDs exatament
 - **Preço**: R$ 499,90
 - **Tipo**: Assinatura Renovável Automaticamente
 - **Duração**: 1 ano
-- **Descrição**: Máquinas ilimitadas + IA (economize ~2 meses)
+- **Descrição**: Máquinas ilimitadas (economize ~2 meses)
 - **Benefícios**:
   - Máquinas ilimitadas
   - Controle de abastecimento
   - Manutenção completa
   - Alertas inteligentes
   - Relatórios avançados
-  - Suporte com IA
+  - Suporte prioritário
   - Economia em relação ao mensal
 
 ## Configuração nas Lojas

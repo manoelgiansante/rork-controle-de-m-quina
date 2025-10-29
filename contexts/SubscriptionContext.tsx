@@ -9,7 +9,7 @@ const TRIAL_DAYS = 7;
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'basic_monthly',
-    productId: 'com.2m.vetra.basico.mensal',
+    productId: 'com.2m.vetra.basico.mensal19',
     name: 'Plano Básico Mensal',
     planType: 'basic',
     billingCycle: 'monthly',
@@ -48,14 +48,14 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     billingCycle: 'monthly',
     machineLimit: -1,
     price: 49.90,
-    description: 'Máquinas ilimitadas + IA',
+    description: 'Máquinas ilimitadas',
     features: [
       'Máquinas ilimitadas',
       'Controle de abastecimento',
       'Manutenção completa',
       'Alertas inteligentes',
       'Relatórios avançados',
-      'Suporte com IA',
+      'Suporte prioritário',
     ],
   },
   {
@@ -66,14 +66,14 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     billingCycle: 'annual',
     machineLimit: -1,
     price: 499.90,
-    description: 'Máquinas ilimitadas + IA (economize ~2 meses)',
+    description: 'Máquinas ilimitadas (economize ~2 meses)',
     features: [
       'Máquinas ilimitadas',
       'Controle de abastecimento',
       'Manutenção completa',
       'Alertas inteligentes',
       'Relatórios avançados',
-      'Suporte com IA',
+      'Suporte prioritário',
       'Economia em relação ao mensal',
     ],
   },
