@@ -81,17 +81,19 @@ export interface Alert {
 }
 
 export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'none';
-export type PlanType = 'basic' | 'pro';
+export type PlanType = 'basic' | 'premium';
 export type BillingCycle = 'monthly' | 'annual';
 
 export interface SubscriptionPlan {
   id: string;
+  productId: string;
   name: string;
   planType: PlanType;
   billingCycle: BillingCycle;
   machineLimit: number;
   price: number;
   description: string;
+  features: string[];
 }
 
 export interface SubscriptionInfo {

@@ -124,30 +124,12 @@ export default function SubscriptionScreen() {
       <Text style={styles.planDescription}>{plan.description}</Text>
       
       <View style={styles.planFeatures}>
-        <View style={styles.featureItem}>
-          <Check size={18} color="#2D5016" />
-          <Text style={styles.featureText}>
-            {plan.machineLimit === -1 ? 'Máquinas ilimitadas' : `Até ${plan.machineLimit} máquinas`}
-          </Text>
-        </View>
-        <View style={styles.featureItem}>
-          <Check size={18} color="#2D5016" />
-          <Text style={styles.featureText}>Alertas automáticos</Text>
-        </View>
-        <View style={styles.featureItem}>
-          <Check size={18} color="#2D5016" />
-          <Text style={styles.featureText}>Controle de abastecimento</Text>
-        </View>
-        <View style={styles.featureItem}>
-          <Check size={18} color="#2D5016" />
-          <Text style={styles.featureText}>Relatórios completos</Text>
-        </View>
-        {plan.billingCycle === 'annual' && (
-          <View style={styles.featureItem}>
+        {plan.features.map((feature, index) => (
+          <View key={index} style={styles.featureItem}>
             <Check size={18} color="#2D5016" />
-            <Text style={styles.featureText}>Economia de 2+ meses</Text>
+            <Text style={styles.featureText}>{feature}</Text>
           </View>
-        )}
+        ))}
       </View>
 
       {!isCurrentPlan && subscriptionInfo.isActive && (
@@ -187,11 +169,12 @@ export default function SubscriptionScreen() {
           <View style={styles.trialCard}>
             <Text style={styles.trialTitle}>🎉 Teste Grátis por 7 Dias</Text>
             <Text style={styles.trialText}>
-              Comece com acesso completo e máquinas ilimitadas por 7 dias gratuitamente.
+              Comece com acesso Premium completo e máquinas ilimitadas por 7 dias gratuitamente.
             </Text>
             <Text style={styles.trialText}>
-              Você pode escolher seu plano a qualquer momento.
+              Você pode escolher seu plano a qualquer momento durante ou após o teste.
             </Text>
+            <Text style={styles.trialProductId}>Product ID: com.2m.vetra.teste.7dias</Text>
           </View>
 
           <TouchableOpacity
@@ -402,6 +385,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center' as const,
     marginBottom: 8,
+  },
+  trialProductId: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center' as const,
+    marginTop: 12,
+    fontFamily: 'monospace' as const,
   },
   trialButton: {
     backgroundColor: '#FDD835',
