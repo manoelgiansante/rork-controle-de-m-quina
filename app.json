@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.controle-de-maquina1"
+      "bundleIdentifier": "app.rork.controle-de-maquina"
     },
     "android": {
       "adaptiveIcon": {
