@@ -46,7 +46,7 @@ export default function MachinesScreen() {
         style: 'destructive',
         onPress: async () => {
           await logout();
-          router.replace('/login' as any);
+          router.replace('/login');
         },
       },
     ]);

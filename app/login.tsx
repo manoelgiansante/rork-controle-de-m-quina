@@ -27,7 +27,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace('/machines' as any);
+      router.replace('/machines');
     }
   }, [isAuthenticated, router]);
 
@@ -46,7 +46,7 @@ export default function LoginScreen() {
           'Você tem 7 dias para testar o aplicativo gratuitamente. Após o teste, a assinatura é de apenas R$ 19,90/mês.'
         );
       }
-      router.replace('/machines' as any);
+      router.replace('/machines');
     } else {
       Alert.alert('Erro', 'Usuário ou senha incorretos');
     }
@@ -67,7 +67,7 @@ export default function LoginScreen() {
           'Conta criada com sucesso! Você tem 7 dias para testar o aplicativo gratuitamente. Após o teste, a assinatura é de apenas R$ 19,90/mês.'
         );
       }
-      router.replace('/machines' as any);
+      router.replace('/machines');
     } else {
       Alert.alert('Erro', 'Este usuário já existe. Escolha outro nome de usuário.');
     }
