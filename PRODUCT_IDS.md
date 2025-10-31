@@ -9,7 +9,7 @@ Antes de publicar o aplicativo, você deve cadastrar estes Product IDs exatament
 ## Product IDs Configurados
 
 ### 1. Teste Gratuito (Trial)
-- **Product ID**: `com.2m.vetra.teste.7dias`
+- **Product ID**: `com.2m.controledemaquina.teste.7dias`
 - **Nome visível**: "Teste grátis 7 dias"
 - **Preço**: R$ 0,00
 - **Tipo**: Período de Teste
@@ -22,7 +22,7 @@ Antes de publicar o aplicativo, você deve cadastrar estes Product IDs exatament
   - Sem cobrança durante o período de teste
 
 ### 2. Plano Básico Mensal
-- **Product ID**: `com.2m.vetra.basico.mensal19`
+- **Product ID**: `com.2m.controledemaquina.basico.mensal19`
 - **Nome visível**: "Plano Básico – R$19,99/mês"
 - **Preço**: R$ 19,99
 - **Tipo**: Assinatura Renovável Automaticamente
@@ -35,7 +35,7 @@ Antes de publicar o aplicativo, você deve cadastrar estes Product IDs exatament
   - Alertas automáticos
 
 ### 3. Plano Básico Anual
-- **Product ID**: `com.2m.vetra.basico.anual`
+- **Product ID**: `com.2m.controledemaquina.basico.anual`
 - **Nome visível**: "Plano Básico Anual – R$199,99/ano"
 - **Preço**: R$ 199,99
 - **Tipo**: Assinatura Renovável Automaticamente
@@ -49,7 +49,7 @@ Antes de publicar o aplicativo, você deve cadastrar estes Product IDs exatament
   - Economia em relação ao mensal
 
 ### 4. Plano Premium Mensal
-- **Product ID**: `com.2m.vetra.premium.mensal`
+- **Product ID**: `com.2m.controledemaquina.premium.mensal`
 - **Nome visível**: "Plano Premium – R$49,90/mês"
 - **Preço**: R$ 49,90
 - **Tipo**: Assinatura Renovável Automaticamente
@@ -64,7 +64,7 @@ Antes de publicar o aplicativo, você deve cadastrar estes Product IDs exatament
   - Suporte prioritário
 
 ### 5. Plano Premium Anual
-- **Product ID**: `com.2m.vetra.premium.anual`
+- **Product ID**: `com.2m.controledemaquina.premium.anual`
 - **Nome visível**: "Plano Premium Anual – R$499,90/ano"
 - **Preço**: R$ 499,90
 - **Tipo**: Assinatura Renovável Automaticamente

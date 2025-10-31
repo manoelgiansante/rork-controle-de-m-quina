@@ -9,7 +9,7 @@ const TRIAL_DAYS = 7;
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     id: 'basic_monthly',
-    productId: 'com.2m.vetra.basico.mensal19',
+    productId: 'com.2m.controledemaquina.basico.mensal19',
     name: 'Plano Básico Mensal',
     planType: 'basic',
     billingCycle: 'monthly',
@@ -25,7 +25,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   },
   {
     id: 'basic_annual',
-    productId: 'com.2m.vetra.basico.anual',
+    productId: 'com.2m.controledemaquina.basico.anual',
     name: 'Plano Básico Anual',
     planType: 'basic',
     billingCycle: 'annual',
@@ -42,7 +42,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   },
   {
     id: 'premium_monthly',
-    productId: 'com.2m.vetra.premium.mensal',
+    productId: 'com.2m.controledemaquina.premium.mensal',
     name: 'Plano Premium Mensal',
     planType: 'premium',
     billingCycle: 'monthly',
@@ -60,7 +60,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   },
   {
     id: 'premium_annual',
-    productId: 'com.2m.vetra.premium.anual',
+    productId: 'com.2m.controledemaquina.premium.anual',
     name: 'Plano Premium Anual',
     planType: 'premium',
     billingCycle: 'annual',

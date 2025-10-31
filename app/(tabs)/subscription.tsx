@@ -174,7 +174,7 @@ export default function SubscriptionScreen() {
             <Text style={styles.trialText}>
               Você pode escolher seu plano a qualquer momento durante ou após o teste.
             </Text>
-            <Text style={styles.trialProductId}>Product ID: com.2m.vetra.teste.7dias</Text>
+            <Text style={styles.trialProductId}>Product ID: com.2m.controledemaquina.teste.7dias</Text>
           </View>
 
           <TouchableOpacity
