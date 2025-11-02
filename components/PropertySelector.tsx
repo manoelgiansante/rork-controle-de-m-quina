@@ -73,30 +73,23 @@ export default function PropertySelector() {
             setIsModalOpen(false);
             
             await logout();
-            console.log('PropertySelector: Logout do AuthContext concluído');
+            console.log('PropertySelector: Logout concluído, redirecionando...');
             
             if (Platform.OS === 'web') {
-              console.log('PropertySelector: Executando logout web...');
-              
-              setTimeout(() => {
-                try {
-                  if (typeof window !== 'undefined') {
-                    console.log('PropertySelector: Forçando redirect com window.location.href');
-                    window.location.href = '/login';
-                  }
-                } catch (redirectError) {
-                  console.error('PropertySelector: Erro no redirect:', redirectError);
-                }
-              }, 100);
+              if (typeof window !== 'undefined') {
+                console.log('PropertySelector: Redirecionando para login (web)');
+                window.location.replace('/login');
+              }
             } else {
-              console.log('PropertySelector: Executando logout mobile');
+              console.log('PropertySelector: Redirecionando para login (mobile)');
               router.replace('/login');
             }
           } catch (error) {
             console.error('PropertySelector: Erro ao fazer logout:', error);
-            
             if (Platform.OS === 'web' && typeof window !== 'undefined') {
-              window.location.href = '/login';
+              window.location.replace('/login');
+            } else {
+              router.replace('/login');
             }
           }
         },

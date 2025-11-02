@@ -74,25 +74,45 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     console.log('AuthContext: Executando logout...');
     
     try {
+      setCurrentUser(null);
+      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      
       if (Platform.OS === 'web') {
         console.log('AuthContext: Limpando sessão web...');
         
-        if (typeof localStorage !== 'undefined') {
-          localStorage.clear();
-        }
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.clear();
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.clear();
+          }
+        } catch (e) {
+          console.warn('Erro ao limpar localStorage:', e);
         }
         
-        if (typeof document !== 'undefined') {
-          const cookies = document.cookie.split(';');
-          for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf('=');
-            const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.clear();
           }
+        } catch (e) {
+          console.warn('Erro ao limpar sessionStorage:', e);
+        }
+        
+        try {
+          if (typeof document !== 'undefined' && document.cookie) {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i];
+              const eqPos = cookie.indexOf('=');
+              const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+              document.cookie = `${name}=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+              document.cookie = `${name}=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+              if (window.location.hostname.includes('.')) {
+                const domain = window.location.hostname.split('.').slice(-2).join('.');
+                document.cookie = `${name}=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${domain}`;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Erro ao limpar cookies:', e);
         }
         
         try {
@@ -102,16 +122,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             credentials: 'include',
           }).catch(() => {});
         } catch (e) {
-          console.error('Erro ao chamar /api/logout:', e);
+          console.warn('Erro ao chamar /api/logout:', e);
         }
         
-        console.log('AuthContext: Logout web concluído');
+        console.log('AuthContext: Logout web concluído, sessão limpa');
       } else {
         console.log('AuthContext: Logout mobile concluído');
       }
-      
-      setCurrentUser(null);
-      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     } catch (error) {
       console.error('Erro durante logout:', error);
     }
