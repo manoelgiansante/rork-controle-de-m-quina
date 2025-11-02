@@ -14,7 +14,13 @@ import type {
 import { useProperty } from '@/contexts/PropertyContext';
 
 const DEFAULT_MAINTENANCE_ITEMS: MaintenanceItem[] = [
-  'Troca de óleo em geral',
+  'Troca de óleo do motor',
+  'Troca do filtro de óleo',
+  'Troca do filtro de diesel',
+  'Troca do filtro de ar do motor',
+  'Troca do filtro hidráulico',
+  'Troca do óleo da transmissão',
+  'Troca do óleo hidráulico',
 ];
 
 const STORAGE_KEYS = {
