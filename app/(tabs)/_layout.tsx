@@ -12,10 +12,7 @@ export default function TabLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/login');
-      return;
-    }
+    if (!isAuthenticated) return;
 
     if (!isSubscriptionLoading) {
       if (needsTrialActivation) {

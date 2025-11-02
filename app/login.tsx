@@ -27,7 +27,9 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace('/machines');
+      setTimeout(() => {
+        router.replace('/machines');
+      }, 0);
     }
   }, [isAuthenticated, router]);
 

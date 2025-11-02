@@ -22,7 +22,9 @@ export default function SubscriptionRequiredScreen() {
 
   useEffect(() => {
     if (subscriptionInfo.isActive) {
-      router.replace('/(tabs)/machines');
+      setTimeout(() => {
+        router.replace('/(tabs)/machines');
+      }, 0);
     }
   }, [subscriptionInfo.isActive, router]);
 
