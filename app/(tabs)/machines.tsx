@@ -45,8 +45,13 @@ export default function MachinesScreen() {
         text: 'Sair',
         style: 'destructive',
         onPress: async () => {
-          await logout();
-          router.replace('/login');
+          try {
+            await logout();
+            router.replace('/login');
+          } catch (error) {
+            console.error('Erro ao fazer logout:', error);
+            Alert.alert('Erro', 'Não foi possível sair. Tente novamente.');
+          }
         },
       },
     ]);
