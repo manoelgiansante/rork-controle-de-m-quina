@@ -68,9 +68,11 @@ export default function PropertySelector() {
         style: 'destructive',
         onPress: async () => {
           try {
+            console.log('Iniciando logout...');
             setIsModalOpen(false);
             await logout();
-            router.replace('/login');
+            console.log('Logout concluído, redirecionando para login...');
+            router.replace('/');
           } catch (error) {
             console.error('Erro ao fazer logout:', error);
             Alert.alert('Erro', 'Não foi possível sair. Tente novamente.');

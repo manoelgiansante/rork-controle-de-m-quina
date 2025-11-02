@@ -70,8 +70,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [users]);
 
   const logout = useCallback(async () => {
+    console.log('AuthContext: Executando logout...');
     setCurrentUser(null);
     await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    console.log('AuthContext: Logout concluído, currentUser removido');
   }, []);
 
   const register = useCallback(async (

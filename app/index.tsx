@@ -1,24 +1,11 @@
 import { Redirect } from 'expo-router';
 import { View } from 'react-native';
-
-// Os hooks podem não existir/retornar undefined se o Provider não estiver montado.
-// Por isso, usamos chamadas seguras e valores padrão.
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
 export default function Index() {
-  // Chama os hooks com fallback para evitar crash se o contexto não estiver disponível
-  const auth = typeof useAuth === 'function' ? useAuth() : undefined;
-  const sub  = typeof useSubscription === 'function' ? useSubscription() : undefined;
-
-  // Desestruturação com valores padrão (evita "Cannot read property 'x' of undefined")
-  const isAuthenticated   = auth?.isAuthenticated ?? false;
-  const hasAcceptedTerms  = auth?.hasAcceptedTerms ?? false;
-  const authLoading       = auth?.isLoading ?? false;
-
-  const needsSubscription     = sub?.needsSubscription ?? false;
-  const needsTrialActivation  = sub?.needsTrialActivation ?? false;
-  const subLoading            = sub?.isLoading ?? false;
+  const { isAuthenticated, hasAcceptedTerms, isLoading: authLoading } = useAuth();
+  const { needsSubscription, needsTrialActivation, isLoading: subLoading } = useSubscription();
 
   const isLoading = authLoading || subLoading;
 
@@ -29,6 +16,7 @@ export default function Index() {
 
   // Fluxos de navegação
   if (!isAuthenticated) {
+    console.log('Index: Usuário não autenticado, redirecionando para /login');
     return <Redirect href="/login" />;
   }
 
