@@ -9,11 +9,15 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { ChevronDown, Edit2, Plus, Trash2, X } from 'lucide-react-native';
+import { ChevronDown, Edit2, LogOut, Plus, Trash2, X } from 'lucide-react-native';
 import { useProperty } from '@/contexts/PropertyContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
 
 export default function PropertySelector() {
   const { properties, currentProperty, switchProperty, addProperty, updateProperty, deleteProperty } = useProperty();
+  const { logout } = useAuth();
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [newPropertyName, setNewPropertyName] = useState<string>('');
@@ -54,6 +58,26 @@ export default function PropertySelector() {
     setEditingPropertyId(propertyId);
     setNewPropertyName(propertyName);
     setIsAddingNew(true);
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Sair', 'Deseja realmente sair da conta?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Sair',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsModalOpen(false);
+            await logout();
+            router.replace('/login');
+          } catch (error) {
+            console.error('Erro ao fazer logout:', error);
+            Alert.alert('Erro', 'Não foi possível sair. Tente novamente.');
+          }
+        },
+      },
+    ]);
   };
 
   const handleDeleteProperty = (propertyId: string, propertyName: string) => {
@@ -167,13 +191,23 @@ export default function PropertySelector() {
               ))}
 
               {!isAddingNew && (
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => setIsAddingNew(true)}
-                >
-                  <Plus size={20} color="#2D5016" />
-                  <Text style={styles.addButtonText}>Adicionar nova propriedade</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => setIsAddingNew(true)}
+                  >
+                    <Plus size={20} color="#2D5016" />
+                    <Text style={styles.addButtonText}>Adicionar nova propriedade</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={handleLogout}
+                  >
+                    <LogOut size={20} color="#FF5722" />
+                    <Text style={styles.logoutButtonText}>Sair da conta</Text>
+                  </TouchableOpacity>
+                </>
               )}
 
               {isAddingNew && (
@@ -370,5 +404,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFF',
+  },
+  logoutButton: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    backgroundColor: '#FFF1F0',
+    borderWidth: 1,
+    borderColor: '#FF5722',
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FF5722',
+    marginLeft: 8,
   },
 });

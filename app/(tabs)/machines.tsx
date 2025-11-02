@@ -3,7 +3,7 @@ import { useData } from '@/contexts/DataContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import type { Machine, MachineType } from '@/types';
 import { useRouter } from 'expo-router';
-import { AlertTriangle, Edit2, LogOut, Plus, Tractor as TractorIcon, Trash2 } from 'lucide-react-native';
+import { AlertTriangle, Edit2, Plus, Tractor as TractorIcon, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -28,7 +28,7 @@ const MACHINE_TYPES: MachineType[] = [
 
 export default function MachinesScreen() {
   const { machines, addMachine, updateMachine, deleteMachine, getAlertsForMachine } = useData();
-  const { logout, isMaster } = useAuth();
+  const { isMaster } = useAuth();
   const { canAddMachine, subscriptionInfo } = useSubscription();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -38,24 +38,7 @@ export default function MachinesScreen() {
   const [initialHourMeter, setInitialHourMeter] = useState<string>('');
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
 
-  const handleLogout = () => {
-    Alert.alert('Sair', 'Deseja realmente sair?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logout();
-            router.replace('/login');
-          } catch (error) {
-            console.error('Erro ao fazer logout:', error);
-            Alert.alert('Erro', 'Não foi possível sair. Tente novamente.');
-          }
-        },
-      },
-    ]);
-  };
+
 
   const handleAddMachine = async () => {
     if (!model.trim()) {
@@ -209,9 +192,6 @@ export default function MachinesScreen() {
             </Text>
           )}
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <LogOut size={22} color="#2D5016" />
-        </TouchableOpacity>
       </View>
 
       {machines.length === 0 ? (
@@ -356,9 +336,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-  logoutButton: {
-    padding: 8,
-  },
+
   list: {
     padding: 16,
   },
