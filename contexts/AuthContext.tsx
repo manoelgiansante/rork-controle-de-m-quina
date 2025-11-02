@@ -8,6 +8,14 @@ const STORAGE_KEYS = {
   CURRENT_USER: '@controle_maquina:current_user',
 };
 
+const TEST_USER: User = {
+  id: 'test-user-review',
+  username: 'review@controlemaquina.com',
+  password: 'Teste123!',
+  role: 'master',
+  name: 'Usuário de Teste',
+};
+
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -23,6 +31,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       let loadedUsers: User[] = [];
       if (usersData) {
         loadedUsers = JSON.parse(usersData);
+      }
+
+      const testUserExists = loadedUsers.some(u => u.id === TEST_USER.id);
+      if (!testUserExists) {
+        loadedUsers = [TEST_USER, ...loadedUsers];
+        await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(loadedUsers));
       }
 
       setUsers(loadedUsers);
