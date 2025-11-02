@@ -73,22 +73,14 @@ export default function PropertySelector() {
             setIsModalOpen(false);
             
             await logout();
-            console.log('PropertySelector: Logout concluído, redirecionando...');
             
-            if (Platform.OS === 'web') {
-              if (typeof window !== 'undefined') {
-                console.log('PropertySelector: Redirecionando para login (web)');
-                window.location.replace('/login');
-              }
-            } else {
+            if (Platform.OS !== 'web') {
               console.log('PropertySelector: Redirecionando para login (mobile)');
               router.replace('/login');
             }
           } catch (error) {
             console.error('PropertySelector: Erro ao fazer logout:', error);
-            if (Platform.OS === 'web' && typeof window !== 'undefined') {
-              window.location.replace('/login');
-            } else {
+            if (Platform.OS !== 'web') {
               router.replace('/login');
             }
           }

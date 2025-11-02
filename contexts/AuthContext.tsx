@@ -3,6 +3,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import type { User } from '@/types';
+import { appLogout } from '@/lib/logout';
 
 const STORAGE_KEYS = {
   USERS: '@controle_maquina:users',
@@ -77,60 +78,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setCurrentUser(null);
       await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
       
-      if (Platform.OS === 'web') {
-        console.log('AuthContext: Limpando sessão web...');
-        
-        try {
-          if (typeof localStorage !== 'undefined') {
-            localStorage.clear();
-          }
-        } catch (e) {
-          console.warn('Erro ao limpar localStorage:', e);
-        }
-        
-        try {
-          if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.clear();
-          }
-        } catch (e) {
-          console.warn('Erro ao limpar sessionStorage:', e);
-        }
-        
-        try {
-          if (typeof document !== 'undefined' && document.cookie) {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-              const cookie = cookies[i];
-              const eqPos = cookie.indexOf('=');
-              const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
-              document.cookie = `${name}=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-              document.cookie = `${name}=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-              if (window.location.hostname.includes('.')) {
-                const domain = window.location.hostname.split('.').slice(-2).join('.');
-                document.cookie = `${name}=; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${domain}`;
-              }
-            }
-          }
-        } catch (e) {
-          console.warn('Erro ao limpar cookies:', e);
-        }
-        
-        try {
-          const apiUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://controledemaquina.com.br/api';
-          await fetch(`${apiUrl}/logout`, {
-            method: 'POST',
-            credentials: 'include',
-          }).catch(() => {});
-        } catch (e) {
-          console.warn('Erro ao chamar /api/logout:', e);
-        }
-        
-        console.log('AuthContext: Logout web concluído, sessão limpa');
-      } else {
-        console.log('AuthContext: Logout mobile concluído');
-      }
+      await appLogout();
+      
+      console.log('AuthContext: Logout concluído');
     } catch (error) {
-      console.error('Erro durante logout:', error);
+      console.error('AuthContext: Erro durante logout:', error);
+      if (Platform.OS === 'web') {
+        await appLogout();
+      }
     }
   }, []);
 
