@@ -1,11 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-// Providers do app (mantêm os contextos ativos)
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { PropertyProvider } from "@/contexts/PropertyContext";
@@ -16,26 +15,26 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  return (
-    <Stack screenOptions={{ headerBackTitle: "Voltar" }}>
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="terms"
-        options={{
-          headerShown: false,
-          gestureEnabled: false,
-        }}
-      />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="subscription-required"
-        options={{
-          headerShown: false,
-          presentation: "modal",
-        }}
-      />
-    </Stack>
-  );
+  const segments = useSegments();
+  const router = useRouter();
+  const { isAuthenticated, isLoading, hasAcceptedTerms } = useAuth();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const isOnLoginPage = segments[0] === 'login';
+    const isOnTermsPage = segments[0] === 'terms';
+
+    if (!isAuthenticated && !isOnLoginPage) {
+      router.replace('/login');
+    } else if (isAuthenticated && isOnLoginPage) {
+      router.replace('/machines');
+    } else if (isAuthenticated && !hasAcceptedTerms && !isOnTermsPage) {
+      router.replace('/terms');
+    }
+  }, [isAuthenticated, isLoading, segments, hasAcceptedTerms, router]);
+
+  return <Slot />;
 }
 
 export default function RootLayout() {

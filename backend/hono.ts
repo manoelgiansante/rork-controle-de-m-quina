@@ -21,4 +21,11 @@ app.get("/", (c) => {
   return c.json({ status: "ok", message: "API is running" });
 });
 
+app.post("/logout", (c) => {
+  c.header('Set-Cookie', 'session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax');
+  c.header('Set-Cookie', 'auth=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax');
+  c.header('Set-Cookie', 'token=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax');
+  return c.json({ success: true, message: "Logged out successfully" });
+});
+
 export default app;

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import type { User } from '@/types';
 
 const STORAGE_KEYS = {
@@ -71,9 +72,53 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const logout = useCallback(async () => {
     console.log('AuthContext: Executando logout...');
-    setCurrentUser(null);
-    await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-    console.log('AuthContext: Logout concluído, currentUser removido');
+    
+    try {
+      setCurrentUser(null);
+      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      
+      if (Platform.OS === 'web') {
+        console.log('AuthContext: Limpando sessão web...');
+        
+        if (typeof localStorage !== 'undefined') {
+          localStorage.clear();
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.clear();
+        }
+        
+        if (typeof document !== 'undefined') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf('=');
+            const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+          }
+        }
+        
+        try {
+          const apiUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://controledemaquina.com.br/api';
+          await fetch(`${apiUrl}/logout`, {
+            method: 'POST',
+            credentials: 'include',
+          }).catch(() => {});
+        } catch (e) {
+          console.error('Erro ao chamar /api/logout:', e);
+        }
+        
+        console.log('AuthContext: Logout web concluído, redirecionando...');
+        
+        if (typeof window !== 'undefined') {
+          window.location.replace('/login');
+        }
+      } else {
+        console.log('AuthContext: Logout mobile concluído');
+      }
+    } catch (error) {
+      console.error('Erro durante logout:', error);
+    }
   }, []);
 
   const register = useCallback(async (
