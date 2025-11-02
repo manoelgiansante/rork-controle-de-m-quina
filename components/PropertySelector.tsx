@@ -8,6 +8,7 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
 import { ChevronDown, Edit2, LogOut, Plus, Trash2, X } from 'lucide-react-native';
 import { useProperty } from '@/contexts/PropertyContext';
@@ -72,7 +73,30 @@ export default function PropertySelector() {
             setIsModalOpen(false);
             await logout();
             console.log('Logout concluído, redirecionando para login...');
-            router.replace('/');
+            
+            if (Platform.OS === 'web') {
+              try {
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                  const cookie = cookies[i];
+                  const eqPos = cookie.indexOf('=');
+                  const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+                  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+                }
+                
+                console.log('Web: Sessão limpa, redirecionando...');
+                window.location.replace('/login');
+              } catch (webError) {
+                console.error('Erro ao limpar sessão web:', webError);
+                window.location.replace('/login');
+              }
+            } else {
+              router.replace('/');
+            }
           } catch (error) {
             console.error('Erro ao fazer logout:', error);
             Alert.alert('Erro', 'Não foi possível sair. Tente novamente.');
