@@ -95,8 +95,15 @@ export const [DataProvider, useData] = createContextHook(() => {
       if (alertsData) setAllAlerts(JSON.parse(alertsData));
       if (serviceTypesData) setServiceTypes(JSON.parse(serviceTypesData));
       if (maintenanceItemsData) {
-        setMaintenanceItems(JSON.parse(maintenanceItemsData));
+        const savedItems = JSON.parse(maintenanceItemsData);
+        const mergedItems = [...new Set([...DEFAULT_MAINTENANCE_ITEMS, ...savedItems])];
+        setMaintenanceItems(mergedItems);
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.MAINTENANCE_ITEMS,
+          JSON.stringify(mergedItems)
+        );
       } else {
+        setMaintenanceItems(DEFAULT_MAINTENANCE_ITEMS);
         await AsyncStorage.setItem(
           STORAGE_KEYS.MAINTENANCE_ITEMS,
           JSON.stringify(DEFAULT_MAINTENANCE_ITEMS)
