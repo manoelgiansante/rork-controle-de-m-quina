@@ -18,21 +18,35 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   const { isAuthenticated, isLoading, hasAcceptedTerms } = useAuth();
+  const [navigationReady, setNavigationReady] = React.useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    const timer = setTimeout(() => {
+      setNavigationReady(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || !navigationReady) return;
 
     const isOnLoginPage = segments[0] === 'login';
     const isOnTermsPage = segments[0] === 'terms';
 
     if (!isAuthenticated && !isOnLoginPage) {
-      router.replace('/login');
+      setTimeout(() => {
+        router.replace('/login');
+      }, 50);
     } else if (isAuthenticated && isOnLoginPage) {
-      router.replace('/machines');
+      setTimeout(() => {
+        router.replace('/machines');
+      }, 50);
     } else if (isAuthenticated && !hasAcceptedTerms && !isOnTermsPage) {
-      router.replace('/terms');
+      setTimeout(() => {
+        router.replace('/terms');
+      }, 50);
     }
-  }, [isAuthenticated, isLoading, segments, hasAcceptedTerms, router]);
+  }, [isAuthenticated, isLoading, segments, hasAcceptedTerms, router, navigationReady]);
 
   return <Slot />;
 }
