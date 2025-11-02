@@ -535,6 +535,35 @@ export const [DataProvider, useData] = createContextHook(() => {
     [farmTank, allFarmTanks, currentPropertyId]
   );
 
+  const deletePropertyData = useCallback(
+    async (propertyId: string) => {
+      console.log(`Deletando todos os dados da propriedade ${propertyId}`);
+
+      const updatedMachines = allMachines.filter(m => m.propertyId !== propertyId);
+      const updatedRefuelings = allRefuelings.filter(r => r.propertyId !== propertyId);
+      const updatedMaintenances = allMaintenances.filter(m => m.propertyId !== propertyId);
+      const updatedAlerts = allAlerts.filter(a => a.propertyId !== propertyId);
+      const updatedTanks = allFarmTanks.filter(t => t.propertyId !== propertyId);
+
+      setAllMachines(updatedMachines);
+      setAllRefuelings(updatedRefuelings);
+      setAllMaintenances(updatedMaintenances);
+      setAllAlerts(updatedAlerts);
+      setAllFarmTanks(updatedTanks);
+
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updatedMachines)),
+        AsyncStorage.setItem(STORAGE_KEYS.REFUELINGS, JSON.stringify(updatedRefuelings)),
+        AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCES, JSON.stringify(updatedMaintenances)),
+        AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts)),
+        AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updatedTanks)),
+      ]);
+
+      console.log('Dados da propriedade deletados com sucesso');
+    },
+    [allMachines, allRefuelings, allMaintenances, allAlerts, allFarmTanks]
+  );
+
   return useMemo(
     () => ({
       machines,
@@ -562,6 +591,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       addFuel,
       consumeFuel,
       registerUnloggedConsumption,
+      deletePropertyData,
     }),
     [
       machines,
@@ -589,6 +619,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       addFuel,
       consumeFuel,
       registerUnloggedConsumption,
+      deletePropertyData,
     ]
   );
 });

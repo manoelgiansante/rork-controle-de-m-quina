@@ -13,10 +13,12 @@ import {
 import { ChevronDown, Edit2, LogOut, Plus, Trash2, X } from 'lucide-react-native';
 import { useProperty } from '@/contexts/PropertyContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useRouter } from 'expo-router';
 
 export default function PropertySelector() {
   const { properties, currentProperty, switchProperty, addProperty, updateProperty, deleteProperty } = useProperty();
+  const { deletePropertyData } = useData();
   const { logout } = useAuth();
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -104,8 +106,15 @@ export default function PropertySelector() {
           text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
-            await deleteProperty(propertyId);
-            Alert.alert('Sucesso', 'Propriedade excluída com sucesso!');
+            try {
+              console.log(`Iniciando exclusão da propriedade ${propertyId}`);
+              await deletePropertyData(propertyId);
+              await deleteProperty(propertyId);
+              Alert.alert('Sucesso', 'Propriedade excluída com sucesso!');
+            } catch (error) {
+              console.error('Erro ao excluir propriedade:', error);
+              Alert.alert('Erro', 'Não foi possível excluir a propriedade. Tente novamente.');
+            }
           },
         },
       ]
