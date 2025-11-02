@@ -74,9 +74,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     console.log('AuthContext: Executando logout...');
     
     try {
-      setCurrentUser(null);
-      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-      
       if (Platform.OS === 'web') {
         console.log('AuthContext: Limpando sessão web...');
         
@@ -108,14 +105,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           console.error('Erro ao chamar /api/logout:', e);
         }
         
-        console.log('AuthContext: Logout web concluído, redirecionando...');
-        
-        if (typeof window !== 'undefined') {
-          window.location.replace('/login');
-        }
+        console.log('AuthContext: Logout web concluído');
       } else {
         console.log('AuthContext: Logout mobile concluído');
       }
+      
+      setCurrentUser(null);
+      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     } catch (error) {
       console.error('Erro durante logout:', error);
     }
