@@ -69,37 +69,35 @@ export default function PropertySelector() {
         style: 'destructive',
         onPress: async () => {
           try {
-            console.log('Iniciando logout...');
+            console.log('PropertySelector: Iniciando logout...');
             setIsModalOpen(false);
+            
             await logout();
-            console.log('Logout concluído, redirecionando para login...');
+            console.log('PropertySelector: Logout do AuthContext concluído');
             
             if (Platform.OS === 'web') {
-              try {
-                localStorage.clear();
-                sessionStorage.clear();
-                
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                  const cookie = cookies[i];
-                  const eqPos = cookie.indexOf('=');
-                  const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-                  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-                  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+              console.log('PropertySelector: Executando logout web...');
+              
+              setTimeout(() => {
+                try {
+                  if (typeof window !== 'undefined') {
+                    console.log('PropertySelector: Forçando redirect com window.location.href');
+                    window.location.href = '/login';
+                  }
+                } catch (redirectError) {
+                  console.error('PropertySelector: Erro no redirect:', redirectError);
                 }
-                
-                console.log('Web: Sessão limpa, redirecionando...');
-                window.location.replace('/login');
-              } catch (webError) {
-                console.error('Erro ao limpar sessão web:', webError);
-                window.location.replace('/login');
-              }
+              }, 100);
             } else {
-              router.replace('/');
+              console.log('PropertySelector: Executando logout mobile');
+              router.replace('/login');
             }
           } catch (error) {
-            console.error('Erro ao fazer logout:', error);
-            Alert.alert('Erro', 'Não foi possível sair. Tente novamente.');
+            console.error('PropertySelector: Erro ao fazer logout:', error);
+            
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
           }
         },
       },
