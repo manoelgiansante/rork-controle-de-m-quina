@@ -41,7 +41,7 @@ function RootLayoutNav() {
     } else if (isAuthenticated && isOnLoginPage) {
       console.log('RootLayoutNav: Redirecionando para /machines (já autenticado)');
       router.replace('/machines');
-    } else if (isAuthenticated && !hasAcceptedTerms && !isOnTermsPage && !isOnSubscriptionRequired) {
+    } else if (isAuthenticated && !hasAcceptedTerms && !isOnTermsPage && !isOnSubscriptionRequired && !isOnResetPassword) {
       console.log('RootLayoutNav: Redirecionando para /terms (termos não aceitos)');
       router.replace('/terms');
     }
