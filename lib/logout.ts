@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import AsyncStorage from '@/lib/storage';
 
 /**
  * Função unificada de logout que funciona em Web e Native
@@ -7,6 +8,13 @@ import { Platform } from "react-native";
 export async function appLogout() {
   try {
     console.log('[LOGOUT] Iniciando processo de logout...');
+    
+    console.log('[LOGOUT] Limpando AsyncStorage...');
+    try {
+      await AsyncStorage.clear();
+    } catch (e) {
+      console.warn('[LOGOUT] Erro ao limpar AsyncStorage:', e);
+    }
     
     if (Platform.OS === "web") {
       console.log('[LOGOUT] Plataforma: Web');
