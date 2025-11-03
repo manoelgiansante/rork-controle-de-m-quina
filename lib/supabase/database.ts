@@ -65,15 +65,17 @@ export async function createProperty(userId: string, name: string): Promise<Prop
 export async function updateProperty(
   propertyId: string,
   updates: Partial<Omit<Property, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
-): Promise<void> {
+): Promise<Property> {
   console.log('[DB] updateProperty chamado:', { propertyId, updates });
   
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('properties')
     .update({
       name: updates.name,
     })
-    .eq('id', propertyId);
+    .eq('id', propertyId)
+    .select()
+    .single();
 
   if (error) {
     console.error('[DB] Error updating property:', error);
@@ -81,7 +83,15 @@ export async function updateProperty(
     throw error;
   }
   
-  console.log('[DB] Propriedade atualizada com sucesso');
+  console.log('[DB] Propriedade atualizada com sucesso:', data);
+  
+  return {
+    id: data.id,
+    name: data.name,
+    userId: data.user_id,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
 export async function deleteProperty(propertyId: string): Promise<void> {

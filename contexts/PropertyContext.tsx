@@ -167,21 +167,27 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
     async (propertyId: string, updates: Partial<Property>) => {
       console.log('[PROPERTY] updateProperty chamado', { propertyId, updates, isWeb });
       
+      let updatedProperty: Property;
+      
       if (isWeb) {
         console.log('[PROPERTY WEB] Atualizando propriedade no Supabase...');
         try {
-          await db.updateProperty(propertyId, updates);
-          console.log('[PROPERTY WEB] Propriedade atualizada no Supabase');
+          updatedProperty = await db.updateProperty(propertyId, updates);
+          console.log('[PROPERTY WEB] Propriedade atualizada no Supabase:', updatedProperty);
         } catch (error) {
           console.error('[PROPERTY WEB] Erro ao atualizar no Supabase:', error);
           throw error;
         }
+      } else {
+        updatedProperty = {
+          ...(properties.find(p => p.id === propertyId) as Property),
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        };
       }
 
       const updated = properties.map((p) =>
-        p.id === propertyId
-          ? { ...p, ...updates, updatedAt: new Date().toISOString() }
-          : p
+        p.id === propertyId ? updatedProperty : p
       );
       console.log('[PROPERTY] Atualizando state e storage...');
       setProperties(updated);
