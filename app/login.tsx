@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { Tractor } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { confirm } from '@/lib/confirm';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState<string>('');
@@ -38,7 +38,7 @@ export default function LoginScreen() {
     
     if (!username || !password) {
       console.log('[LOGIN] Campos vazios');
-      Alert.alert('Erro', 'Por favor, preencha usuário e senha');
+      await confirm('Erro', 'Por favor, preencha usuário e senha');
       return;
     }
 
@@ -51,7 +51,7 @@ export default function LoginScreen() {
       if (needsTrialActivation) {
         console.log('[LOGIN] Ativando trial...');
         await startTrial();
-        Alert.alert(
+        await confirm(
           'Bem-vindo ao Controle de Máquina!',
           'Você tem 7 dias para testar o aplicativo gratuitamente. Após o teste, a assinatura é de apenas R$ 19,90/mês.'
         );
@@ -60,13 +60,13 @@ export default function LoginScreen() {
       router.replace('/machines');
     } else {
       console.log('[LOGIN] Login falhou');
-      Alert.alert('Erro', 'Usuário ou senha incorretos');
+      await confirm('Erro', 'Login ou senha incorretos. Verifique suas credenciais e tente novamente.');
     }
   };
 
   const handleRegister = async () => {
     if (!username || !password || !name) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      await confirm('Erro', 'Por favor, preencha todos os campos');
       return;
     }
 
@@ -74,14 +74,14 @@ export default function LoginScreen() {
     if (success) {
       if (needsTrialActivation) {
         await startTrial();
-        Alert.alert(
+        await confirm(
           'Bem-vindo ao Controle de Máquina!',
           'Conta criada com sucesso! Você tem 7 dias para testar o aplicativo gratuitamente. Após o teste, a assinatura é de apenas R$ 19,90/mês.'
         );
       }
       router.replace('/machines');
     } else {
-      Alert.alert('Erro', 'Este usuário já existe. Escolha outro nome de usuário.');
+      await confirm('Erro', 'Este usuário já existe. Escolha outro nome de usuário.');
     }
   };
 

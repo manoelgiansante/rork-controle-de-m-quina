@@ -1,31 +1,35 @@
 import { Platform } from "react-native";
 import AsyncStorage from '@/lib/storage';
 
+const STORAGE_KEYS = {
+  CURRENT_USER: '@controle_maquina:current_user',
+};
+
 /**
  * Função unificada de logout que funciona em Web e Native
- * Limpa toda a sessão e redireciona para a tela de login
+ * Remove APENAS a sessão atual (CURRENT_USER), preservando usuários cadastrados
  */
 export async function appLogout() {
   try {
     console.log('[LOGOUT] Iniciando processo de logout...');
     
-    console.log('[LOGOUT] Limpando AsyncStorage...');
+    console.log('[LOGOUT] Removendo apenas CURRENT_USER do AsyncStorage...');
     try {
-      await AsyncStorage.clear();
+      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     } catch (e) {
-      console.warn('[LOGOUT] Erro ao limpar AsyncStorage:', e);
+      console.warn('[LOGOUT] Erro ao remover CURRENT_USER:', e);
     }
     
     if (Platform.OS === "web") {
       console.log('[LOGOUT] Plataforma: Web');
       
       try {
-        console.log('[LOGOUT] Limpando localStorage...');
+        console.log('[LOGOUT] Removendo apenas CURRENT_USER do localStorage...');
         if (typeof localStorage !== 'undefined') {
-          localStorage.clear();
+          localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
         }
       } catch (e) {
-        console.warn('[LOGOUT] Erro ao limpar localStorage:', e);
+        console.warn('[LOGOUT] Erro ao remover do localStorage:', e);
       }
       
       try {

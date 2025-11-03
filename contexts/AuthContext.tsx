@@ -96,17 +96,32 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [users]);
 
   const logout = useCallback(async () => {
-    console.log('AuthContext: Executando logout...');
+    console.log('[AUTH] Executando logout...');
     
     try {
+      console.log('[AUTH] Limpando currentUser do estado...');
       setCurrentUser(null);
+      
+      console.log('[AUTH] Removendo CURRENT_USER do storage...');
       await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
       
+      if (Platform.OS === 'web') {
+        console.log('[AUTH] Plataforma Web: removendo apenas CURRENT_USER do localStorage');
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+          }
+        } catch (e) {
+          console.warn('[AUTH] Erro ao remover do localStorage:', e);
+        }
+      }
+      
+      console.log('[AUTH] Chamando appLogout...');
       await appLogout();
       
-      console.log('AuthContext: Logout concluído');
+      console.log('[AUTH] Logout concluído');
     } catch (error) {
-      console.error('AuthContext: Erro durante logout:', error);
+      console.error('[AUTH] Erro durante logout:', error);
       if (Platform.OS === 'web') {
         await appLogout();
       }
