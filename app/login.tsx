@@ -34,22 +34,32 @@ export default function LoginScreen() {
   }, [isAuthenticated, router]);
 
   const handleLogin = async () => {
+    console.log('[LOGIN] Iniciando processo de login...');
+    
     if (!username || !password) {
+      console.log('[LOGIN] Campos vazios');
       Alert.alert('Erro', 'Por favor, preencha usuário e senha');
       return;
     }
 
+    console.log('[LOGIN] Chamando função login...', { username });
     const success = await login(username, password);
+    console.log('[LOGIN] Resultado do login:', success);
+    
     if (success) {
+      console.log('[LOGIN] Login bem-sucedido');
       if (needsTrialActivation) {
+        console.log('[LOGIN] Ativando trial...');
         await startTrial();
         Alert.alert(
           'Bem-vindo ao Controle de Máquina!',
           'Você tem 7 dias para testar o aplicativo gratuitamente. Após o teste, a assinatura é de apenas R$ 19,90/mês.'
         );
       }
+      console.log('[LOGIN] Redirecionando para /machines...');
       router.replace('/machines');
     } else {
+      console.log('[LOGIN] Login falhou');
       Alert.alert('Erro', 'Usuário ou senha incorretos');
     }
   };

@@ -24,31 +24,45 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const loadData = useCallback(async () => {
+    console.log('[AUTH] Carregando dados de autenticação...');
     try {
       const [usersData, currentUserData] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.USERS),
         AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER),
       ]);
 
+      console.log('[AUTH] Dados carregados:', { 
+        hasUsersData: !!usersData, 
+        hasCurrentUserData: !!currentUserData 
+      });
+
       let loadedUsers: User[] = [];
       if (usersData) {
         loadedUsers = JSON.parse(usersData);
+        console.log('[AUTH] Usuários carregados:', loadedUsers.length);
       }
 
       const testUserExists = loadedUsers.some(u => u.id === TEST_USER.id);
       if (!testUserExists) {
+        console.log('[AUTH] Adicionando usuário de teste...');
         loadedUsers = [TEST_USER, ...loadedUsers];
         await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(loadedUsers));
       }
 
       setUsers(loadedUsers);
+      console.log('[AUTH] Total de usuários após carregar:', loadedUsers.length);
 
       if (currentUserData) {
-        setCurrentUser(JSON.parse(currentUserData));
+        const parsedUser = JSON.parse(currentUserData);
+        console.log('[AUTH] Usuário atual encontrado:', parsedUser.username);
+        setCurrentUser(parsedUser);
+      } else {
+        console.log('[AUTH] Nenhum usuário atual encontrado');
       }
     } catch (error) {
-      console.error('Error loading auth data:', error);
+      console.error('[AUTH] Erro ao carregar dados de autenticação:', error);
     } finally {
+      console.log('[AUTH] Finalizado carregamento (isLoading = false)');
       setIsLoading(false);
     }
   }, []);
@@ -58,16 +72,26 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [loadData]);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
+    console.log('[AUTH] Tentando fazer login...', { username, usersCount: users.length });
+    
     const user = users.find(
       (u) => u.username === username && u.password === password
     );
 
+    console.log('[AUTH] Usuário encontrado:', user ? 'SIM' : 'NÃO');
+
     if (user) {
+      console.log('[AUTH] Atualizando estado do currentUser...');
       setCurrentUser(user);
+      
+      console.log('[AUTH] Salvando no AsyncStorage...');
       await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+      console.log('[AUTH] Login concluído com sucesso');
+      
       return true;
     }
 
+    console.log('[AUTH] Login falhou - credenciais inválidas');
     return false;
   }, [users]);
 

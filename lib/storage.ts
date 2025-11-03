@@ -9,11 +9,14 @@ const WebStorage = {
   async getItem(key: string): Promise<string | null> {
     try {
       if (typeof localStorage === 'undefined') {
+        console.warn('[STORAGE WEB] localStorage não disponível');
         return null;
       }
-      return localStorage.getItem(key);
+      const value = localStorage.getItem(key);
+      console.log('[STORAGE WEB] getItem:', { key, hasValue: !!value });
+      return value;
     } catch (error) {
-      console.error('Error getting item from localStorage:', key, error);
+      console.error('[STORAGE WEB] Erro ao buscar item:', key, error);
       return null;
     }
   },
@@ -21,33 +24,39 @@ const WebStorage = {
   async setItem(key: string, value: string): Promise<void> {
     try {
       if (typeof localStorage === 'undefined') {
+        console.warn('[STORAGE WEB] localStorage não disponível para setItem');
         return;
       }
       localStorage.setItem(key, value);
+      console.log('[STORAGE WEB] setItem:', { key, valueLength: value.length });
     } catch (error) {
-      console.error('Error setting item to localStorage:', key, error);
+      console.error('[STORAGE WEB] Erro ao salvar item:', key, error);
     }
   },
   
   async removeItem(key: string): Promise<void> {
     try {
       if (typeof localStorage === 'undefined') {
+        console.warn('[STORAGE WEB] localStorage não disponível para removeItem');
         return;
       }
       localStorage.removeItem(key);
+      console.log('[STORAGE WEB] removeItem:', { key });
     } catch (error) {
-      console.error('Error removing item from localStorage:', key, error);
+      console.error('[STORAGE WEB] Erro ao remover item:', key, error);
     }
   },
   
   async clear(): Promise<void> {
     try {
       if (typeof localStorage === 'undefined') {
+        console.warn('[STORAGE WEB] localStorage não disponível para clear');
         return;
       }
       localStorage.clear();
+      console.log('[STORAGE WEB] clear: localStorage limpo');
     } catch (error) {
-      console.error('Error clearing localStorage:', error);
+      console.error('[STORAGE WEB] Erro ao limpar localStorage:', error);
     }
   },
 };
@@ -56,5 +65,7 @@ const WebStorage = {
  * AsyncStorage compatível com Web e Mobile
  */
 const AsyncStorage = Platform.OS === 'web' ? WebStorage : AsyncStorageNative;
+
+console.log('[STORAGE] Plataforma detectada:', Platform.OS, '- Usando:', Platform.OS === 'web' ? 'localStorage (WebStorage)' : 'AsyncStorage nativo');
 
 export default AsyncStorage;
