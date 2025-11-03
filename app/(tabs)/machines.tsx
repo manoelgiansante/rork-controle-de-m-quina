@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { confirm } from '@/lib/confirm';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MACHINE_TYPES: MachineType[] = [
@@ -110,22 +111,15 @@ export default function MachinesScreen() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteMachine = (machine: Machine) => {
-    Alert.alert(
+  const handleDeleteMachine = async (machine: Machine) => {
+    const ok = await confirm(
       'Excluir Máquina',
-      `Tem certeza que deseja excluir ${machine.model}?\n\nTodos os abastecimentos e manutenções desta máquina também serão excluídos.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteMachine(machine.id);
-            Alert.alert('Sucesso', 'Máquina excluída com sucesso!');
-          },
-        },
-      ]
+      `Tem certeza que deseja excluir ${machine.model}?\n\nTodos os abastecimentos e manutenções desta máquina também serão excluídos.`
     );
+    if (!ok) return;
+
+    await deleteMachine(machine.id);
+    Alert.alert('Sucesso', 'Máquina excluída com sucesso!');
   };
 
   const getMachineAlerts = (machineId: string) => {

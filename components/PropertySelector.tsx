@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { confirm } from '@/lib/confirm';
 import { ChevronDown, Edit2, LogOut, Plus, Trash2, X } from 'lucide-react-native';
 import { useProperty } from '@/contexts/PropertyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,62 +64,49 @@ export default function PropertySelector() {
     setIsAddingNew(true);
   };
 
-  const handleLogout = () => {
-    Alert.alert('Sair', 'Deseja realmente sair da conta?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            console.log('PropertySelector: Iniciando logout...');
-            setIsModalOpen(false);
-            
-            await logout();
-            
-            if (Platform.OS !== 'web') {
-              console.log('PropertySelector: Redirecionando para login (mobile)');
-              router.replace('/login');
-            }
-          } catch (error) {
-            console.error('PropertySelector: Erro ao fazer logout:', error);
-            if (Platform.OS !== 'web') {
-              router.replace('/login');
-            }
-          }
-        },
-      },
-    ]);
+  const handleLogout = async () => {
+    const ok = await confirm('Sair da conta', 'Deseja realmente sair da conta?');
+    if (!ok) return;
+
+    try {
+      console.log('PropertySelector: Iniciando logout...');
+      setIsModalOpen(false);
+      
+      await logout();
+      
+      if (Platform.OS !== 'web') {
+        console.log('PropertySelector: Redirecionando para login (mobile)');
+        router.replace('/login');
+      }
+    } catch (error) {
+      console.error('PropertySelector: Erro ao fazer logout:', error);
+      if (Platform.OS !== 'web') {
+        router.replace('/login');
+      }
+    }
   };
 
-  const handleDeleteProperty = (propertyId: string, propertyName: string) => {
+  const handleDeleteProperty = async (propertyId: string, propertyName: string) => {
     if (properties.length === 1) {
       Alert.alert('Erro', 'Você precisa ter pelo menos uma propriedade cadastrada.');
       return;
     }
 
-    Alert.alert(
+    const ok = await confirm(
       'Excluir Propriedade',
-      `Tem certeza que deseja excluir "${propertyName}"?\n\nTodos os dados desta propriedade (máquinas, abastecimentos, manutenções) serão perdidos.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log(`Iniciando exclusão da propriedade ${propertyId}`);
-              await deletePropertyData(propertyId);
-              await deleteProperty(propertyId);
-              Alert.alert('Sucesso', 'Propriedade excluída com sucesso!');
-            } catch (error) {
-              console.error('Erro ao excluir propriedade:', error);
-              Alert.alert('Erro', 'Não foi possível excluir a propriedade. Tente novamente.');
-            }
-          },
-        },
-      ]
+      `Tem certeza que deseja excluir "${propertyName}"?\n\nTodos os dados desta propriedade (máquinas, abastecimentos, manutenções) serão perdidos.`
     );
+    if (!ok) return;
+
+    try {
+      console.log(`Iniciando exclusão da propriedade ${propertyId}`);
+      await deletePropertyData(propertyId);
+      await deleteProperty(propertyId);
+      Alert.alert('Sucesso', 'Propriedade excluída com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir propriedade:', error);
+      Alert.alert('Erro', 'Não foi possível excluir a propriedade. Tente novamente.');
+    }
   };
 
   if (!currentProperty) {
