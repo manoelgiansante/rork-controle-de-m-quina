@@ -332,7 +332,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[WEB AUTH] Usando Supabase para reset de senha...');
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/login`,
+          redirectTo: 'https://controledemaquina.com.br/reset-password',
         });
         
         if (error) {
