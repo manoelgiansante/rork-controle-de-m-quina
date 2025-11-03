@@ -1,6 +1,6 @@
-# Configuração do Supabase Auth (Web Only)
+# Configuração do Supabase Auth (Web + Mobile)
 
-Este projeto integra Supabase Auth **apenas para o website**, mantendo o fluxo local no mobile.
+Este projeto integra Supabase Auth **para web e mobile**, com persistência de sessão unificada usando localStorage (web) e AsyncStorage (mobile).
 
 ## ✅ Pré-requisitos
 
@@ -10,16 +10,17 @@ Este projeto integra Supabase Auth **apenas para o website**, mantendo o fluxo l
    - Project URL (formato: `https://xxx.supabase.co`)
    - Anon/Public Key (formato: `eyJh...`)
 
-## 🔧 Configuração no Vercel
+## 🔧 Configuração de Variáveis de Ambiente
 
-Adicione as seguintes variáveis de ambiente no Vercel:
+As credenciais já estão configuradas no arquivo `.env` na raiz do projeto:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...
+EXPO_PUBLIC_SUPABASE_URL=https://byfgflxlmcdciupjpoaz.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5ZmdmbHhsbWNkY2l1cGpwb2F6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3MDEyMjgsImV4cCI6MjA3NzI3NzIyOH0.6XZTCN2LtJYLs9ovXbjk8ljosQjEQVL3IDWq15l4mQg
 ```
 
-**Importante:**
+**Para Vercel/Produção:**
+- Adicione as mesmas variáveis no painel do Vercel
 - Marcar ambas como **Public** (para serem acessíveis no frontend)
 - Aplicar para **All Environments** (Production, Preview, Development)
 
@@ -33,12 +34,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...
    - Desativar "Confirm email" (para evitar precisar confirmar emails durante testes)
    - ⚠️ **Reative antes de ir para produção!**
 
-### 2. Configurar URL do Site
+### 2. Configurar URL do Site e Deep Links
 
 1. Vá em **Authentication → URL Configuration**
 2. Adicione o site em **Site URL**: `https://controledemaquina.com.br`
 3. Adicione em **Redirect URLs**:
    - `https://controledemaquina.com.br/**`
+   - `http://localhost:8081/**` (para desenvolvimento local)
+   - `http://localhost:8081/reset-password` (recuperação de senha em dev)
+   - `http://localhost:8081/auth/callback` (callback de autenticação)
+   - `com.seuapp.controledemquina://reset-password` (deep link mobile para reset de senha)
    - Se usar subdomínios, adicione também: `https://*.controledemaquina.com.br/**`
 
 ### 3. (Opcional) Desativar confirmação de email para testes
@@ -67,12 +72,28 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJh...
 
 No Supabase Dashboard:
 1. Vá em **Authentication → Users**
-2. Você verá todos os usuários cadastrados
+2. Você verá todos os usuários cadastrados (web e mobile)
 3. Pode editar, deletar ou criar usuários manualmente
+
+## 🔑 Recuperação de Senha
+
+O sistema possui recuperação de senha via email:
+1. Na tela de login, clique em "Esqueci minha senha"
+2. Digite seu email
+3. Um link será enviado para seu email
+4. Clique no link para redefinir a senha
+
+**Configuração do Email Template:**
+1. Vá em **Authentication → Email Templates**
+2. Selecione "Reset Password"
+3. Verifique se o link de redirect está correto
+4. Personalize o template conforme necessário
 
 ## 📱 Mobile
 
-O mobile **não foi alterado** - continua usando o sistema local de usuários (AsyncStorage).
+O mobile agora usa Supabase Auth com persistência via AsyncStorage, permitindo que a sessão seja mantida mesmo após fechar o app. O cliente Supabase detecta automaticamente a plataforma e usa:
+- **Web**: localStorage (padrão do navegador)
+- **Mobile**: AsyncStorage (React Native)
 
 ## 🐛 Logs de Debug
 
