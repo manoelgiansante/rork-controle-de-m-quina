@@ -426,7 +426,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const isMaster = useMemo(() => currentUser?.role === 'master', [currentUser]);
   const isAuthenticated = useMemo(() => currentUser !== null, [currentUser]);
 
-  return useMemo(() => ({
+  return {
     currentUser,
     users,
     isLoading,
@@ -441,5 +441,5 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     hasAcceptedTerms,
     isMaster,
     isAuthenticated,
-  }), [currentUser, users, isLoading, login, logout, register, resetPassword, createEmployee, updateEmployee, deleteEmployee, acceptTerms, hasAcceptedTerms, isMaster, isAuthenticated]);
+  };
 });
