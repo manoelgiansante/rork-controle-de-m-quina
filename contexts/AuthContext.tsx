@@ -105,6 +105,50 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !supabase) return;
+
+    console.log('[AUTH] Configurando listener de mudança de estado de autenticação...');
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AUTH] Evento de autenticação:', event);
+      
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('[AUTH] Evento PASSWORD_RECOVERY detectado, redirecionando para /reset-password');
+        if (typeof window !== 'undefined') {
+          window.location.replace('/reset-password');
+        }
+      }
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('[AUTH] Usuário autenticado:', session.user.email);
+        const webUser: User = {
+          id: session.user.id,
+          username: session.user.email || '',
+          password: '',
+          role: 'master',
+          name: session.user.user_metadata?.name || session.user.email || '',
+        };
+        setCurrentUser(webUser);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+        }
+      }
+      
+      if (event === 'SIGNED_OUT') {
+        console.log('[AUTH] Usuário desconectado');
+        setCurrentUser(null);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+        }
+      }
+    });
+
+    return () => {
+      console.log('[AUTH] Removendo listener de autenticação');
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     console.log('[AUTH] Tentando fazer login...', { username, platform: Platform.OS });
     
