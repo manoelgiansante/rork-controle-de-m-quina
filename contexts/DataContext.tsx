@@ -1,6 +1,7 @@
 import AsyncStorage from '@/lib/storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import type {
   Alert,
   AlertStatus,
@@ -12,6 +13,8 @@ import type {
   ServiceType,
 } from '@/types';
 import { useProperty } from '@/contexts/PropertyContext';
+import { useAuth } from '@/contexts/AuthContext';
+import * as db from '@/lib/supabase/database';
 
 const DEFAULT_MAINTENANCE_ITEMS: MaintenanceItem[] = [
   'Troca de óleo do motor',
@@ -35,6 +38,8 @@ const STORAGE_KEYS = {
 
 export const [DataProvider, useData] = createContextHook(() => {
   const { currentPropertyId } = useProperty();
+  const { currentUser } = useAuth();
+  const [isWeb] = useState(() => Platform.OS === 'web');
   const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [allRefuelings, setAllRefuelings] = useState<Refueling[]>([]);
   const [allMaintenances, setAllMaintenances] = useState<Maintenance[]>([]);
@@ -70,59 +75,109 @@ export const [DataProvider, useData] = createContextHook(() => {
   );
 
   const loadData = useCallback(async () => {
-    try {
-      const [
-        machinesData,
-        refuelingsData,
-        maintenancesData,
-        alertsData,
-        serviceTypesData,
-        maintenanceItemsData,
-        farmTanksData,
-      ] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.MACHINES),
-        AsyncStorage.getItem(STORAGE_KEYS.REFUELINGS),
-        AsyncStorage.getItem(STORAGE_KEYS.MAINTENANCES),
-        AsyncStorage.getItem(STORAGE_KEYS.ALERTS),
-        AsyncStorage.getItem(STORAGE_KEYS.SERVICE_TYPES),
-        AsyncStorage.getItem(STORAGE_KEYS.MAINTENANCE_ITEMS),
-        AsyncStorage.getItem(STORAGE_KEYS.FARM_TANK),
-      ]);
+    if (!currentPropertyId || !currentUser) {
+      setIsLoading(false);
+      return;
+    }
 
-      if (machinesData) setAllMachines(JSON.parse(machinesData));
-      if (refuelingsData) setAllRefuelings(JSON.parse(refuelingsData));
-      if (maintenancesData) setAllMaintenances(JSON.parse(maintenancesData));
-      if (alertsData) setAllAlerts(JSON.parse(alertsData));
-      if (serviceTypesData) setServiceTypes(JSON.parse(serviceTypesData));
-      if (maintenanceItemsData) {
-        const savedItems = JSON.parse(maintenanceItemsData);
-        const mergedItems = [...new Set([...DEFAULT_MAINTENANCE_ITEMS, ...savedItems])];
-        setMaintenanceItems(mergedItems);
-        await AsyncStorage.setItem(
-          STORAGE_KEYS.MAINTENANCE_ITEMS,
-          JSON.stringify(mergedItems)
-        );
-      } else {
-        setMaintenanceItems(DEFAULT_MAINTENANCE_ITEMS);
-        await AsyncStorage.setItem(
-          STORAGE_KEYS.MAINTENANCE_ITEMS,
-          JSON.stringify(DEFAULT_MAINTENANCE_ITEMS)
-        );
-      }
-      if (farmTanksData) {
-        const tanks = JSON.parse(farmTanksData);
-        if (Array.isArray(tanks)) {
-          setAllFarmTanks(tanks);
+    try {
+      console.log('[DATA] Carregando dados...', { currentPropertyId, isWeb });
+      
+      if (isWeb) {
+        console.log('[DATA WEB] Carregando do Supabase...');
+        const [
+          machinesFromDB,
+          refuelingsFromDB,
+          maintenancesFromDB,
+          alertsFromDB,
+          farmTankFromDB,
+          preferencesFromDB,
+        ] = await Promise.all([
+          db.fetchMachines(currentPropertyId),
+          db.fetchRefuelings(currentPropertyId),
+          db.fetchMaintenances(currentPropertyId),
+          db.fetchAlerts(currentPropertyId),
+          db.fetchFarmTank(currentPropertyId),
+          db.fetchUserPreferences(currentUser.id),
+        ]);
+
+        console.log('[DATA WEB] Dados carregados do Supabase:', {
+          machines: machinesFromDB.length,
+          refuelings: refuelingsFromDB.length,
+          maintenances: maintenancesFromDB.length,
+          alerts: alertsFromDB.length,
+          hasTank: !!farmTankFromDB,
+        });
+
+        setAllMachines(machinesFromDB);
+        setAllRefuelings(refuelingsFromDB);
+        setAllMaintenances(maintenancesFromDB);
+        setAllAlerts(alertsFromDB);
+        setAllFarmTanks(farmTankFromDB ? [farmTankFromDB] : []);
+        
+        if (preferencesFromDB) {
+          setServiceTypes(preferencesFromDB.serviceTypes);
+          const mergedItems = [...new Set([...DEFAULT_MAINTENANCE_ITEMS, ...preferencesFromDB.maintenanceItems])];
+          setMaintenanceItems(mergedItems);
         } else {
-          setAllFarmTanks([tanks]);
+          setServiceTypes([]);
+          setMaintenanceItems(DEFAULT_MAINTENANCE_ITEMS);
+        }
+
+        await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(machinesFromDB));
+        await AsyncStorage.setItem(STORAGE_KEYS.REFUELINGS, JSON.stringify(refuelingsFromDB));
+        await AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCES, JSON.stringify(maintenancesFromDB));
+        await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(alertsFromDB));
+        if (farmTankFromDB) {
+          await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify([farmTankFromDB]));
+        }
+      } else {
+        console.log('[DATA MOBILE] Carregando do AsyncStorage...');
+        const [
+          machinesData,
+          refuelingsData,
+          maintenancesData,
+          alertsData,
+          serviceTypesData,
+          maintenanceItemsData,
+          farmTanksData,
+        ] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEYS.MACHINES),
+          AsyncStorage.getItem(STORAGE_KEYS.REFUELINGS),
+          AsyncStorage.getItem(STORAGE_KEYS.MAINTENANCES),
+          AsyncStorage.getItem(STORAGE_KEYS.ALERTS),
+          AsyncStorage.getItem(STORAGE_KEYS.SERVICE_TYPES),
+          AsyncStorage.getItem(STORAGE_KEYS.MAINTENANCE_ITEMS),
+          AsyncStorage.getItem(STORAGE_KEYS.FARM_TANK),
+        ]);
+
+        if (machinesData) setAllMachines(JSON.parse(machinesData));
+        if (refuelingsData) setAllRefuelings(JSON.parse(refuelingsData));
+        if (maintenancesData) setAllMaintenances(JSON.parse(maintenancesData));
+        if (alertsData) setAllAlerts(JSON.parse(alertsData));
+        if (serviceTypesData) setServiceTypes(JSON.parse(serviceTypesData));
+        if (maintenanceItemsData) {
+          const savedItems = JSON.parse(maintenanceItemsData);
+          const mergedItems = [...new Set([...DEFAULT_MAINTENANCE_ITEMS, ...savedItems])];
+          setMaintenanceItems(mergedItems);
+        } else {
+          setMaintenanceItems(DEFAULT_MAINTENANCE_ITEMS);
+        }
+        if (farmTanksData) {
+          const tanks = JSON.parse(farmTanksData);
+          if (Array.isArray(tanks)) {
+            setAllFarmTanks(tanks);
+          } else {
+            setAllFarmTanks([tanks]);
+          }
         }
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('[DATA] Erro ao carregar dados:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentPropertyId, currentUser, isWeb]);
 
   useEffect(() => {
     loadData();
@@ -134,24 +189,39 @@ export const [DataProvider, useData] = createContextHook(() => {
         throw new Error('No property selected');
       }
 
-      const newMachine: Machine = {
-        ...machine,
-        propertyId: currentPropertyId,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      let newMachine: Machine;
+
+      if (isWeb) {
+        console.log('[DATA WEB] Criando máquina no Supabase...');
+        newMachine = await db.createMachine({
+          ...machine,
+          propertyId: currentPropertyId,
+        });
+      } else {
+        newMachine = {
+          ...machine,
+          propertyId: currentPropertyId,
+          id: Date.now().toString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
 
       const updated = [...allMachines, newMachine];
       setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
       return newMachine;
     },
-    [allMachines, currentPropertyId]
+    [allMachines, currentPropertyId, isWeb]
   );
 
   const updateMachine = useCallback(
     async (machineId: string, updates: Partial<Machine>) => {
+      if (isWeb) {
+        console.log('[DATA WEB] Atualizando máquina no Supabase...');
+        await db.updateMachine(machineId, updates);
+      }
+
       const updated = allMachines.map((m) =>
         m.id === machineId
           ? { ...m, ...updates, updatedAt: new Date().toISOString() }
@@ -160,16 +230,21 @@ export const [DataProvider, useData] = createContextHook(() => {
       setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
     },
-    [allMachines]
+    [allMachines, isWeb]
   );
 
   const deleteMachine = useCallback(
     async (machineId: string) => {
+      if (isWeb) {
+        console.log('[DATA WEB] Deletando máquina no Supabase...');
+        await db.deleteMachine(machineId);
+      }
+
       const updated = allMachines.filter((m) => m.id !== machineId);
       setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
     },
-    [allMachines]
+    [allMachines, isWeb]
   );
 
   const addRefueling = useCallback(
@@ -193,13 +268,24 @@ export const [DataProvider, useData] = createContextHook(() => {
         }
       }
 
-      const newRefueling: Refueling = {
-        ...refueling,
-        propertyId: currentPropertyId,
-        id: Date.now().toString(),
-        averageConsumption,
-        createdAt: new Date().toISOString(),
-      };
+      let newRefueling: Refueling;
+
+      if (isWeb) {
+        console.log('[DATA WEB] Criando abastecimento no Supabase...');
+        newRefueling = await db.createRefueling({
+          ...refueling,
+          propertyId: currentPropertyId,
+          averageConsumption,
+        });
+      } else {
+        newRefueling = {
+          ...refueling,
+          propertyId: currentPropertyId,
+          id: Date.now().toString(),
+          averageConsumption,
+          createdAt: new Date().toISOString(),
+        };
+      }
 
       const updated = [...allRefuelings, newRefueling];
       setAllRefuelings(updated);
@@ -211,7 +297,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       return newRefueling;
     },
-    [allRefuelings, updateMachine, currentPropertyId]
+    [allRefuelings, updateMachine, currentPropertyId, isWeb]
   );
 
   const calculateAlertStatus = useCallback(
@@ -230,12 +316,22 @@ export const [DataProvider, useData] = createContextHook(() => {
         throw new Error('No property selected');
       }
 
-      const newMaintenance: Maintenance = {
-        ...maintenance,
-        propertyId: currentPropertyId,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-      };
+      let newMaintenance: Maintenance;
+
+      if (isWeb) {
+        console.log('[DATA WEB] Criando manutenção no Supabase...');
+        newMaintenance = await db.createMaintenance({
+          ...maintenance,
+          propertyId: currentPropertyId,
+        });
+      } else {
+        newMaintenance = {
+          ...maintenance,
+          propertyId: currentPropertyId,
+          id: Date.now().toString(),
+          createdAt: new Date().toISOString(),
+        };
+      }
 
       const updated = [...allMaintenances, newMaintenance];
       setAllMaintenances(updated);
@@ -267,6 +363,11 @@ export const [DataProvider, useData] = createContextHook(() => {
           createdAt: new Date().toISOString(),
         }));
 
+        if (isWeb) {
+          console.log('[DATA WEB] Criando alertas no Supabase...');
+          await Promise.all(newAlerts.map(alert => db.createAlert(alert)));
+        }
+
         const updatedAlerts = [...allAlerts, ...newAlerts];
         setAllAlerts(updatedAlerts);
         await AsyncStorage.setItem(
@@ -277,11 +378,16 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       return newMaintenance;
     },
-    [allMaintenances, allAlerts, allMachines, updateMachine, calculateAlertStatus, currentPropertyId]
+    [allMaintenances, allAlerts, allMachines, updateMachine, calculateAlertStatus, currentPropertyId, isWeb]
   );
 
   const updateMaintenance = useCallback(
     async (maintenanceId: string, updates: Partial<Maintenance>) => {
+      if (isWeb) {
+        console.log('[DATA WEB] Atualizando manutenção no Supabase...');
+        await db.updateMaintenance(maintenanceId, updates);
+      }
+
       const updated = allMaintenances.map((m) =>
         m.id === maintenanceId ? { ...m, ...updates } : m
       );
@@ -291,11 +397,17 @@ export const [DataProvider, useData] = createContextHook(() => {
         JSON.stringify(updated)
       );
     },
-    [allMaintenances]
+    [allMaintenances, isWeb]
   );
 
   const deleteMaintenance = useCallback(
     async (maintenanceId: string) => {
+      if (isWeb) {
+        console.log('[DATA WEB] Deletando manutenção no Supabase...');
+        await db.deleteMaintenance(maintenanceId);
+        await db.deleteAlertsByMaintenanceId(maintenanceId);
+      }
+
       const updated = allMaintenances.filter((m) => m.id !== maintenanceId);
       setAllMaintenances(updated);
       await AsyncStorage.setItem(
@@ -309,7 +421,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       setAllAlerts(updatedAlerts);
       await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts));
     },
-    [allMaintenances, allAlerts]
+    [allMaintenances, allAlerts, isWeb]
   );
 
   const alertsRef = useRef(allAlerts);
@@ -342,11 +454,21 @@ export const [DataProvider, useData] = createContextHook(() => {
       const hasChanges = updatedAlerts.some((alert, idx) => alert.status !== currentAlerts[idx]?.status);
       
       if (hasChanges) {
+        if (isWeb) {
+          updatedAlerts.forEach(alert => {
+            const originalAlert = currentAlerts.find(a => a.id === alert.id);
+            if (originalAlert && alert.status !== originalAlert.status) {
+              db.updateAlert(alert.id, { status: alert.status }).catch(err => 
+                console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
+              );
+            }
+          });
+        }
         setAllAlerts(updatedAlerts);
         AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts));
       }
     }
-  }, [allMachines, isLoading, calculateAlertStatus]);
+  }, [allMachines, isLoading, calculateAlertStatus, isWeb]);
 
   const getAlertsForMachine = useCallback(
     (machineId: string) => {
@@ -385,9 +507,16 @@ export const [DataProvider, useData] = createContextHook(() => {
           STORAGE_KEYS.SERVICE_TYPES,
           JSON.stringify(updated)
         );
+        
+        if (isWeb && currentUser) {
+          console.log('[DATA WEB] Salvando tipo de serviço no Supabase...');
+          await db.upsertUserPreferences(currentUser.id, {
+            serviceTypes: updated,
+          });
+        }
       }
     },
-    [serviceTypes]
+    [serviceTypes, isWeb, currentUser]
   );
 
   const addMaintenanceItem = useCallback(
@@ -399,9 +528,16 @@ export const [DataProvider, useData] = createContextHook(() => {
           STORAGE_KEYS.MAINTENANCE_ITEMS,
           JSON.stringify(updated)
         );
+        
+        if (isWeb && currentUser) {
+          console.log('[DATA WEB] Salvando item de manutenção no Supabase...');
+          await db.upsertUserPreferences(currentUser.id, {
+            maintenanceItems: updated,
+          });
+        }
       }
     },
-    [maintenanceItems]
+    [maintenanceItems, isWeb, currentUser]
   );
 
   const updateTankInitialData = useCallback(async (data: Omit<FarmTank, 'propertyId'>) => {
@@ -414,11 +550,16 @@ export const [DataProvider, useData] = createContextHook(() => {
       propertyId: currentPropertyId,
     };
 
+    if (isWeb) {
+      console.log('[DATA WEB] Salvando tanque no Supabase...');
+      await db.upsertFarmTank(tankData);
+    }
+
     const updated = allFarmTanks.filter(t => t.propertyId !== currentPropertyId);
     updated.push(tankData);
     setAllFarmTanks(updated);
     await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
-  }, [allFarmTanks, currentPropertyId]);
+  }, [allFarmTanks, currentPropertyId, isWeb]);
 
   const updateTankCapacity = useCallback(
     async (newCapacity: number) => {
@@ -429,13 +570,18 @@ export const [DataProvider, useData] = createContextHook(() => {
         capacityLiters: newCapacity,
       };
 
+      if (isWeb) {
+        console.log('[DATA WEB] Atualizando tanque no Supabase...');
+        await db.upsertFarmTank(updatedTank);
+      }
+
       const updated = allFarmTanks.map(t => 
         t.propertyId === currentPropertyId ? updatedTank : t
       );
       setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
     },
-    [farmTank, allFarmTanks, currentPropertyId]
+    [farmTank, allFarmTanks, currentPropertyId, isWeb]
   );
 
   const registerUnloggedConsumption = useCallback(
@@ -449,6 +595,11 @@ export const [DataProvider, useData] = createContextHook(() => {
         currentLiters: newCurrentLiters,
       };
 
+      if (isWeb) {
+        console.log('[DATA WEB] Atualizando tanque no Supabase...');
+        await db.upsertFarmTank(updatedTank);
+      }
+
       const updated = allFarmTanks.map(t => 
         t.propertyId === currentPropertyId ? updatedTank : t
       );
@@ -461,7 +612,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         );
       }
     },
-    [farmTank, allFarmTanks, currentPropertyId]
+    [farmTank, allFarmTanks, currentPropertyId, isWeb]
   );
 
   const addFuel = useCallback(
@@ -482,6 +633,11 @@ export const [DataProvider, useData] = createContextHook(() => {
         currentLiters: newCurrentLiters,
       };
 
+      if (isWeb) {
+        console.log('[DATA WEB] Atualizando tanque no Supabase...');
+        await db.upsertFarmTank(updatedTank);
+      }
+
       const updated = allFarmTanks.map(t => 
         t.propertyId === currentPropertyId ? updatedTank : t
       );
@@ -489,7 +645,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
       return { success: true, overflow: 0 };
     },
-    [farmTank, allFarmTanks, currentPropertyId]
+    [farmTank, allFarmTanks, currentPropertyId, isWeb]
   );
 
   const consumeFuel = useCallback(
@@ -504,6 +660,11 @@ export const [DataProvider, useData] = createContextHook(() => {
           fuelType: 'Diesel comum',
           alertLevelLiters: 0,
         };
+
+        if (isWeb) {
+          console.log('[DATA WEB] Criando tanque virtual no Supabase...');
+          await db.upsertFarmTank(virtualTank);
+        }
 
         const updated = [...allFarmTanks, virtualTank];
         setAllFarmTanks(updated);
@@ -520,6 +681,11 @@ export const [DataProvider, useData] = createContextHook(() => {
         currentLiters: newCurrentLiters,
       };
 
+      if (isWeb) {
+        console.log('[DATA WEB] Atualizando tanque no Supabase...');
+        await db.upsertFarmTank(updatedTank);
+      }
+
       const updated = allFarmTanks.map(t => 
         t.propertyId === currentPropertyId ? updatedTank : t
       );
@@ -532,7 +698,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         );
       }
     },
-    [farmTank, allFarmTanks, currentPropertyId]
+    [farmTank, allFarmTanks, currentPropertyId, isWeb]
   );
 
   const deletePropertyData = useCallback(
