@@ -20,7 +20,7 @@ import { useRouter } from 'expo-router';
 export default function PropertySelector() {
   const { properties, currentProperty, switchProperty, addProperty, updateProperty, deleteProperty, isLoading: propertyLoading } = useProperty();
   const { deletePropertyData } = useData();
-  const { logout } = useAuth();
+  const { logout, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
@@ -109,11 +109,20 @@ export default function PropertySelector() {
     }
   };
 
-  if (propertyLoading || !currentProperty) {
-    console.log('[PropertySelector] Loading state:', { propertyLoading, hasProperty: !!currentProperty });
+  if (authLoading || propertyLoading) {
+    console.log('[PropertySelector] Loading state:', { authLoading, propertyLoading });
     return (
       <View style={styles.selectorButton}>
         <Text style={styles.selectorText}>Carregando...</Text>
+      </View>
+    );
+  }
+
+  if (!currentProperty) {
+    console.log('[PropertySelector] No current property');
+    return (
+      <View style={styles.selectorButton}>
+        <Text style={styles.selectorText}>Sem propriedade</Text>
       </View>
     );
   }

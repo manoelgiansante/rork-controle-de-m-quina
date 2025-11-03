@@ -28,10 +28,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const loadData = useCallback(async () => {
     console.log('[AUTH] Carregando dados de autenticação...');
     console.log('[AUTH] Platform:', Platform.OS);
+    let isMounted = true;
     try {
       if (isWeb && supabase) {
         console.log('[WEB AUTH] Verificando sessão no Supabase...');
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         if (sessionError) {
           console.error('[WEB AUTH] Erro ao obter sessão:', sessionError);
@@ -60,7 +63,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           setCurrentUser(null);
         }
         
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
         return;
       }
       
@@ -107,7 +112,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [isWeb]);
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    loadData().finally(() => {
+      if (!cancelled) {
+        console.log('[AUTH] loadData finalizado');
+      }
+    });
+    return () => { cancelled = true; };
   }, [loadData]);
 
   useEffect(() => {
@@ -115,9 +126,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       return;
     }
 
+    let isMounted = true;
     console.log('[AUTH] Configurando listener de mudança de estado de autenticação...');
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AUTH] Evento de autenticação:', event);
+      
+      if (!isMounted) return;
       
       if (event === 'PASSWORD_RECOVERY') {
         console.log('[AUTH] Evento PASSWORD_RECOVERY detectado, redirecionando para /reset-password');
@@ -140,6 +154,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           acceptedTermsAt: acceptedTermsAt,
         };
         setCurrentUser(webUser);
+        setIsLoading(false);
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
         }
@@ -148,6 +163,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       if (event === 'SIGNED_OUT') {
         console.log('[AUTH] Usuário desconectado');
         setCurrentUser(null);
+        setIsLoading(false);
         if (typeof localStorage !== 'undefined') {
           localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
         }
@@ -155,6 +171,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     });
 
     return () => {
+      isMounted = false;
       console.log('[AUTH] Removendo listener de autenticação');
       authListener.subscription.unsubscribe();
     };

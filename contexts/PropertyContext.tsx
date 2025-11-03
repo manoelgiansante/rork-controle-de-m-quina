@@ -28,10 +28,14 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
     
     if (!currentUser) {
       console.log('[PROPERTY] Sem usuário, finalizando loading...');
+      setProperties([]);
+      setCurrentPropertyId(null);
       setIsLoading(false);
       return;
     }
 
+    let cancelled = false;
+    
     try {
       console.log('[PROPERTY] Carregando propriedades...', { userId: currentUser.id, isWeb });
       
@@ -42,7 +46,9 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
         loadedProperties = await db.fetchProperties(currentUser.id);
         console.log('[PROPERTY WEB] Propriedades carregadas:', loadedProperties.length);
         
-        await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(loadedProperties));
+        if (!cancelled) {
+          await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(loadedProperties));
+        }
       } else {
         console.log('[PROPERTY MOBILE] Carregando do AsyncStorage...');
         const propertiesData = await AsyncStorage.getItem(STORAGE_KEYS.PROPERTIES);
@@ -50,6 +56,8 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
           loadedProperties = JSON.parse(propertiesData);
         }
       }
+
+      if (cancelled) return;
 
       const userProperties = loadedProperties.filter(p => p.userId === currentUser.id);
       
@@ -69,34 +77,47 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
           };
         }
         
-        loadedProperties = [...loadedProperties, defaultProperty];
-        await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(loadedProperties));
-        setProperties(loadedProperties);
-        setCurrentPropertyId(defaultProperty.id);
-        await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_PROPERTY_ID, defaultProperty.id);
+        if (!cancelled) {
+          loadedProperties = [...loadedProperties, defaultProperty];
+          await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(loadedProperties));
+          setProperties(loadedProperties);
+          setCurrentPropertyId(defaultProperty.id);
+          await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_PROPERTY_ID, defaultProperty.id);
+        }
       } else {
-        setProperties(loadedProperties);
-        
-        const currentPropertyIdData = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_PROPERTY_ID);
-        if (currentPropertyIdData && userProperties.some(p => p.id === currentPropertyIdData)) {
-          setCurrentPropertyId(currentPropertyIdData);
-        } else {
-          setCurrentPropertyId(userProperties[0].id);
-          await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_PROPERTY_ID, userProperties[0].id);
+        if (!cancelled) {
+          setProperties(loadedProperties);
+          
+          const currentPropertyIdData = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_PROPERTY_ID);
+          if (currentPropertyIdData && userProperties.some(p => p.id === currentPropertyIdData)) {
+            setCurrentPropertyId(currentPropertyIdData);
+          } else {
+            setCurrentPropertyId(userProperties[0].id);
+            await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_PROPERTY_ID, userProperties[0].id);
+          }
         }
       }
     } catch (error) {
       console.error('[PROPERTY] Erro ao carregar propriedades:', error);
     } finally {
-      setIsLoading(false);
+      if (!cancelled) {
+        console.log('[PROPERTY] Finalizando loading (isLoading = false)');
+        setIsLoading(false);
+      }
     }
+    
+    return () => { cancelled = true; };
   }, [currentUser, isWeb, authLoading]);
 
   useEffect(() => {
-    if (currentUser) {
-      loadData();
+    if (authLoading) {
+      console.log('[PROPERTY] Effect: aguardando auth finalizar...');
+      return;
     }
-  }, [loadData, currentUser]);
+    
+    console.log('[PROPERTY] Effect: chamando loadData...');
+    loadData();
+  }, [authLoading, loadData]);
 
   const addProperty = useCallback(
     async (name: string) => {
