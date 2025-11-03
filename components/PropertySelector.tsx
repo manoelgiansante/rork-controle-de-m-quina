@@ -297,6 +297,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
     alignItems: 'center' as const,
     padding: 20,
+    ...Platform.select({
+      web: {
+        position: 'fixed' as any,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+      },
+    }),
   },
   modalContent: {
     backgroundColor: '#FFF',
@@ -304,6 +314,13 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     maxHeight: '80%',
+    ...Platform.select({
+      web: {
+        position: 'relative' as any,
+        zIndex: 10000,
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)' as any,
+      },
+    }),
   },
   modalHeader: {
     flexDirection: 'row' as const,
