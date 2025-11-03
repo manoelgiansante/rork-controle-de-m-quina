@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 9999,
+        zIndex: 999999,
       },
     }),
   },
@@ -314,11 +314,14 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     maxHeight: '80%',
+    overflow: 'hidden' as const,
     ...Platform.select({
       web: {
         position: 'relative' as any,
-        zIndex: 10000,
+        zIndex: 9999999,
         boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)' as any,
+        display: 'flex' as any,
+        flexDirection: 'column' as any,
       },
     }),
   },
@@ -341,6 +344,12 @@ const styles = StyleSheet.create({
   },
   propertiesList: {
     padding: 16,
+    ...Platform.select({
+      web: {
+        overflowY: 'auto' as any,
+        flex: 1,
+      },
+    }),
   },
   propertyItemWrapper: {
     flexDirection: 'row' as const,
