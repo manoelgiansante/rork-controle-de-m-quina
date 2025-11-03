@@ -118,14 +118,7 @@ export default function PropertySelector() {
     );
   }
 
-  if (!currentProperty) {
-    console.log('[PropertySelector] No current property');
-    return (
-      <View style={styles.selectorButton}>
-        <Text style={styles.selectorText}>Sem propriedade</Text>
-      </View>
-    );
-  }
+  const displayText = currentProperty ? currentProperty.name : 'Sem propriedade';
 
   return (
     <View>
@@ -139,7 +132,7 @@ export default function PropertySelector() {
         testID="property-selector-button"
       >
         <Text style={styles.selectorText} numberOfLines={1}>
-          {currentProperty.name}
+          {displayText}
         </Text>
         <ChevronDown size={18} color="#FFF" />
       </TouchableOpacity>
@@ -179,19 +172,19 @@ export default function PropertySelector() {
             </View>
 
             <ScrollView style={styles.propertiesList}>
-              {properties.map((property) => (
+              {properties.length > 0 && properties.map((property) => (
                 <View key={property.id} style={styles.propertyItemWrapper}>
                   <TouchableOpacity
                     style={[
                       styles.propertyItem,
-                      currentProperty.id === property.id && styles.propertyItemActive,
+                      currentProperty?.id === property.id && styles.propertyItemActive,
                     ]}
                     onPress={() => handleSelectProperty(property.id)}
                   >
                     <Text
                       style={[
                         styles.propertyName,
-                        currentProperty.id === property.id && styles.propertyNameActive,
+                        currentProperty?.id === property.id && styles.propertyNameActive,
                       ]}
                     >
                       {property.name}
