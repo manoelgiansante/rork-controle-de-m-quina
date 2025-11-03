@@ -23,12 +23,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isWeb] = useState(() => Platform.OS === 'web');
 
   const loadData = useCallback(async () => {
     console.log('[AUTH] Carregando dados de autenticação...');
     console.log('[AUTH] Platform:', Platform.OS);
     try {
-      if (Platform.OS === 'web' && supabase) {
+      if (isWeb && supabase) {
         console.log('[WEB AUTH] Verificando sessão no Supabase...');
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
@@ -99,14 +100,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[AUTH] Finalizado carregamento (isLoading = false)');
       setIsLoading(false);
     }
-  }, []);
+  }, [isWeb]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || !supabase) return;
+    if (!isWeb || !supabase) {
+      return;
+    }
 
     console.log('[AUTH] Configurando listener de mudança de estado de autenticação...');
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -147,12 +150,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[AUTH] Removendo listener de autenticação');
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [isWeb]);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     console.log('[AUTH] Tentando fazer login...', { username, platform: Platform.OS });
     
-    if (Platform.OS === 'web' && supabase) {
+    if (isWeb && supabase) {
       console.log('[WEB AUTH] Usando Supabase para login...');
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -211,13 +214,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     console.log('[AUTH] Login falhou - credenciais inválidas');
     return false;
-  }, [users]);
+  }, [isWeb, users]);
 
   const logout = useCallback(async () => {
     console.log('[AUTH] Executando logout...');
     
     try {
-      if (Platform.OS === 'web' && supabase) {
+      if (isWeb && supabase) {
         console.log('[WEB AUTH] Executando signOut do Supabase...');
         const { error } = await supabase.auth.signOut();
         if (error) {
@@ -231,7 +234,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[AUTH] Removendo CURRENT_USER do storage...');
       await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
       
-      if (Platform.OS === 'web') {
+      if (isWeb) {
         console.log('[AUTH] Plataforma Web: removendo apenas CURRENT_USER do localStorage');
         try {
           if (typeof localStorage !== 'undefined') {
@@ -248,11 +251,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[AUTH] Logout concluído');
     } catch (error) {
       console.error('[AUTH] Erro durante logout:', error);
-      if (Platform.OS === 'web') {
+      if (isWeb) {
         await appLogout();
       }
     }
-  }, []);
+  }, [isWeb]);
 
   const register = useCallback(async (
     username: string,
@@ -261,7 +264,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   ): Promise<boolean> => {
     console.log('[AUTH] Tentando registrar...', { username, platform: Platform.OS });
     
-    if (Platform.OS === 'web' && supabase) {
+    if (isWeb && supabase) {
       console.log('[WEB AUTH] Usando Supabase para registro...');
       try {
         const { data, error } = await supabase.auth.signUp({
@@ -330,7 +333,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
 
     return true;
-  }, [users]);
+  }, [isWeb, users]);
 
   const createEmployee = useCallback(async (
     username: string,
@@ -372,7 +375,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const resetPassword = useCallback(async (email: string): Promise<boolean> => {
     console.log('[AUTH] Solicitando reset de senha...', { email, platform: Platform.OS });
     
-    if (Platform.OS === 'web' && supabase) {
+    if (isWeb && supabase) {
       console.log('[WEB AUTH] Usando Supabase para reset de senha...');
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -394,7 +397,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     
     console.log('[AUTH MOBILE] Reset de senha não disponível no mobile');
     return false;
-  }, []);
+  }, [isWeb]);
 
   const acceptTerms = useCallback(async () => {
     if (!currentUser) return;
