@@ -117,8 +117,12 @@ export default function PropertySelector() {
     <View>
       <TouchableOpacity
         style={styles.selectorButton}
-        onPress={() => setIsModalOpen(true)}
+        onPress={() => {
+          console.log('PropertySelector: Abrindo modal');
+          setIsModalOpen(true);
+        }}
         activeOpacity={0.7}
+        testID="property-selector-button"
       >
         <Text style={styles.selectorText} numberOfLines={1}>
           {currentProperty.name}
@@ -267,6 +271,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     maxWidth: 200,
     minWidth: 120,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer' as any,
+        userSelect: 'none' as any,
+      },
+    }),
   },
   selectorText: {
     color: '#FFF',
