@@ -18,7 +18,7 @@ import { useData } from '@/contexts/DataContext';
 import { useRouter } from 'expo-router';
 
 export default function PropertySelector() {
-  const { properties, currentProperty, switchProperty, addProperty, updateProperty, deleteProperty } = useProperty();
+  const { properties, currentProperty, switchProperty, addProperty, updateProperty, deleteProperty, isLoading: propertyLoading } = useProperty();
   const { deletePropertyData } = useData();
   const { logout } = useAuth();
   const router = useRouter();
@@ -109,8 +109,13 @@ export default function PropertySelector() {
     }
   };
 
-  if (!currentProperty) {
-    return null;
+  if (propertyLoading || !currentProperty) {
+    console.log('[PropertySelector] Loading state:', { propertyLoading, hasProperty: !!currentProperty });
+    return (
+      <View style={styles.selectorButton}>
+        <Text style={styles.selectorText}>Carregando...</Text>
+      </View>
+    );
   }
 
   return (

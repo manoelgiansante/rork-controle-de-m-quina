@@ -12,14 +12,22 @@ const STORAGE_KEYS = {
 };
 
 export const [PropertyProvider, useProperty] = createContextHook(() => {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoading: authLoading } = useAuth();
   const [isWeb] = useState(() => Platform.OS === 'web');
   const [properties, setProperties] = useState<Property[]>([]);
   const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const loadData = useCallback(async () => {
+    console.log('[PROPERTY] loadData chamado:', { currentUser: !!currentUser, authLoading });
+    
+    if (authLoading) {
+      console.log('[PROPERTY] Auth ainda carregando, aguardando...');
+      return;
+    }
+    
     if (!currentUser) {
+      console.log('[PROPERTY] Sem usuário, finalizando loading...');
       setIsLoading(false);
       return;
     }
@@ -82,7 +90,7 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser, isWeb]);
+  }, [currentUser, isWeb, authLoading]);
 
   useEffect(() => {
     if (currentUser) {
