@@ -325,6 +325,33 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
   }, [users]);
 
+  const resetPassword = useCallback(async (email: string): Promise<boolean> => {
+    console.log('[AUTH] Solicitando reset de senha...', { email, platform: Platform.OS });
+    
+    if (Platform.OS === 'web' && supabase) {
+      console.log('[WEB AUTH] Usando Supabase para reset de senha...');
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/login`,
+        });
+        
+        if (error) {
+          console.error('[WEB AUTH] Erro ao enviar email de reset:', error.message);
+          return false;
+        }
+        
+        console.log('[WEB AUTH] Email de reset enviado com sucesso');
+        return true;
+      } catch (error) {
+        console.error('[WEB AUTH] Exceção durante reset de senha:', error);
+        return false;
+      }
+    }
+    
+    console.log('[AUTH MOBILE] Reset de senha não disponível no mobile');
+    return false;
+  }, []);
+
   const acceptTerms = useCallback(async () => {
     if (!currentUser) return;
 
@@ -359,6 +386,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     login,
     logout,
     register,
+    resetPassword,
     createEmployee,
     updateEmployee,
     deleteEmployee,
@@ -366,5 +394,5 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     hasAcceptedTerms,
     isMaster,
     isAuthenticated,
-  }), [currentUser, users, isLoading, login, logout, register, createEmployee, updateEmployee, deleteEmployee, acceptTerms, hasAcceptedTerms, isMaster, isAuthenticated]);
+  }), [currentUser, users, isLoading, login, logout, register, resetPassword, createEmployee, updateEmployee, deleteEmployee, acceptTerms, hasAcceptedTerms, isMaster, isAuthenticated]);
 });

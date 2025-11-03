@@ -19,8 +19,10 @@ export default function LoginScreen() {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [name, setName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
-  const { login, register, isAuthenticated } = useAuth();
+  const [isForgotPassword, setIsForgotPassword] = useState<boolean>(false);
+  const { login, register, resetPassword, isAuthenticated } = useAuth();
   const { needsTrialActivation, startTrial } = useSubscription();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -69,7 +71,9 @@ export default function LoginScreen() {
     e?.preventDefault?.();
     e?.stopPropagation?.();
     console.log('[LOGIN WEB] Botão clicado via onClick');
-    if (isRegistering) {
+    if (isForgotPassword) {
+      handleForgotPassword();
+    } else if (isRegistering) {
       handleRegister();
     } else {
       handleLogin();
@@ -77,12 +81,17 @@ export default function LoginScreen() {
   };
 
   const handleRegister = async () => {
-    if (!username || !password || !name) {
+    if (!email || !password || !name) {
       await confirm('Erro', 'Por favor, preencha todos os campos');
       return;
     }
 
-    const success = await register(username, password, name);
+    if (!email.includes('@') || !email.includes('.')) {
+      await confirm('Erro', 'Por favor, insira um email válido');
+      return;
+    }
+
+    const success = await register(email, password, name);
     if (success) {
       if (needsTrialActivation) {
         await startTrial();
@@ -93,7 +102,34 @@ export default function LoginScreen() {
       }
       router.replace('/machines');
     } else {
-      await confirm('Erro', 'Este usuário já existe. Escolha outro nome de usuário.');
+      await confirm('Erro', 'Este email já está cadastrado. Faça login ou use outro email.');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      await confirm('Erro', 'Por favor, insira seu email');
+      return;
+    }
+
+    if (!email.includes('@') || !email.includes('.')) {
+      await confirm('Erro', 'Por favor, insira um email válido');
+      return;
+    }
+
+    const success = await resetPassword(email);
+    if (success) {
+      await confirm(
+        'Email enviado!',
+        'Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada.'
+      );
+      setIsForgotPassword(false);
+      setEmail('');
+    } else {
+      await confirm(
+        'Erro',
+        'Não foi possível enviar o email. Verifique se o email está correto e tente novamente.'
+      );
     }
   };
 
@@ -126,31 +162,34 @@ export default function LoginScreen() {
           )}
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Usuário</Text>
+            <Text style={styles.label}>{isRegistering || isForgotPassword ? 'Email' : 'Email ou Usuário'}</Text>
             <TextInput
               style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Digite seu usuário"
+              value={isRegistering || isForgotPassword ? email : username}
+              onChangeText={isRegistering || isForgotPassword ? setEmail : setUsername}
+              placeholder={isRegistering || isForgotPassword ? "Digite seu email" : "Digite seu email ou usuário"}
               placeholderTextColor="#999"
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType={isRegistering || isForgotPassword ? "email-address" : "default"}
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Senha</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Digite sua senha"
-              placeholderTextColor="#999"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          {!isForgotPassword && (
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Senha</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Digite sua senha"
+                placeholderTextColor="#999"
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          )}
 
           {Platform.OS === 'web' ? (
             <button
@@ -177,16 +216,31 @@ export default function LoginScreen() {
                 fontSize: 17,
                 fontWeight: '600',
               }}>
-                {isRegistering ? 'Criar Conta' : 'Entrar'}
+                {isForgotPassword ? 'Enviar Link' : (isRegistering ? 'Criar Conta' : 'Entrar')}
               </span>
             </button>
           ) : (
             <TouchableOpacity 
               style={styles.loginButton} 
-              onPress={isRegistering ? handleRegister : handleLogin}
+              onPress={isForgotPassword ? handleForgotPassword : (isRegistering ? handleRegister : handleLogin)}
             >
               <Text style={styles.loginButtonText}>
-                {isRegistering ? 'Criar Conta' : 'Entrar'}
+                {isForgotPassword ? 'Enviar Link' : (isRegistering ? 'Criar Conta' : 'Entrar')}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {!isRegistering && !isForgotPassword && (
+            <TouchableOpacity 
+              style={styles.forgotButton}
+              onPress={() => {
+                setIsForgotPassword(true);
+                setUsername('');
+                setPassword('');
+              }}
+            >
+              <Text style={styles.forgotButtonText}>
+                Esqueci minha senha
               </Text>
             </TouchableOpacity>
           )}
@@ -194,14 +248,24 @@ export default function LoginScreen() {
           <TouchableOpacity 
             style={styles.switchButton}
             onPress={() => {
-              setIsRegistering(!isRegistering);
-              setName('');
+              if (isForgotPassword) {
+                setIsForgotPassword(false);
+                setEmail('');
+              } else {
+                setIsRegistering(!isRegistering);
+                setName('');
+                setEmail('');
+                setUsername('');
+                setPassword('');
+              }
             }}
           >
             <Text style={styles.switchButtonText}>
-              {isRegistering 
-                ? 'Já tem uma conta? Entrar' 
-                : 'Não tem conta? Criar nova conta'
+              {isForgotPassword
+                ? 'Voltar para login'
+                : (isRegistering 
+                  ? 'Já tem uma conta? Entrar' 
+                  : 'Não tem conta? Criar nova conta')
               }
             </Text>
           </TouchableOpacity>
@@ -281,5 +345,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2D5016',
     fontWeight: '600' as const,
+  },
+  forgotButton: {
+    alignItems: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  forgotButtonText: {
+    fontSize: 14,
+    color: '#666',
+    textDecorationLine: 'underline' as const,
   },
 });
