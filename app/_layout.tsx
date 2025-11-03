@@ -33,8 +33,9 @@ function RootLayoutNav() {
     const isOnLoginPage = segments[0] === 'login';
     const isOnTermsPage = segments[0] === 'terms';
     const isOnSubscriptionRequired = segments[0] === 'subscription-required';
+    const isOnResetPassword = segments[0] === 'reset-password';
 
-    if (!isAuthenticated && !isOnLoginPage) {
+    if (!isAuthenticated && !isOnLoginPage && !isOnResetPassword) {
       console.log('RootLayoutNav: Redirecionando para /login (não autenticado)');
       router.replace('/login');
     } else if (isAuthenticated && isOnLoginPage) {
