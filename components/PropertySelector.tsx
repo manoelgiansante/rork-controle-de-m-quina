@@ -271,11 +271,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 8,
     maxWidth: 200,
     minWidth: 120,
+    height: 36,
     ...Platform.select({
       web: {
         cursor: 'pointer' as any,

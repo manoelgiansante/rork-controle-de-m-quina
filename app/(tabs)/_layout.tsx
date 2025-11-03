@@ -105,5 +105,7 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   headerRight: {
     marginRight: 16,
+    minWidth: 120,
+    alignItems: 'flex-end' as const,
   },
 });
