@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 999999999,
+        zIndex: 9999,
         display: 'flex' as any,
         alignItems: 'center' as any,
         justifyContent: 'center' as any,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         position: 'relative' as any,
-        zIndex: 9999999999,
+        zIndex: 10000,
         boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)' as any,
         display: 'flex' as any,
         flexDirection: 'column' as any,
