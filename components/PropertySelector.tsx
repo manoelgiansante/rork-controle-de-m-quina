@@ -200,26 +200,6 @@ export default function PropertySelector() {
                 </View>
               ))}
 
-              {!isAddingNew && (
-                <>
-                  <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => setIsAddingNew(true)}
-                  >
-                    <Plus size={20} color="#2D5016" />
-                    <Text style={styles.addButtonText}>Adicionar nova propriedade</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.logoutButton}
-                    onPress={handleLogout}
-                  >
-                    <LogOut size={20} color="#FF5722" />
-                    <Text style={styles.logoutButtonText}>Sair da conta</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-
               {isAddingNew && (
                 <View style={styles.addForm}>
                   <Text style={styles.addFormTitle}>
@@ -252,6 +232,31 @@ export default function PropertySelector() {
                     </TouchableOpacity>
                   </View>
                 </View>
+              )}
+
+              {!isAddingNew && (
+                <>
+                  <TouchableOpacity
+                    style={styles.addButton}
+                    onPress={() => {
+                      console.log('Clicou em adicionar nova propriedade');
+                      setIsAddingNew(true);
+                    }}
+                    testID="add-property-button"
+                  >
+                    <Plus size={20} color="#2D5016" />
+                    <Text style={styles.addButtonText}>Adicionar nova propriedade</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={handleLogout}
+                    testID="logout-button"
+                  >
+                    <LogOut size={20} color="#FF5722" />
+                    <Text style={styles.logoutButtonText}>Sair da conta</Text>
+                  </TouchableOpacity>
+                </>
               )}
             </ScrollView>
           </View>
