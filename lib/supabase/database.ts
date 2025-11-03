@@ -34,6 +34,8 @@ export async function fetchProperties(userId: string): Promise<Property[]> {
 }
 
 export async function createProperty(userId: string, name: string): Promise<Property> {
+  console.log('[DB] createProperty chamado:', { userId, name });
+  
   const { data, error } = await supabase
     .from('properties')
     .insert({
@@ -45,9 +47,12 @@ export async function createProperty(userId: string, name: string): Promise<Prop
 
   if (error) {
     console.error('[DB] Error creating property:', error);
+    console.error('[DB] Error details:', JSON.stringify(error, null, 2));
     throw error;
   }
 
+  console.log('[DB] Propriedade criada com sucesso:', data);
+  
   return {
     id: data.id,
     name: data.name,
@@ -61,6 +66,8 @@ export async function updateProperty(
   propertyId: string,
   updates: Partial<Omit<Property, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> {
+  console.log('[DB] updateProperty chamado:', { propertyId, updates });
+  
   const { error } = await supabase
     .from('properties')
     .update({
@@ -70,8 +77,11 @@ export async function updateProperty(
 
   if (error) {
     console.error('[DB] Error updating property:', error);
+    console.error('[DB] Error details:', JSON.stringify(error, null, 2));
     throw error;
   }
+  
+  console.log('[DB] Propriedade atualizada com sucesso');
 }
 
 export async function deleteProperty(propertyId: string): Promise<void> {

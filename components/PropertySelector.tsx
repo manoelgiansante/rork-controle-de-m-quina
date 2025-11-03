@@ -33,28 +33,37 @@ export default function PropertySelector() {
   };
 
   const handleAddNewProperty = async () => {
+    console.log('[PropertySelector] handleAddNewProperty chamado', { newPropertyName, editingPropertyId });
+    
     if (!newPropertyName.trim()) {
+      console.log('[PropertySelector] Nome vazio, exibindo alerta');
       Alert.alert('Erro', 'Digite um nome para a propriedade');
       return;
     }
 
     try {
+      console.log('[PropertySelector] Iniciando save...');
       if (editingPropertyId) {
+        console.log('[PropertySelector] Editando propriedade:', editingPropertyId);
         await updateProperty(editingPropertyId, { name: newPropertyName.trim() });
+        console.log('[PropertySelector] Propriedade atualizada com sucesso');
         setNewPropertyName('');
         setIsAddingNew(false);
         setEditingPropertyId(null);
         Alert.alert('Sucesso', 'Propriedade atualizada com sucesso!');
       } else {
+        console.log('[PropertySelector] Criando nova propriedade');
         await addProperty(newPropertyName.trim());
+        console.log('[PropertySelector] Propriedade criada com sucesso');
         setNewPropertyName('');
         setIsAddingNew(false);
         setIsModalOpen(false);
         Alert.alert('Sucesso', 'Propriedade criada com sucesso!');
       }
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar a propriedade');
-      console.error('Error saving property:', error);
+      console.error('[PropertySelector] Erro ao salvar propriedade:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      Alert.alert('Erro', `Não foi possível salvar a propriedade: ${errorMessage}`);
     }
   };
 

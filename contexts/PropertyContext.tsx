@@ -121,13 +121,23 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
 
   const addProperty = useCallback(
     async (name: string) => {
-      if (!currentUser) return;
+      console.log('[PROPERTY] addProperty chamado', { name, currentUser: !!currentUser, isWeb });
+      if (!currentUser) {
+        console.log('[PROPERTY] addProperty: sem currentUser');
+        return;
+      }
 
       let newProperty: Property;
 
       if (isWeb) {
         console.log('[PROPERTY WEB] Criando propriedade no Supabase...');
-        newProperty = await db.createProperty(currentUser.id, name);
+        try {
+          newProperty = await db.createProperty(currentUser.id, name);
+          console.log('[PROPERTY WEB] Propriedade criada no Supabase:', newProperty);
+        } catch (error) {
+          console.error('[PROPERTY WEB] Erro ao criar no Supabase:', error);
+          throw error;
+        }
       } else {
         newProperty = {
           id: Date.now().toString(),
@@ -136,14 +146,17 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
+        console.log('[PROPERTY MOBILE] Propriedade criada localmente:', newProperty);
       }
 
       const updated = [...properties, newProperty];
+      console.log('[PROPERTY] Atualizando state e storage...');
       setProperties(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(updated));
 
       setCurrentPropertyId(newProperty.id);
       await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_PROPERTY_ID, newProperty.id);
+      console.log('[PROPERTY] addProperty: finalizado com sucesso');
 
       return newProperty;
     },
@@ -152,9 +165,17 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
 
   const updateProperty = useCallback(
     async (propertyId: string, updates: Partial<Property>) => {
+      console.log('[PROPERTY] updateProperty chamado', { propertyId, updates, isWeb });
+      
       if (isWeb) {
         console.log('[PROPERTY WEB] Atualizando propriedade no Supabase...');
-        await db.updateProperty(propertyId, updates);
+        try {
+          await db.updateProperty(propertyId, updates);
+          console.log('[PROPERTY WEB] Propriedade atualizada no Supabase');
+        } catch (error) {
+          console.error('[PROPERTY WEB] Erro ao atualizar no Supabase:', error);
+          throw error;
+        }
       }
 
       const updated = properties.map((p) =>
@@ -162,8 +183,10 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
           ? { ...p, ...updates, updatedAt: new Date().toISOString() }
           : p
       );
+      console.log('[PROPERTY] Atualizando state e storage...');
       setProperties(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(updated));
+      console.log('[PROPERTY] updateProperty: finalizado com sucesso');
     },
     [properties, isWeb]
   );
