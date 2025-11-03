@@ -39,12 +39,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         
         if (sessionData?.session?.user) {
           console.log('[WEB AUTH] Sessão encontrada:', sessionData.session.user.email);
+          
+          const acceptedTermsAt = sessionData.session.user.user_metadata?.acceptedTermsAt;
+          
           const webUser: User = {
             id: sessionData.session.user.id,
             username: sessionData.session.user.email || '',
             password: '',
             role: 'master',
             name: sessionData.session.user.user_metadata?.name || sessionData.session.user.email || '',
+            acceptedTermsAt: acceptedTermsAt,
           };
           setCurrentUser(webUser);
           
@@ -124,12 +128,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       
       if (event === 'SIGNED_IN' && session?.user) {
         console.log('[AUTH] Usuário autenticado:', session.user.email);
+        
+        const acceptedTermsAt = session.user.user_metadata?.acceptedTermsAt;
+        
         const webUser: User = {
           id: session.user.id,
           username: session.user.email || '',
           password: '',
           role: 'master',
           name: session.user.user_metadata?.name || session.user.email || '',
+          acceptedTermsAt: acceptedTermsAt,
         };
         setCurrentUser(webUser);
         if (typeof localStorage !== 'undefined') {
@@ -170,12 +178,16 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         
         if (data?.user) {
           console.log('[WEB AUTH] Login bem-sucedido:', data.user.email);
+          
+          const acceptedTermsAt = data.user.user_metadata?.acceptedTermsAt;
+          
           const webUser: User = {
             id: data.user.id,
             username: data.user.email || '',
             password: '',
             role: 'master',
             name: data.user.user_metadata?.name || data.user.email || '',
+            acceptedTermsAt: acceptedTermsAt,
           };
           
           setCurrentUser(webUser);
@@ -405,18 +417,34 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     const now = new Date().toISOString();
     const updatedUser = { ...currentUser, acceptedTermsAt: now };
 
-    const updatedUsers = users.map((u) =>
-      u.id === currentUser.id ? updatedUser : u
-    );
+    if (isWeb && supabase) {
+      console.log('[WEB AUTH] Salvando aceitação de termos no Supabase...');
+      try {
+        const { error } = await supabase.auth.updateUser({
+          data: {
+            acceptedTermsAt: now,
+          },
+        });
+        
+        if (error) {
+          console.error('[WEB AUTH] Erro ao salvar aceitação de termos:', error);
+        } else {
+          console.log('[WEB AUTH] Aceitação de termos salva com sucesso');
+        }
+      } catch (error) {
+        console.error('[WEB AUTH] Exceção ao salvar aceitação de termos:', error);
+      }
+    } else {
+      const updatedUsers = users.map((u) =>
+        u.id === currentUser.id ? updatedUser : u
+      );
+      setUsers(updatedUsers);
+      await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    }
 
-    setUsers(updatedUsers);
     setCurrentUser(updatedUser);
-
-    await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers)),
-      AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser)),
-    ]);
-  }, [currentUser, users]);
+    await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+  }, [currentUser, users, isWeb]);
 
   const hasAcceptedTerms = useMemo(
     () => currentUser?.acceptedTermsAt !== undefined,
