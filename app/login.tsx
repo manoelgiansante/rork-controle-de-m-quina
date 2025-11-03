@@ -35,6 +35,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     console.log('[LOGIN] Iniciando processo de login...');
+    console.log('[LOGIN] Platform:', Platform.OS);
     
     if (!username || !password) {
       console.log('[LOGIN] Campos vazios');
@@ -61,6 +62,17 @@ export default function LoginScreen() {
     } else {
       console.log('[LOGIN] Login falhou');
       await confirm('Erro', 'Login ou senha incorretos. Verifique suas credenciais e tente novamente.');
+    }
+  };
+
+  const handleSubmitWeb = (e: any) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    console.log('[LOGIN WEB] Botão clicado via onClick');
+    if (isRegistering) {
+      handleRegister();
+    } else {
+      handleLogin();
     }
   };
 
@@ -140,14 +152,44 @@ export default function LoginScreen() {
             />
           </View>
 
-          <TouchableOpacity 
-            style={styles.loginButton} 
-            onPress={isRegistering ? handleRegister : handleLogin}
-          >
-            <Text style={styles.loginButtonText}>
-              {isRegistering ? 'Criar Conta' : 'Entrar'}
-            </Text>
-          </TouchableOpacity>
+          {Platform.OS === 'web' ? (
+            <button
+              type="button"
+              onClick={handleSubmitWeb}
+              style={{
+                width: '100%',
+                backgroundColor: '#2D5016',
+                borderRadius: 12,
+                paddingTop: 16,
+                paddingBottom: 16,
+                paddingLeft: 16,
+                paddingRight: 16,
+                alignItems: 'center',
+                marginTop: 8,
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+            >
+              <span style={{
+                color: '#FFF',
+                fontSize: 17,
+                fontWeight: '600',
+              }}>
+                {isRegistering ? 'Criar Conta' : 'Entrar'}
+              </span>
+            </button>
+          ) : (
+            <TouchableOpacity 
+              style={styles.loginButton} 
+              onPress={isRegistering ? handleRegister : handleLogin}
+            >
+              <Text style={styles.loginButtonText}>
+                {isRegistering ? 'Criar Conta' : 'Entrar'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity 
             style={styles.switchButton}
