@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import type { User } from '@/types';
 import { appLogout } from '@/lib/logout';
+import { supabase } from '@/lib/supabase/client';
 
 const STORAGE_KEYS = {
   USERS: '@controle_maquina:users',
@@ -25,7 +26,40 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadData = useCallback(async () => {
     console.log('[AUTH] Carregando dados de autenticação...');
+    console.log('[AUTH] Platform:', Platform.OS);
     try {
+      if (Platform.OS === 'web' && supabase) {
+        console.log('[WEB AUTH] Verificando sessão no Supabase...');
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('[WEB AUTH] Erro ao obter sessão:', sessionError);
+        }
+        
+        if (sessionData?.session?.user) {
+          console.log('[WEB AUTH] Sessão encontrada:', sessionData.session.user.email);
+          const webUser: User = {
+            id: sessionData.session.user.id,
+            username: sessionData.session.user.email || '',
+            password: '',
+            role: 'master',
+            name: sessionData.session.user.user_metadata?.name || sessionData.session.user.email || '',
+          };
+          setCurrentUser(webUser);
+          
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+          }
+        } else {
+          console.log('[WEB AUTH] Nenhuma sessão encontrada no Supabase');
+          setCurrentUser(null);
+        }
+        
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('[AUTH MOBILE] Carregando dados locais...');
       const [usersData, currentUserData] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.USERS),
         AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER),
@@ -72,8 +106,48 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [loadData]);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
-    console.log('[AUTH] Tentando fazer login...', { username, usersCount: users.length });
+    console.log('[AUTH] Tentando fazer login...', { username, platform: Platform.OS });
     
+    if (Platform.OS === 'web' && supabase) {
+      console.log('[WEB AUTH] Usando Supabase para login...');
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: username,
+          password,
+        });
+        
+        if (error) {
+          console.error('[WEB AUTH] Erro no login:', error.message);
+          return false;
+        }
+        
+        if (data?.user) {
+          console.log('[WEB AUTH] Login bem-sucedido:', data.user.email);
+          const webUser: User = {
+            id: data.user.id,
+            username: data.user.email || '',
+            password: '',
+            role: 'master',
+            name: data.user.user_metadata?.name || data.user.email || '',
+          };
+          
+          setCurrentUser(webUser);
+          
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+          }
+          
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('[WEB AUTH] Exceção durante login:', error);
+        return false;
+      }
+    }
+    
+    console.log('[AUTH MOBILE] Usando login local...', { usersCount: users.length });
     const user = users.find(
       (u) => u.username === username && u.password === password
     );
@@ -99,6 +173,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     console.log('[AUTH] Executando logout...');
     
     try {
+      if (Platform.OS === 'web' && supabase) {
+        console.log('[WEB AUTH] Executando signOut do Supabase...');
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error('[WEB AUTH] Erro ao fazer signOut:', error);
+        }
+      }
+      
       console.log('[AUTH] Limpando currentUser do estado...');
       setCurrentUser(null);
       
@@ -133,6 +215,56 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     password: string,
     name: string
   ): Promise<boolean> => {
+    console.log('[AUTH] Tentando registrar...', { username, platform: Platform.OS });
+    
+    if (Platform.OS === 'web' && supabase) {
+      console.log('[WEB AUTH] Usando Supabase para registro...');
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: username,
+          password,
+          options: {
+            data: {
+              name,
+            },
+          },
+        });
+        
+        if (error) {
+          console.error('[WEB AUTH] Erro no registro:', error.message);
+          if (error.message.includes('already registered')) {
+            return false;
+          }
+          throw error;
+        }
+        
+        if (data?.user) {
+          console.log('[WEB AUTH] Registro bem-sucedido:', data.user.email);
+          const webUser: User = {
+            id: data.user.id,
+            username: data.user.email || '',
+            password: '',
+            role: 'master',
+            name: name || data.user.email || '',
+          };
+          
+          setCurrentUser(webUser);
+          
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+          }
+          
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('[WEB AUTH] Exceção durante registro:', error);
+        return false;
+      }
+    }
+    
+    console.log('[AUTH MOBILE] Usando registro local...');
     const userExists = users.find((u) => u.username === username);
     if (userExists) {
       return false;
