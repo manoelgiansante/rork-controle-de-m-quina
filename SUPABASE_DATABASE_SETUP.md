@@ -4,9 +4,10 @@
 
 Acesse o Supabase Dashboard → SQL Editor e execute os comandos abaixo:
 
-### 1. Tabela de Propriedades
+### 1. Tabela de Propriedades (PULE ESTA SE JÁ CRIOU)
 
 ```sql
+-- SE A TABELA PROPERTIES JÁ EXISTE, PULE ESTA PARTE!
 -- Criar tabela de propriedades
 CREATE TABLE properties (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
