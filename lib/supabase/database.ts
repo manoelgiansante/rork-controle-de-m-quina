@@ -475,20 +475,40 @@ export async function fetchUserPreferences(userId: string): Promise<{
   serviceTypes: ServiceType[];
   maintenanceItems: MaintenanceItem[];
 } | null> {
-  const { data, error } = await supabase
+  console.log('[DB] fetchUserPreferences: buscando preferências para:', userId);
+  
+  const { data, error, status } = await supabase
     .from('user_preferences')
     .select('*')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
+  if (error && status !== 406) {
     console.error('[DB] Error fetching user preferences:', error);
     throw error;
   }
 
+  if (!data) {
+    console.log('[DB] fetchUserPreferences: registro não existe, criando padrão...');
+    const { data: created, error: insertError } = await supabase
+      .from('user_preferences')
+      .insert({ user_id: userId })
+      .select('*')
+      .single();
+
+    if (insertError) {
+      console.error('[DB] Error creating default user preferences:', insertError);
+      throw insertError;
+    }
+    
+    console.log('[DB] fetchUserPreferences: registro padrão criado:', created);
+    return {
+      serviceTypes: created.service_types || [],
+      maintenanceItems: created.maintenance_items || [],
+    };
+  }
+
+  console.log('[DB] fetchUserPreferences: registro encontrado');
   return {
     serviceTypes: data.service_types || [],
     maintenanceItems: data.maintenance_items || [],
