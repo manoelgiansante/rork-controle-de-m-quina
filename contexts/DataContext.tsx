@@ -431,6 +431,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           oldLiters,
           newLiters,
           difference,
+          operacao: difference > 0 ? 'Aumentou consumo - subtrai do tanque' : 'Diminuiu consumo - adiciona ao tanque',
         });
 
         if (difference !== 0) {
@@ -439,7 +440,7 @@ export const [DataProvider, useData] = createContextHook(() => {
             const virtualTank: FarmTank = {
               propertyId: refueling.propertyId,
               capacityLiters: 0,
-              currentLiters: difference,
+              currentLiters: -difference,
               fuelType: 'Diesel comum',
               alertLevelLiters: 0,
             };
@@ -452,7 +453,7 @@ export const [DataProvider, useData] = createContextHook(() => {
             setAllFarmTanks(updatedTanks);
             await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updatedTanks));
           } else {
-            const newCurrentLiters = farmTank.currentLiters + difference;
+            const newCurrentLiters = farmTank.currentLiters - difference;
 
             const updatedTank: FarmTank = {
               ...farmTank,
@@ -474,6 +475,7 @@ export const [DataProvider, useData] = createContextHook(() => {
               antigosLitros: farmTank.currentLiters,
               novosLitros: newCurrentLiters,
               diferenca: difference,
+              explicacao: `Reverteu ${oldLiters}L e aplicou ${newLiters}L = ${farmTank.currentLiters} - ${difference} = ${newCurrentLiters}L`,
             });
           }
         }
