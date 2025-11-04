@@ -1,57 +1,33 @@
-import { Hono } from 'hono';
-import Stripe from 'stripe';
+import { Hono } from 'hono'
+import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-10-29.clover',
-});
+export const stripeCheckout = new Hono()
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
-const app = new Hono();
+stripeCheckout.options('/stripe/checkout', (c) => c.body(null, 204))
 
-console.log('[STRIPE-CHECKOUT] Módulo carregado');
-
-app.options('/stripe/checkout', (c) => {
-  console.log('[CHECKOUT] OPTIONS recebido!');
-  return c.body(null, 204);
-});
-
-app.post('/stripe/checkout', async (c) => {
-  console.log('[CHECKOUT] POST recebido!', c.req.method, c.req.path);
+stripeCheckout.post('/stripe/checkout', async (c) => {
   try {
-    const body = await c.req.json();
-    const { priceId, userId } = body;
+    const { priceId, userId } = await c.req.json()
+    if (!priceId) return c.json({ error: 'missing_priceId' }, 400)
 
-    console.log('[STRIPE_CHECKOUT] Criando sessão:', { priceId, userId });
-
-    if (!priceId || !userId) {
-      console.error('[STRIPE_CHECKOUT] Dados inválidos:', { priceId, userId });
-      return c.json({ error: 'priceId e userId são obrigatórios' }, 400);
-    }
-
-    const baseUrl = process.env.EXPO_PUBLIC_APP_URL || 'https://controledemaquina.com.br';
+    const base =
+      process.env.EXPO_PUBLIC_APP_URL || 'https://controledemaquina.com.br'
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${baseUrl}/subscription?success=true`,
-      cancel_url: `${baseUrl}/subscription?canceled=true`,
-      metadata: {
-        userId,
-      },
-    });
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${base}/subscription?success=true`,
+      cancel_url: `${base}/subscription?canceled=true`,
+      metadata: { userId: userId ?? '' },
+    })
 
-    console.log('[STRIPE_CHECKOUT] Sessão criada:', session.id);
-
-    return c.json({ url: session.url });
-  } catch (error: any) {
-    console.error('[STRIPE_CHECKOUT] Erro ao criar sessão:', error.message);
-    return c.json({ error: error.message }, 500);
+    console.log('[CHECKOUT] created', session.id)
+    return c.json({ url: session.url }, 200)
+  } catch (err: any) {
+    console.error('[CHECKOUT] error', err)
+    return c.json({ error: 'checkout_failed' }, 500)
   }
-});
+})
 
-export default app;
+export default stripeCheckout
