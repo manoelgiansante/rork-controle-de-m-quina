@@ -402,6 +402,12 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const updateRefueling = useCallback(
     async (refuelingId: string, updates: Partial<Refueling>) => {
+      const refueling = allRefuelings.find(r => r.id === refuelingId);
+      if (!refueling) {
+        console.error('[DATA] Abastecimento não encontrado:', refuelingId);
+        return;
+      }
+
       if (isWeb) {
         console.log('[DATA WEB] Atualizando abastecimento no Supabase...');
         await db.updateRefueling(refuelingId, updates);
@@ -415,8 +421,64 @@ export const [DataProvider, useData] = createContextHook(() => {
         STORAGE_KEYS.REFUELINGS,
         JSON.stringify(updated)
       );
+
+      if (updates.liters !== undefined && updates.liters !== refueling.liters) {
+        const oldLiters = refueling.liters;
+        const newLiters = updates.liters;
+        const difference = newLiters - oldLiters;
+
+        console.log('[DATA] Ajustando tanque devido a edição de abastecimento:', {
+          oldLiters,
+          newLiters,
+          difference,
+        });
+
+        if (difference !== 0) {
+          if (!farmTank) {
+            console.log('[DATA] Tanque não encontrado, criando com saldo ajustado...');
+            const virtualTank: FarmTank = {
+              propertyId: refueling.propertyId,
+              capacityLiters: 0,
+              currentLiters: -difference,
+              fuelType: 'Diesel comum',
+              alertLevelLiters: 0,
+            };
+
+            if (isWeb) {
+              await db.upsertFarmTank(virtualTank);
+            }
+
+            const updatedTanks = [...allFarmTanks, virtualTank];
+            setAllFarmTanks(updatedTanks);
+            await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updatedTanks));
+          } else {
+            const newCurrentLiters = farmTank.currentLiters - difference;
+
+            const updatedTank: FarmTank = {
+              ...farmTank,
+              currentLiters: newCurrentLiters,
+            };
+
+            if (isWeb) {
+              console.log('[DATA WEB] Atualizando tanque no Supabase...');
+              await db.upsertFarmTank(updatedTank);
+            }
+
+            const updatedTanks = allFarmTanks.map(t => 
+              t.propertyId === refueling.propertyId ? updatedTank : t
+            );
+            setAllFarmTanks(updatedTanks);
+            await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updatedTanks));
+
+            console.log('[DATA] Tanque ajustado:', {
+              antigosLitros: farmTank.currentLiters,
+              novosLitros: newCurrentLiters,
+            });
+          }
+        }
+      }
     },
-    [allRefuelings, isWeb]
+    [allRefuelings, farmTank, allFarmTanks, isWeb]
   );
 
   const deleteRefueling = useCallback(
