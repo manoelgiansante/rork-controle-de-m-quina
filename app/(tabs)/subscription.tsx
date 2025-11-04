@@ -69,8 +69,7 @@ export default function SubscriptionScreen() {
           userId: currentUser.id,
         });
 
-        const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://controledemaquina.rork.app';
-        const response = await fetch(`${backendUrl}/api/stripe/checkout`, {
+        const response = await fetch('/api/stripe/checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
