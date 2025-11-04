@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
 import stripeWebhook from "./routes/stripe-webhook";
+import stripeCheckout from "./routes/stripe-checkout";
 
 const app = new Hono();
 
@@ -75,6 +76,7 @@ app.options("*", (c) => {
 });
 
 app.route("/", stripeWebhook);
+app.route("/", stripeCheckout);
 
 app.use(
   "/api/trpc/*",

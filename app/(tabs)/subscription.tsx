@@ -13,7 +13,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { trpcClient } from '@/lib/trpc';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SubscriptionScreen() {
@@ -68,14 +67,26 @@ export default function SubscriptionScreen() {
         console.log('[SUBSCRIPTION] Criando sessão de checkout:', {
           priceId,
           userId: currentUser.id,
-          email: currentUser.username,
         });
 
-        const result = await trpcClient.stripe.checkout.mutate({
-          priceId,
-          userId: currentUser.id,
-          email: currentUser.username,
+        const response = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            priceId,
+            userId: currentUser.id,
+          }),
         });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[SUBSCRIPTION] Erro na resposta:', errorText);
+          throw new Error('Falha ao criar sessão de checkout');
+        }
+
+        const result = await response.json();
 
         console.log('[SUBSCRIPTION] Sessão criada, redirecionando para:', result.url);
         
