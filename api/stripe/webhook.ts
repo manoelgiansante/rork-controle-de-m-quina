@@ -244,9 +244,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 }
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
