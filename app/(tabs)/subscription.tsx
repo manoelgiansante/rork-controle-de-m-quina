@@ -13,6 +13,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { trpcClient } from '@/lib/trpc';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SubscriptionScreen() {
   const {
@@ -22,6 +24,7 @@ export default function SubscriptionScreen() {
     startTrial,
     needsTrialActivation,
   } = useSubscription();
+  const { currentUser } = useAuth();
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
 
@@ -38,28 +41,47 @@ export default function SubscriptionScreen() {
       }
 
       if (Platform.OS === 'web') {
-        Alert.alert(
-          'Confirmar Assinatura',
-          `Deseja assinar o plano ${plan.name} por R$${plan.price.toFixed(2)}?`,
-          [
-            {
-              text: 'Cancelar',
-              style: 'cancel',
-            },
-            {
-              text: 'Confirmar',
-              onPress: async () => {
-                const success = await activateSubscription(planType, billingCycle);
-                if (success) {
-                  Alert.alert(
-                    'Assinatura Ativada!',
-                    `Sua assinatura ${plan.name} foi ativada com sucesso.`
-                  );
-                }
-              },
-            },
-          ]
-        );
+        console.log('[SUBSCRIPTION] Iniciando checkout Stripe...');
+        
+        if (!currentUser) {
+          Alert.alert('Erro', 'Você precisa estar logado para assinar um plano.');
+          return;
+        }
+
+        let priceId = '';
+        if (planType === 'basic' && billingCycle === 'monthly') {
+          priceId = process.env.NEXT_PUBLIC_PRICE_BASIC_MONTHLY || '';
+        } else if (planType === 'basic' && billingCycle === 'annual') {
+          priceId = process.env.NEXT_PUBLIC_PRICE_BASIC_YEARLY || '';
+        } else if (planType === 'premium' && billingCycle === 'monthly') {
+          priceId = process.env.NEXT_PUBLIC_PRICE_PREMIUM_MONTHLY || '';
+        } else if (planType === 'premium' && billingCycle === 'annual') {
+          priceId = process.env.NEXT_PUBLIC_PRICE_PREMIUM_YEARLY || '';
+        }
+
+        if (!priceId) {
+          Alert.alert('Erro', 'ID do plano não configurado. Entre em contato com o suporte.');
+          console.error('[SUBSCRIPTION] Price ID não encontrado:', { planType, billingCycle });
+          return;
+        }
+
+        console.log('[SUBSCRIPTION] Criando sessão de checkout:', {
+          priceId,
+          userId: currentUser.id,
+          email: currentUser.username,
+        });
+
+        const result = await trpcClient.stripe.checkout.mutate({
+          priceId,
+          userId: currentUser.id,
+          email: currentUser.username,
+        });
+
+        console.log('[SUBSCRIPTION] Sessão criada, redirecionando para:', result.url);
+        
+        if (typeof window !== 'undefined' && result.url) {
+          window.location.href = result.url;
+        }
       } else {
         const success = await activateSubscription(planType, billingCycle);
         if (success) {
@@ -70,8 +92,8 @@ export default function SubscriptionScreen() {
         }
       }
     } catch (error) {
-      console.error('Error selecting plan:', error);
-      Alert.alert('Erro', 'Não foi possível ativar o plano. Tente novamente.');
+      console.error('[SUBSCRIPTION] Error selecting plan:', error);
+      Alert.alert('Erro', 'Não foi possível iniciar o checkout. Tente novamente.');
     } finally {
       setIsProcessing(false);
     }
