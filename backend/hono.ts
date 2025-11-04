@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { handle } from "hono/vercel";
 import { trpcServer } from "@hono/trpc-server";
 import { cors } from "hono/cors";
 import { appRouter } from "./trpc/app-router";
@@ -77,4 +78,8 @@ app.post("/logout", (c) => {
   return c.json({ success: true, message: "Logged out successfully" });
 });
 
-export default app;
+export const config = {
+  runtime: 'nodejs',
+};
+
+export default handle(app);
