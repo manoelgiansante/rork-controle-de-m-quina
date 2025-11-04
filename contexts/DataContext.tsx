@@ -37,8 +37,8 @@ const STORAGE_KEYS = {
 };
 
 export const [DataProvider, useData] = createContextHook(() => {
-  const { currentPropertyId } = useProperty();
   const { currentUser } = useAuth();
+  const { currentPropertyId } = useProperty();
   const [isWeb] = useState(() => Platform.OS === 'web');
   const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [allRefuelings, setAllRefuelings] = useState<Refueling[]>([]);
