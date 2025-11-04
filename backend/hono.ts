@@ -6,7 +6,17 @@ import { createContext } from "./trpc/create-context";
 
 const app = new Hono();
 
-app.use("*", cors());
+app.use("*", cors({
+  origin: [
+    "https://controledemaquina.com.br",
+    "https://www.controledemaquina.com.br",
+    "http://localhost:8081",
+    "http://localhost:19006",
+  ],
+  credentials: true,
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization"],
+}));
 
 app.use(
   "/trpc/*",
