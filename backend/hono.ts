@@ -3,6 +3,7 @@ import { trpcServer } from "@hono/trpc-server";
 import { cors } from "hono/cors";
 import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
+import stripeWebhook from "./routes/stripe-webhook";
 
 const app = new Hono();
 
@@ -72,6 +73,8 @@ app.options("*", (c) => {
   c.status(204);
   return c.body(null);
 });
+
+app.route("/", stripeWebhook);
 
 app.use(
   "/api/trpc/*",
