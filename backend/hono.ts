@@ -20,6 +20,7 @@ app.use("*", cors({
     console.log('[CORS] Request origin:', origin);
     console.log('[CORS] Allowed origins:', ALLOWED_ORIGINS);
     if (!origin) {
+      console.log('[CORS] No origin header, allowing first allowed origin');
       return ALLOWED_ORIGINS[0];
     }
     if (ALLOWED_ORIGINS.includes(origin)) {
@@ -27,7 +28,7 @@ app.use("*", cors({
       return origin;
     }
     console.log('[CORS] Origin not allowed:', origin);
-    return '';
+    return ALLOWED_ORIGINS[0];
   },
   credentials: true,
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -36,6 +37,8 @@ app.use("*", cors({
     "Authorization",
     "x-trpc-source",
     "x-supabase-authorization",
+    "access-control-request-headers",
+    "access-control-request-method",
   ],
   exposeHeaders: ["Content-Length"],
   maxAge: 86400,
@@ -43,21 +46,28 @@ app.use("*", cors({
 
 app.options("*", (c) => {
   const origin = c.req.header('origin');
-  console.log('[OPTIONS] Handling preflight for origin:', origin);
-  console.log('[OPTIONS] Request headers:', c.req.header('access-control-request-headers'));
-  console.log('[OPTIONS] Request method:', c.req.header('access-control-request-method'));
+  const requestHeaders = c.req.header('access-control-request-headers');
+  const requestMethod = c.req.header('access-control-request-method');
   
-  if (origin && ALLOWED_ORIGINS.includes(origin)) {
-    c.header('Access-Control-Allow-Origin', origin);
-    c.header('Access-Control-Allow-Credentials', 'true');
-    c.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    c.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-trpc-source,x-supabase-authorization');
-    c.header('Access-Control-Max-Age', '86400');
-    c.header('Vary', 'Origin');
-    console.log('[OPTIONS] Headers set successfully for origin:', origin);
-  } else {
-    console.log('[OPTIONS] Origin not in allowed list:', origin);
-  }
+  console.log('[OPTIONS] Handling preflight request');
+  console.log('[OPTIONS] Origin:', origin);
+  console.log('[OPTIONS] Request Headers:', requestHeaders);
+  console.log('[OPTIONS] Request Method:', requestMethod);
+  console.log('[OPTIONS] Allowed Origins:', ALLOWED_ORIGINS);
+  
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  
+  c.header('Access-Control-Allow-Origin', allowedOrigin);
+  c.header('Access-Control-Allow-Credentials', 'true');
+  c.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-trpc-source,x-supabase-authorization,access-control-request-headers,access-control-request-method');
+  c.header('Access-Control-Max-Age', '86400');
+  c.header('Vary', 'Origin');
+  
+  console.log('[OPTIONS] Response headers set:');
+  console.log('[OPTIONS] - Access-Control-Allow-Origin:', allowedOrigin);
+  console.log('[OPTIONS] - Access-Control-Allow-Credentials: true');
+  console.log('[OPTIONS] - Access-Control-Allow-Methods: GET,POST,PUT,DELETE,OPTIONS');
   
   c.status(204);
   return c.body(null);
