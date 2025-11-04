@@ -484,6 +484,12 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const deleteRefueling = useCallback(
     async (refuelingId: string) => {
+      const refueling = allRefuelings.find(r => r.id === refuelingId);
+      if (!refueling) {
+        console.error('[DATA] Abastecimento não encontrado:', refuelingId);
+        return;
+      }
+
       if (isWeb) {
         console.log('[DATA WEB] Deletando abastecimento no Supabase...');
         await db.deleteRefueling(refuelingId);
@@ -495,8 +501,55 @@ export const [DataProvider, useData] = createContextHook(() => {
         STORAGE_KEYS.REFUELINGS,
         JSON.stringify(updated)
       );
+
+      console.log('[DATA] Ajustando tanque devido a exclusão de abastecimento:', {
+        litros: refueling.liters,
+      });
+
+      if (!farmTank) {
+        console.log('[DATA] Tanque não encontrado, criando com saldo ajustado...');
+        const virtualTank: FarmTank = {
+          propertyId: refueling.propertyId,
+          capacityLiters: 0,
+          currentLiters: refueling.liters,
+          fuelType: 'Diesel comum',
+          alertLevelLiters: 0,
+        };
+
+        if (isWeb) {
+          await db.upsertFarmTank(virtualTank);
+        }
+
+        const updatedTanks = [...allFarmTanks, virtualTank];
+        setAllFarmTanks(updatedTanks);
+        await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updatedTanks));
+      } else {
+        const newCurrentLiters = farmTank.currentLiters + refueling.liters;
+
+        const updatedTank: FarmTank = {
+          ...farmTank,
+          currentLiters: newCurrentLiters,
+        };
+
+        if (isWeb) {
+          console.log('[DATA WEB] Atualizando tanque no Supabase...');
+          await db.upsertFarmTank(updatedTank);
+        }
+
+        const updatedTanks = allFarmTanks.map(t => 
+          t.propertyId === refueling.propertyId ? updatedTank : t
+        );
+        setAllFarmTanks(updatedTanks);
+        await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updatedTanks));
+
+        console.log('[DATA] Tanque ajustado após exclusão:', {
+          antigosLitros: farmTank.currentLiters,
+          novosLitros: newCurrentLiters,
+          litrosDevolvidos: refueling.liters,
+        });
+      }
     },
-    [allRefuelings, isWeb]
+    [allRefuelings, farmTank, allFarmTanks, isWeb]
   );
 
   const deleteMaintenance = useCallback(
