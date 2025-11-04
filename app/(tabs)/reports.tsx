@@ -298,8 +298,12 @@ export default function ReportsScreen() {
                                   <Edit2 size={18} color="#2D5016" />
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                  onPress={() => handleDeleteRefueling(refueling.id)}
+                                  onPress={() => {
+                                    console.log('[REPORTS] Botão excluir pressionado:', refueling.id);
+                                    handleDeleteRefueling(refueling.id);
+                                  }}
                                   style={styles.actionButton}
+                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                 >
                                   <Trash2 size={18} color="#F44336" />
                                 </TouchableOpacity>
@@ -382,6 +386,7 @@ export default function ReportsScreen() {
   };
 
   const handleDeleteRefueling = (refuelingId: string) => {
+    console.log('[REPORTS] handleDeleteRefueling chamado:', refuelingId);
     Alert.alert(
       'Excluir Abastecimento',
       'Tem certeza que deseja excluir este abastecimento? O combustível será devolvido ao tanque.',
