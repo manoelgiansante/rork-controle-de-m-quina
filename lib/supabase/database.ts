@@ -38,9 +38,7 @@ export async function createProperty(userId: string, name: string): Promise<Prop
   
   const { data, error } = await supabase
     .from('properties')
-    .insert({
-      name,
-    })
+    .insert({ name })
     .select()
     .single();
 
