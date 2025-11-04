@@ -50,13 +50,13 @@ export default function SubscriptionScreen() {
 
         let priceId = '';
         if (planType === 'basic' && billingCycle === 'monthly') {
-          priceId = process.env.NEXT_PUBLIC_PRICE_BASIC_MONTHLY || '';
+          priceId = process.env.EXPO_PUBLIC_PRICE_BASIC_MONTHLY || '';
         } else if (planType === 'basic' && billingCycle === 'annual') {
-          priceId = process.env.NEXT_PUBLIC_PRICE_BASIC_YEARLY || '';
+          priceId = process.env.EXPO_PUBLIC_PRICE_BASIC_YEARLY || '';
         } else if (planType === 'premium' && billingCycle === 'monthly') {
-          priceId = process.env.NEXT_PUBLIC_PRICE_PREMIUM_MONTHLY || '';
+          priceId = process.env.EXPO_PUBLIC_PRICE_PREMIUM_MONTHLY || '';
         } else if (planType === 'premium' && billingCycle === 'annual') {
-          priceId = process.env.NEXT_PUBLIC_PRICE_PREMIUM_YEARLY || '';
+          priceId = process.env.EXPO_PUBLIC_PRICE_PREMIUM_YEARLY || '';
         }
 
         if (!priceId) {
