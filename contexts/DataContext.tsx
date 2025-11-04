@@ -855,6 +855,48 @@ export const [DataProvider, useData] = createContextHook(() => {
     [farmTank, allFarmTanks, currentPropertyId, isWeb]
   );
 
+  const adjustTankFuel = useCallback(
+    async (adjustment: number, reason: string) => {
+      if (!currentPropertyId) return;
+
+      if (!farmTank) {
+        console.error('[DATA] Tanque não configurado');
+        return;
+      }
+
+      const newCurrentLiters = farmTank.currentLiters + adjustment;
+
+      const updatedTank: FarmTank = {
+        ...farmTank,
+        currentLiters: newCurrentLiters,
+      };
+
+      if (isWeb) {
+        console.log('[DATA WEB] Ajustando tanque no Supabase...', {
+          adjustment,
+          reason,
+          oldValue: farmTank.currentLiters,
+          newValue: newCurrentLiters,
+        });
+        await db.upsertFarmTank(updatedTank);
+      }
+
+      const updated = allFarmTanks.map(t => 
+        t.propertyId === currentPropertyId ? updatedTank : t
+      );
+      setAllFarmTanks(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
+
+      console.log('[DATA] Ajuste de tanque realizado:', {
+        adjustment: adjustment > 0 ? `+${adjustment}L` : `${adjustment}L`,
+        reason,
+        from: farmTank.currentLiters.toFixed(0),
+        to: newCurrentLiters.toFixed(0),
+      });
+    },
+    [farmTank, allFarmTanks, currentPropertyId, isWeb]
+  );
+
   const deletePropertyData = useCallback(
     async (propertyId: string) => {
       console.log(`Deletando todos os dados da propriedade ${propertyId}`);
@@ -913,6 +955,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       addFuel,
       consumeFuel,
       registerUnloggedConsumption,
+      adjustTankFuel,
       deletePropertyData,
     }),
     [
@@ -943,6 +986,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       addFuel,
       consumeFuel,
       registerUnloggedConsumption,
+      adjustTankFuel,
       deletePropertyData,
     ]
   );

@@ -1,6 +1,6 @@
 import { useData } from '@/contexts/DataContext';
 import type { FuelType } from '@/types';
-import { AlertTriangle, Droplets, Fuel, Plus } from 'lucide-react-native';
+import { AlertTriangle, Droplets, Fuel, Plus, Settings } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -16,11 +16,12 @@ import {
 const FUEL_TYPES: FuelType[] = ['Diesel comum', 'Diesel S10'];
 
 export default function FuelTankScreen() {
-  const { farmTank, updateTankInitialData, addFuel, updateTankCapacity, registerUnloggedConsumption } = useData();
+  const { farmTank, updateTankInitialData, addFuel, updateTankCapacity, registerUnloggedConsumption, adjustTankFuel } = useData();
 
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
   const [isAddFuelModalOpen, setIsAddFuelModalOpen] = useState<boolean>(false);
   const [isOverflowModalOpen, setIsOverflowModalOpen] = useState<boolean>(false);
+  const [isAdjustModalOpen, setIsAdjustModalOpen] = useState<boolean>(false);
   const [overflowAmount, setOverflowAmount] = useState<number>(0);
   const [pendingLitersToAdd, setPendingLitersToAdd] = useState<number>(0);
 
@@ -32,6 +33,9 @@ export default function FuelTankScreen() {
   const [litersToAdd, setLitersToAdd] = useState<string>('');
   const [isConsumptionAdjustModalOpen, setIsConsumptionAdjustModalOpen] = useState<boolean>(false);
   const [consumptionAdjustment, setConsumptionAdjustment] = useState<string>('');
+  const [adjustmentValue, setAdjustmentValue] = useState<string>('');
+  const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
+  const [adjustmentReason, setAdjustmentReason] = useState<string>('');
 
   const handleSetupTank = async () => {
     const capacity = parseFloat(capacityLiters);
@@ -98,6 +102,33 @@ export default function FuelTankScreen() {
     setLitersToAdd('');
     setIsAddFuelModalOpen(false);
     Alert.alert('Sucesso', `${liters.toFixed(0)} litros adicionados ao tanque!`);
+  };
+
+  const handleAdjustment = async () => {
+    const liters = parseFloat(adjustmentValue);
+
+    if (isNaN(liters) || liters <= 0) {
+      Alert.alert('Erro', 'Por favor, insira uma quantidade válida');
+      return;
+    }
+
+    if (!adjustmentReason.trim()) {
+      Alert.alert('Erro', 'Por favor, informe o motivo do ajuste');
+      return;
+    }
+
+    const finalValue = adjustmentType === 'add' ? liters : -liters;
+
+    await adjustTankFuel(finalValue, adjustmentReason);
+
+    setAdjustmentValue('');
+    setAdjustmentReason('');
+    setIsAdjustModalOpen(false);
+
+    Alert.alert(
+      'Ajuste Realizado',
+      `${adjustmentType === 'add' ? 'Adicionados' : 'Removidos'} ${liters.toFixed(0)} litros do tanque.\n\nMotivo: ${adjustmentReason}`
+    );
   };
 
 
@@ -285,13 +316,23 @@ export default function FuelTankScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setIsAddFuelModalOpen(true)}
-        >
-          <Plus size={24} color="#FFF" />
-          <Text style={styles.actionButtonText}>Adicionar Combustível</Text>
-        </TouchableOpacity>
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setIsAddFuelModalOpen(true)}
+          >
+            <Plus size={24} color="#FFF" />
+            <Text style={styles.actionButtonText}>Adicionar Combustível</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButtonSecondary}
+            onPress={() => setIsAdjustModalOpen(true)}
+          >
+            <Settings size={24} color="#2D5016" />
+            <Text style={styles.actionButtonSecondaryText}>Ajustar Estoque</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       <Modal
@@ -478,6 +519,99 @@ export default function FuelTankScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={isAdjustModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsAdjustModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Ajustar Estoque de Combustível</Text>
+
+            <Text style={styles.label}>Tipo de ajuste</Text>
+            <View style={styles.typeContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.typeButton,
+                  adjustmentType === 'add' && styles.typeButtonSelected,
+                ]}
+                onPress={() => setAdjustmentType('add')}
+              >
+                <Text
+                  style={[
+                    styles.typeButtonText,
+                    adjustmentType === 'add' && styles.typeButtonTextSelected,
+                  ]}
+                >
+                  Adicionar
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.typeButton,
+                  adjustmentType === 'subtract' && styles.typeButtonSelected,
+                ]}
+                onPress={() => setAdjustmentType('subtract')}
+              >
+                <Text
+                  style={[
+                    styles.typeButtonText,
+                    adjustmentType === 'subtract' && styles.typeButtonTextSelected,
+                  ]}
+                >
+                  Subtrair
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.label}>Quantidade (litros)</Text>
+            <TextInput
+              style={styles.input}
+              value={adjustmentValue}
+              onChangeText={setAdjustmentValue}
+              placeholder="Ex: 100"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
+
+            <Text style={styles.label}>Motivo do ajuste</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={adjustmentReason}
+              onChangeText={setAdjustmentReason}
+              placeholder="Ex: Correção de estoque, perda por evaporação, medição física"
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+            />
+
+            <Text style={styles.hint}>
+              {adjustmentType === 'add'
+                ? 'Isso aumentará o estoque atual do tanque'
+                : 'Isso diminuirá o estoque atual do tanque'}
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={() => {
+                  setIsAdjustModalOpen(false);
+                  setAdjustmentValue('');
+                  setAdjustmentReason('');
+                  setAdjustmentType('add');
+                }}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalButtonSave} onPress={handleAdjustment}>
+                <Text style={styles.modalButtonSaveText}>Confirmar Ajuste</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -644,6 +778,9 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '600' as const,
   },
+  actionButtonsContainer: {
+    gap: 12,
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -662,6 +799,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFF',
+  },
+  actionButtonSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 2,
+    borderColor: '#2D5016',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionButtonSecondaryText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#2D5016',
   },
   modalOverlay: {
     flex: 1,
@@ -728,6 +886,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#999',
     marginBottom: 24,
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+    paddingTop: 14,
   },
   modalButtons: {
     flexDirection: 'row',
