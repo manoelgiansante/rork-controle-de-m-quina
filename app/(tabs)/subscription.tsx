@@ -22,6 +22,7 @@ export default function SubscriptionScreen() {
     activateSubscription,
     startTrial,
     needsTrialActivation,
+    refreshSubscription,
   } = useSubscription();
   const { currentUser } = useAuth();
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -263,6 +264,24 @@ export default function SubscriptionScreen() {
               </Text>
             </View>
           </View>
+
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={async () => {
+                setIsProcessing(true);
+                await refreshSubscription();
+                setIsProcessing(false);
+              }}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <ActivityIndicator color="#2D5016" />
+              ) : (
+                <Text style={styles.refreshButtonText}>Atualizar Status da Assinatura</Text>
+              )}
+            </TouchableOpacity>
+          )}
 
           <Text style={styles.sectionTitle}>Escolha seu plano para continuar</Text>
           <View style={styles.plansGrid}>
@@ -612,5 +631,19 @@ const styles = StyleSheet.create({
     textAlign: 'center' as const,
     lineHeight: 20,
     paddingHorizontal: 20,
+  },
+  refreshButton: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center' as const,
+    marginVertical: 16,
+    borderWidth: 2,
+    borderColor: '#2D5016',
+  },
+  refreshButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#2D5016',
   },
 });

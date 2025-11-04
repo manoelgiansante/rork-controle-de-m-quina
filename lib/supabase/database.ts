@@ -538,3 +538,39 @@ export async function upsertUserPreferences(
     throw error;
   }
 }
+
+// ==================== SUBSCRIPTIONS ====================
+
+export async function fetchSubscription(userId: string): Promise<any | null> {
+  console.log('[DB] Buscando subscription para userId:', userId);
+  
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[DB] Error fetching subscription:', error);
+    throw error;
+  }
+
+  if (!data) {
+    console.log('[DB] Nenhuma subscription encontrada para userId:', userId);
+    return null;
+  }
+
+  console.log('[DB] Subscription encontrada:', data);
+  return {
+    userId: data.user_id,
+    stripeSubscriptionId: data.stripe_subscription_id,
+    stripeCustomerId: data.stripe_customer_id,
+    planType: data.plan_type,
+    billingCycle: data.billing_cycle,
+    machineLimit: data.machine_limit,
+    status: data.status,
+    currentPeriodStart: data.current_period_start,
+    currentPeriodEnd: data.current_period_end,
+    trialActive: data.trial_active,
+  };
+}

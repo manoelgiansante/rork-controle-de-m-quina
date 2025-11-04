@@ -1,7 +1,10 @@
 import AsyncStorage from '@/lib/storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import type { BillingCycle, PlanType, SubscriptionInfo, SubscriptionPlan } from '@/types';
+import { fetchSubscription } from '@/lib/supabase/database';
+import { useAuth } from './AuthContext';
 
 const STORAGE_KEY = '@controle_maquina:subscription';
 const TRIAL_DAYS = 7;
@@ -80,6 +83,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
+  const { currentUser } = useAuth();
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo>({
     status: 'none',
     machineLimit: 0,
@@ -87,6 +91,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     trialActive: false,
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isWeb = Platform.OS === 'web';
 
   const calculateSubscriptionStatus = useCallback((info: SubscriptionInfo): SubscriptionInfo => {
     const now = new Date();
@@ -158,31 +163,68 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
   }, []);
 
   const loadSubscription = useCallback(async () => {
+    console.log('[SUBSCRIPTION] Carregando subscription...', { isWeb, userId: currentUser?.id });
     try {
-      const data = await AsyncStorage.getItem(STORAGE_KEY);
-      if (data) {
-        const parsed = JSON.parse(data);
-        const calculated = calculateSubscriptionStatus(parsed);
-        setSubscriptionInfo(calculated);
+      if (isWeb && currentUser?.id) {
+        console.log('[SUBSCRIPTION WEB] Buscando do Supabase...');
+        const dbSub = await fetchSubscription(currentUser.id);
         
-        if (calculated.status !== parsed.status || calculated.isActive !== parsed.isActive) {
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(calculated));
+        if (dbSub && dbSub.status === 'active') {
+          console.log('[SUBSCRIPTION WEB] Subscription ativa encontrada:', dbSub);
+          const subInfo: SubscriptionInfo = {
+            status: 'active',
+            planType: dbSub.planType,
+            billingCycle: dbSub.billingCycle,
+            machineLimit: dbSub.machineLimit,
+            subscriptionStartDate: dbSub.currentPeriodStart,
+            subscriptionEndDate: dbSub.currentPeriodEnd,
+            isActive: true,
+            trialActive: false,
+          };
+          setSubscriptionInfo(subInfo);
+          console.log('[SUBSCRIPTION WEB] Subscription Info atualizada:', subInfo);
+        } else {
+          console.log('[SUBSCRIPTION WEB] Nenhuma subscription ativa, carregando do AsyncStorage...');
+          const data = await AsyncStorage.getItem(STORAGE_KEY);
+          if (data) {
+            const parsed = JSON.parse(data);
+            const calculated = calculateSubscriptionStatus(parsed);
+            setSubscriptionInfo(calculated);
+          } else {
+            setSubscriptionInfo({
+              status: 'none',
+              machineLimit: 0,
+              isActive: false,
+              trialActive: false,
+            });
+          }
         }
       } else {
-        const newInfo: SubscriptionInfo = {
-          status: 'none',
-          machineLimit: 0,
-          isActive: false,
-          trialActive: false,
-        };
-        setSubscriptionInfo(newInfo);
+        console.log('[SUBSCRIPTION MOBILE] Carregando do AsyncStorage...');
+        const data = await AsyncStorage.getItem(STORAGE_KEY);
+        if (data) {
+          const parsed = JSON.parse(data);
+          const calculated = calculateSubscriptionStatus(parsed);
+          setSubscriptionInfo(calculated);
+          
+          if (calculated.status !== parsed.status || calculated.isActive !== parsed.isActive) {
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(calculated));
+          }
+        } else {
+          setSubscriptionInfo({
+            status: 'none',
+            machineLimit: 0,
+            isActive: false,
+            trialActive: false,
+          });
+        }
       }
     } catch (error) {
-      console.error('Error loading subscription:', error);
+      console.error('[SUBSCRIPTION] Error loading subscription:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [calculateSubscriptionStatus]);
+  }, [calculateSubscriptionStatus, isWeb, currentUser]);
 
   useEffect(() => {
     loadSubscription();
@@ -285,6 +327,22 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     return Math.max(0, subscriptionInfo.machineLimit - currentMachineCount);
   }, [subscriptionInfo.machineLimit]);
 
+  const refreshSubscription = useCallback(async () => {
+    console.log('[SUBSCRIPTION] Forçando refresh da subscription...');
+    await loadSubscription();
+  }, [loadSubscription]);
+
+  useEffect(() => {
+    if (!isWeb || !currentUser?.id) return;
+
+    const interval = setInterval(() => {
+      console.log('[SUBSCRIPTION] Verificação periódica (30s)...');
+      loadSubscription();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isWeb, currentUser, loadSubscription]);
+
   const needsTrialActivation = subscriptionInfo.status === 'none' && !isLoading;
   const needsSubscription = !subscriptionInfo.isActive && !isLoading;
   const isInTrial = subscriptionInfo.status === 'trial' && subscriptionInfo.isActive;
@@ -299,6 +357,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       checkSubscriptionStatus,
       canAddMachine,
       getRemainingMachineSlots,
+      refreshSubscription,
       needsTrialActivation,
       needsSubscription,
       isInTrial,
@@ -312,6 +371,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       checkSubscriptionStatus,
       canAddMachine,
       getRemainingMachineSlots,
+      refreshSubscription,
       needsTrialActivation,
       needsSubscription,
       isInTrial,
