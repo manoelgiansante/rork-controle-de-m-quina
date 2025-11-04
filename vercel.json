@@ -1,5 +1,11 @@
 {
+  "functions": {
+    "backend/hono.ts": {
+      "runtime": "nodejs22.x"
+    }
+  },
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/backend/hono" },
     { "source": "/((?!api).*)", "destination": "/" }
   ],
   "headers": [
