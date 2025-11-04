@@ -78,8 +78,4 @@ app.post("/logout", (c) => {
   return c.json({ success: true, message: "Logged out successfully" });
 });
 
-export const config = {
-  runtime: 'nodejs',
-};
-
 export default handle(app);
