@@ -36,8 +36,8 @@ app.use("*", cors({
   maxAge: 86400,
 }));
 
-app.route("/", stripeWebhook);
 app.route("/api", stripeCheckout);
+app.route("/", stripeWebhook);
 
 app.use(
   "/api/trpc/*",
