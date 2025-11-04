@@ -7,10 +7,15 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const app = new Hono();
 
-app.options('/stripe/checkout', (c) => c.body(null, 204));
+console.log('[STRIPE-CHECKOUT] Módulo carregado');
+
+app.options('/stripe/checkout', (c) => {
+  console.log('[CHECKOUT] OPTIONS recebido!');
+  return c.body(null, 204);
+});
 
 app.post('/stripe/checkout', async (c) => {
-  console.log('[CHECKOUT] POST recebido!');
+  console.log('[CHECKOUT] POST recebido!', c.req.method, c.req.path);
   try {
     const body = await c.req.json();
     const { priceId, userId } = body;

@@ -5,8 +5,19 @@ import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
 import stripeWebhook from "./routes/stripe-webhook";
 import stripeCheckout from "./routes/stripe-checkout";
+import testRoute from "./routes/test-route";
 
 const app = new Hono();
+
+app.onError((err, c) => {
+  console.error('[APP ERROR]', err);
+  return c.text('Internal Error', 500);
+});
+
+app.notFound((c) => {
+  console.warn('[NOT FOUND]', c.req.method, c.req.path);
+  return c.text('Not Found', 404);
+});
 
 const ALLOWED_ORIGINS = [
   "https://controledemaquina.com.br",
@@ -31,13 +42,20 @@ app.use("*", cors({
     "Authorization",
     "x-trpc-source",
     "x-supabase-authorization",
+    "Stripe-Signature",
   ],
   exposeHeaders: ["Content-Length"],
   maxAge: 86400,
 }));
 
+console.log('[HONO] Registrando rotas de teste...');
+app.route("/api", testRoute);
+console.log('[HONO] Rotas de teste registradas.');
+
+console.log('[HONO] Registrando rotas Stripe...');
 app.route("/api", stripeCheckout);
 app.route("/", stripeWebhook);
+console.log('[HONO] Rotas Stripe registradas.');
 
 app.use(
   "/api/trpc/*",
