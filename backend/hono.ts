@@ -37,7 +37,7 @@ app.use("*", cors({
 }));
 
 app.route("/", stripeWebhook);
-app.route("/", stripeCheckout);
+app.route("/api", stripeCheckout);
 
 app.use(
   "/api/trpc/*",

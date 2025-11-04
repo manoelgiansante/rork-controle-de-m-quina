@@ -7,7 +7,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const app = new Hono();
 
-app.post('/api/stripe/checkout', async (c) => {
+app.options('/stripe/checkout', (c) => c.body(null, 204));
+
+app.post('/stripe/checkout', async (c) => {
+  console.log('[CHECKOUT] POST recebido!');
   try {
     const body = await c.req.json();
     const { priceId, userId } = body;
