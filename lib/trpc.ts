@@ -20,6 +20,17 @@ export const trpcClient = trpc.createClient({
     httpLink({
       url: `${getBaseUrl()}/api/trpc`,
       transformer: superjson,
+      fetch: (url, options) => {
+        return fetch(url, {
+          ...options,
+          credentials: 'include',
+          mode: 'cors',
+          headers: {
+            ...options?.headers,
+            'Content-Type': 'application/json',
+          },
+        });
+      },
     }),
   ],
 });
