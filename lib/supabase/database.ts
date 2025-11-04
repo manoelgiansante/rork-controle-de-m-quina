@@ -579,7 +579,8 @@ export async function fetchSubscription(userId: string): Promise<any | null> {
     .maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
-    console.error('[DB] Error fetching subscription:', error);
+    console.error('[DB] Error fetching subscription:', JSON.stringify(error, null, 2));
+    console.error('[DB] Error details:', { message: error.message, code: error.code, details: error.details, hint: error.hint });
     throw error;
   }
 
