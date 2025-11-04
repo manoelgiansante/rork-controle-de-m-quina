@@ -1,13 +1,9 @@
 {
   "functions": {
-    "backend/hono.ts": {
+    "api/**/*.ts": {
       "runtime": "nodejs20.x"
     }
   },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/backend/hono" },
-    { "source": "/((?!api).*)", "destination": "/" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
