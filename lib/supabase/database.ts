@@ -252,6 +252,34 @@ export async function createRefueling(
   };
 }
 
+export async function updateRefueling(
+  refuelingId: string,
+  updates: Partial<Omit<Refueling, 'id' | 'propertyId' | 'machineId' | 'userId' | 'userName' | 'createdAt'>>
+): Promise<void> {
+  const updateData: Record<string, any> = {};
+  if (updates.date !== undefined) updateData.date = updates.date;
+  if (updates.liters !== undefined) updateData.liters = updates.liters;
+  if (updates.hourMeter !== undefined) updateData.hour_meter = updates.hourMeter;
+  if (updates.serviceType !== undefined) updateData.service_type = updates.serviceType;
+  if (updates.averageConsumption !== undefined) updateData.average_consumption = updates.averageConsumption;
+
+  const { error } = await supabase.from('refuelings').update(updateData).eq('id', refuelingId);
+
+  if (error) {
+    console.error('[DB] Error updating refueling:', error);
+    throw error;
+  }
+}
+
+export async function deleteRefueling(refuelingId: string): Promise<void> {
+  const { error } = await supabase.from('refuelings').delete().eq('id', refuelingId);
+
+  if (error) {
+    console.error('[DB] Error deleting refueling:', error);
+    throw error;
+  }
+}
+
 // ==================== MAINTENANCES ====================
 
 export async function fetchMaintenances(propertyId: string): Promise<Maintenance[]> {

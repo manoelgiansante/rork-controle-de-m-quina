@@ -400,6 +400,42 @@ export const [DataProvider, useData] = createContextHook(() => {
     [allMaintenances, isWeb]
   );
 
+  const updateRefueling = useCallback(
+    async (refuelingId: string, updates: Partial<Refueling>) => {
+      if (isWeb) {
+        console.log('[DATA WEB] Atualizando abastecimento no Supabase...');
+        await db.updateRefueling(refuelingId, updates);
+      }
+
+      const updated = allRefuelings.map((r) =>
+        r.id === refuelingId ? { ...r, ...updates } : r
+      );
+      setAllRefuelings(updated);
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.REFUELINGS,
+        JSON.stringify(updated)
+      );
+    },
+    [allRefuelings, isWeb]
+  );
+
+  const deleteRefueling = useCallback(
+    async (refuelingId: string) => {
+      if (isWeb) {
+        console.log('[DATA WEB] Deletando abastecimento no Supabase...');
+        await db.deleteRefueling(refuelingId);
+      }
+
+      const updated = allRefuelings.filter((r) => r.id !== refuelingId);
+      setAllRefuelings(updated);
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.REFUELINGS,
+        JSON.stringify(updated)
+      );
+    },
+    [allRefuelings, isWeb]
+  );
+
   const deleteMaintenance = useCallback(
     async (maintenanceId: string) => {
       if (isWeb) {
@@ -744,6 +780,8 @@ export const [DataProvider, useData] = createContextHook(() => {
       updateMachine,
       deleteMachine,
       addRefueling,
+      updateRefueling,
+      deleteRefueling,
       addMaintenance,
       updateMaintenance,
       deleteMaintenance,
@@ -772,6 +810,8 @@ export const [DataProvider, useData] = createContextHook(() => {
       updateMachine,
       deleteMachine,
       addRefueling,
+      updateRefueling,
+      deleteRefueling,
       addMaintenance,
       updateMaintenance,
       deleteMaintenance,

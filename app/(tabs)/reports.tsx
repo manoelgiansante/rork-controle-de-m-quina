@@ -1,19 +1,25 @@
 import { useData } from '@/contexts/DataContext';
-import type { AlertStatus } from '@/types';
+import type { AlertStatus, Maintenance, Refueling } from '@/types';
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle,
   Clock,
   Droplet,
+  Edit2,
   Settings,
+  Trash2,
+  X,
 } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -26,9 +32,15 @@ export default function ReportsScreen() {
     alerts,
     getMaintenancesForMachine,
     getRefuelingsForMachine,
+    updateMaintenance,
+    deleteMaintenance,
+    updateRefueling,
+    deleteRefueling,
   } = useData();
   const [selectedSection, setSelectedSection] =
     useState<ReportSection>('alerts');
+  const [editingMaintenance, setEditingMaintenance] = useState<Maintenance | null>(null);
+  const [editingRefueling, setEditingRefueling] = useState<Refueling | null>(null);
 
   const alertsData = useMemo(() => {
     const sorted = [...alerts].sort((a, b) => {
@@ -202,6 +214,20 @@ export default function ReportsScreen() {
                               <Text style={styles.historyDate}>
                                 {new Date(maintenance.createdAt).toLocaleDateString('pt-BR')}
                               </Text>
+                              <View style={styles.actionButtons}>
+                                <TouchableOpacity
+                                  onPress={() => setEditingMaintenance(maintenance)}
+                                  style={styles.actionButton}
+                                >
+                                  <Edit2 size={18} color="#2D5016" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => handleDeleteMaintenance(maintenance.id)}
+                                  style={styles.actionButton}
+                                >
+                                  <Trash2 size={18} color="#F44336" />
+                                </TouchableOpacity>
+                              </View>
                             </View>
                             <Text style={styles.historyHourMeter}>
                               Horímetro: {maintenance.hourMeter}h
@@ -264,6 +290,20 @@ export default function ReportsScreen() {
                               <Text style={styles.historyDate}>
                                 {new Date(refueling.date).toLocaleDateString('pt-BR')}
                               </Text>
+                              <View style={styles.actionButtons}>
+                                <TouchableOpacity
+                                  onPress={() => setEditingRefueling(refueling)}
+                                  style={styles.actionButton}
+                                >
+                                  <Edit2 size={18} color="#2D5016" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => handleDeleteRefueling(refueling.id)}
+                                  style={styles.actionButton}
+                                >
+                                  <Trash2 size={18} color="#F44336" />
+                                </TouchableOpacity>
+                              </View>
                             </View>
                             <View style={styles.refuelingDetails}>
                               <View style={styles.refuelingRow}>
@@ -316,6 +356,80 @@ export default function ReportsScreen() {
             )}
           </View>
         );
+    }
+  };
+
+  const handleDeleteMaintenance = (maintenanceId: string) => {
+    Alert.alert(
+      'Excluir Manutenção',
+      'Tem certeza que deseja excluir esta manutenção?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMaintenance(maintenanceId);
+            } catch (error) {
+              console.error('Erro ao excluir manutenção:', error);
+              Alert.alert('Erro', 'Não foi possível excluir a manutenção');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteRefueling = (refuelingId: string) => {
+    Alert.alert(
+      'Excluir Abastecimento',
+      'Tem certeza que deseja excluir este abastecimento?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteRefueling(refuelingId);
+            } catch (error) {
+              console.error('Erro ao excluir abastecimento:', error);
+              Alert.alert('Erro', 'Não foi possível excluir o abastecimento');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSaveMaintenance = async () => {
+    if (!editingMaintenance) return;
+
+    try {
+      await updateMaintenance(editingMaintenance.id, {
+        hourMeter: editingMaintenance.hourMeter,
+        observation: editingMaintenance.observation,
+      });
+      setEditingMaintenance(null);
+    } catch (error) {
+      console.error('Erro ao atualizar manutenção:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar a manutenção');
+    }
+  };
+
+  const handleSaveRefueling = async () => {
+    if (!editingRefueling) return;
+
+    try {
+      await updateRefueling(editingRefueling.id, {
+        liters: editingRefueling.liters,
+        hourMeter: editingRefueling.hourMeter,
+      });
+      setEditingRefueling(null);
+    } catch (error) {
+      console.error('Erro ao atualizar abastecimento:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar o abastecimento');
     }
   };
 
@@ -405,6 +519,125 @@ export default function ReportsScreen() {
       </View>
 
       {renderSectionContent()}
+
+      <Modal
+        visible={editingMaintenance !== null}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditingMaintenance(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Manutenção</Text>
+              <TouchableOpacity onPress={() => setEditingMaintenance(null)}>
+                <X size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {editingMaintenance && (
+              <View style={styles.modalBody}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Horímetro (h)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingMaintenance.hourMeter.toString()}
+                    onChangeText={(text) =>
+                      setEditingMaintenance({
+                        ...editingMaintenance,
+                        hourMeter: parseFloat(text) || 0,
+                      })
+                    }
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Observação</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={editingMaintenance.observation || ''}
+                    onChangeText={(text) =>
+                      setEditingMaintenance({
+                        ...editingMaintenance,
+                        observation: text,
+                      })
+                    }
+                    multiline
+                    numberOfLines={3}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleSaveMaintenance}
+                >
+                  <Text style={styles.saveButtonText}>Salvar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={editingRefueling !== null}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditingRefueling(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Abastecimento</Text>
+              <TouchableOpacity onPress={() => setEditingRefueling(null)}>
+                <X size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {editingRefueling && (
+              <View style={styles.modalBody}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Litros</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingRefueling.liters.toString()}
+                    onChangeText={(text) =>
+                      setEditingRefueling({
+                        ...editingRefueling,
+                        liters: parseFloat(text) || 0,
+                      })
+                    }
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Horímetro (h)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingRefueling.hourMeter.toString()}
+                    onChangeText={(text) =>
+                      setEditingRefueling({
+                        ...editingRefueling,
+                        hourMeter: parseFloat(text) || 0,
+                      })
+                    }
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleSaveRefueling}
+                >
+                  <Text style={styles.saveButtonText}>Salvar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -668,5 +901,81 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     color: '#E8F5E9',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 'auto',
+  },
+  actionButton: {
+    padding: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#333',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#333',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#333',
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  saveButton: {
+    backgroundColor: '#2D5016',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFF',
   },
 });
