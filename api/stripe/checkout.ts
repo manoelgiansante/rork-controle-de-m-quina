@@ -5,7 +5,7 @@ async function readJson(req: VercelRequest) {
   if (typeof req.body === 'object' && req.body) return req.body;
   const chunks: Buffer[] = [];
   for await (const ch of req) chunks.push(Buffer.from(ch));
-  const raw = Buffer.concat(chunks).toString('utf8') || '{}';
+  const raw = Buffer.concat(chunks as any).toString('utf8') || '{}';
   try {
     return JSON.parse(raw);
   } catch {
