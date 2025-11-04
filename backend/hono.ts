@@ -9,16 +9,18 @@ const app = new Hono();
 const ALLOWED_ORIGINS = [
   "https://controledemaquina.com.br",
   "https://www.controledemaquina.com.br",
+  "https://controledemaquina.rork.app",
   "http://localhost:8081",
   "http://localhost:19006",
 ];
 
-app.use("/*", cors({
+app.use("*", cors({
   origin: (origin) => {
+    console.log('[CORS] Request origin:', origin);
     if (!origin || ALLOWED_ORIGINS.includes(origin)) {
-      return origin || "*";
+      return origin || ALLOWED_ORIGINS[0];
     }
-    return "";
+    return ALLOWED_ORIGINS[0];
   },
   credentials: true,
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -32,8 +34,16 @@ app.use("/*", cors({
   maxAge: 86400,
 }));
 
+app.options("*", (c) => {
+  console.log('[OPTIONS] Preflight request received');
+  return new Response("", {
+    status: 204,
+    headers: c.res.headers,
+  });
+});
+
 app.use(
-  "/trpc/*",
+  "/api/trpc/*",
   trpcServer({
     endpoint: "/api/trpc",
     router: appRouter,
