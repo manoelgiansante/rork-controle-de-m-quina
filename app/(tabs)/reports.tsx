@@ -384,7 +384,7 @@ export default function ReportsScreen() {
   const handleDeleteRefueling = (refuelingId: string) => {
     Alert.alert(
       'Excluir Abastecimento',
-      'Tem certeza que deseja excluir este abastecimento?',
+      'Tem certeza que deseja excluir este abastecimento? O combustível será devolvido ao tanque.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -392,9 +392,12 @@ export default function ReportsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              console.log('[REPORTS] Excluindo abastecimento:', refuelingId);
               await deleteRefueling(refuelingId);
+              console.log('[REPORTS] Abastecimento excluído com sucesso');
+              Alert.alert('Sucesso', 'Abastecimento excluído com sucesso!');
             } catch (error) {
-              console.error('Erro ao excluir abastecimento:', error);
+              console.error('[REPORTS] Erro ao excluir abastecimento:', error);
               Alert.alert('Erro', 'Não foi possível excluir o abastecimento');
             }
           },
