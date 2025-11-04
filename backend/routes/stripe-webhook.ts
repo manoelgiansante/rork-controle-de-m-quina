@@ -13,7 +13,7 @@ const supabase = createClient(
 
 const app = new Hono();
 
-app.post('/api/stripe/webhook', async (c) => {
+app.post('/stripe/webhook', async (c) => {
   const sig = c.req.header('stripe-signature');
   
   if (!sig) {

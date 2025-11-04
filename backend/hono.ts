@@ -48,14 +48,14 @@ app.use("*", cors({
   maxAge: 86400,
 }));
 
+console.log('[HONO] Registrando rotas Stripe (checkout antes do webhook)...');
+app.route("/api", stripeCheckout);
+app.route("/api", stripeWebhook);
+console.log('[HONO] Rotas Stripe registradas.');
+
 console.log('[HONO] Registrando rotas de teste...');
 app.route("/api", testRoute);
 console.log('[HONO] Rotas de teste registradas.');
-
-console.log('[HONO] Registrando rotas Stripe...');
-app.route("/api", stripeCheckout);
-app.route("/", stripeWebhook);
-console.log('[HONO] Rotas Stripe registradas.');
 
 app.use(
   "/api/trpc/*",
