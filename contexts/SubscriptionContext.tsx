@@ -220,15 +220,24 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           console.log('[SUBSCRIPTION] Usando dados do Supabase');
           return;
         } else {
-          console.log('[SUBSCRIPTION] Nenhuma assinatura encontrada no Supabase - limpando cache');
+          console.log('[SUBSCRIPTION] Nenhuma assinatura encontrada - iniciando trial automático de 7 dias');
           await AsyncStorage.removeItem(STORAGE_KEY);
+          
+          const trialEnd = new Date();
+          trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
+          
           const newInfo: SubscriptionInfo = {
-            status: 'none',
-            machineLimit: 0,
-            isActive: false,
-            trialActive: false,
+            status: 'trial',
+            trialActive: true,
+            trialEndsAt: trialEnd.toISOString(),
+            isActive: true,
+            machineLimit: -1,
+            daysRemainingInTrial: TRIAL_DAYS,
           };
+          
           setSubscriptionInfo(newInfo);
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newInfo));
+          console.log('[SUBSCRIPTION] Trial automático iniciado:', newInfo);
           return;
         }
       }
