@@ -2,7 +2,7 @@ import AsyncStorage from '@/lib/storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
-import type { BillingCycle, PlanType, SubscriptionInfo, SubscriptionPlan } from '@/types';
+import type { BillingCycle, PlanType, SubscriptionInfo, SubscriptionPlan, SubscriptionStatus } from '@/types';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
@@ -180,18 +180,53 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       if (data) {
         console.log('[SUBSCRIPTION] Dados encontrados no Supabase:', data);
         
+        // Se assinatura foi cancelada (status = 'canceled'), NÃO considera mais como ativa
+        const isCanceled = data.status === 'canceled';
+        const isActive = data.status === 'active' && !isCanceled;
+        
+        // Se tem cancel_at_period_end = true, ainda está no período de graça
+        const cancelAtPeriodEnd = data.cancel_at_period_end || false;
+        const currentPeriodEnd = data.current_period_end;
+        
+        // Se está no período de graça, verifica se ainda é válido
+        let finalStatus: SubscriptionStatus = data.status === 'active' ? 'active' : 'expired';
+        let finalIsActive = isActive;
+        
+        if (cancelAtPeriodEnd && currentPeriodEnd) {
+          const now = new Date();
+          const periodEnd = new Date(currentPeriodEnd);
+          
+          if (now <= periodEnd) {
+            // Ainda está no período de graça
+            finalStatus = 'active';
+            finalIsActive = true;
+            console.log('[SUBSCRIPTION] ⚠️ Assinatura cancelada mas ainda no período de graça até:', currentPeriodEnd);
+          } else {
+            // Período de graça expirou
+            finalStatus = 'expired';
+            finalIsActive = false;
+            console.log('[SUBSCRIPTION] ❌ Período de graça expirou');
+          }
+        }
+        
+        if (isCanceled) {
+          finalStatus = 'expired';
+          finalIsActive = false;
+          console.log('[SUBSCRIPTION] ❌ Assinatura cancelada permanentemente');
+        }
+        
         const subscriptionData: SubscriptionInfo = {
-          status: data.status === 'active' ? 'active' : 'expired',
+          status: finalStatus,
           planType: data.plan_type,
           billingCycle: data.billing_cycle,
-          machineLimit: data.machine_limit,
+          machineLimit: finalIsActive ? data.machine_limit : 0,
           subscriptionStartDate: data.current_period_start,
           subscriptionEndDate: data.current_period_end,
-          isActive: data.status === 'active',
+          isActive: finalIsActive,
           trialActive: data.trial_active || false,
           trialEndsAt: data.trial_ends_at,
-          cancelAtPeriodEnd: data.cancel_at_period_end || false,
-          currentPeriodEnd: data.current_period_end,
+          cancelAtPeriodEnd: cancelAtPeriodEnd,
+          currentPeriodEnd: currentPeriodEnd,
           canceledAt: data.canceled_at,
         };
 
