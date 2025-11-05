@@ -300,12 +300,14 @@ export default function ReportsScreen() {
                                 <TouchableOpacity
                                   onPress={() => {
                                     console.log('[REPORTS] Botão excluir pressionado:', refueling.id);
+                                    console.log('[REPORTS] Refueling completo:', JSON.stringify(refueling, null, 2));
                                     handleDeleteRefueling(refueling.id);
                                   }}
-                                  style={styles.actionButton}
-                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                  style={styles.deleteButton}
+                                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                  testID={`delete-refueling-${refueling.id}`}
                                 >
-                                  <Trash2 size={18} color="#F44336" />
+                                  <Trash2 size={20} color="#FFF" />
                                 </TouchableOpacity>
                               </View>
                             </View>
@@ -917,6 +919,13 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     padding: 4,
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+    borderRadius: 6,
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalOverlay: {
     flex: 1,
