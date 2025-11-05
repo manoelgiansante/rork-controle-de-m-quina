@@ -107,6 +107,9 @@ export interface SubscriptionInfo {
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
   daysRemainingInTrial?: number;
+  cancelAtPeriodEnd?: boolean;
+  currentPeriodEnd?: string;
+  canceledAt?: string;
 }
 
 export type FuelType = 'Diesel comum' | 'Diesel S10';

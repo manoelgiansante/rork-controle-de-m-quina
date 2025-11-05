@@ -201,6 +201,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             current_period_end: (subscription as any).current_period_end
               ? new Date((subscription as any).current_period_end * 1000).toISOString()
               : existingSub.current_period_end,
+            cancel_at_period_end: subscription.cancel_at_period_end || false,
           })
           .eq('user_id', userId);
 

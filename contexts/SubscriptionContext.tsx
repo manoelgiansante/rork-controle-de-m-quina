@@ -190,6 +190,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           isActive: data.status === 'active',
           trialActive: data.trial_active || false,
           trialEndsAt: data.trial_ends_at,
+          cancelAtPeriodEnd: data.cancel_at_period_end || false,
+          currentPeriodEnd: data.current_period_end,
+          canceledAt: data.canceled_at,
         };
 
         const calculated = calculateSubscriptionStatus(subscriptionData);
@@ -220,25 +223,50 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           console.log('[SUBSCRIPTION] Usando dados do Supabase');
           return;
         } else {
-          console.log('[SUBSCRIPTION] Nenhuma assinatura encontrada - iniciando trial automático de 7 dias');
-          await AsyncStorage.removeItem(STORAGE_KEY);
+          console.log('[SUBSCRIPTION] Nenhuma assinatura encontrada - verificando histórico de trial');
           
-          const trialEnd = new Date();
-          trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
+          const { data: previousSubscriptions } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .limit(1);
           
-          const newInfo: SubscriptionInfo = {
-            status: 'trial',
-            trialActive: true,
-            trialEndsAt: trialEnd.toISOString(),
-            isActive: true,
-            machineLimit: -1,
-            daysRemainingInTrial: TRIAL_DAYS,
-          };
-          
-          setSubscriptionInfo(newInfo);
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newInfo));
-          console.log('[SUBSCRIPTION] Trial automático iniciado:', newInfo);
-          return;
+          if (previousSubscriptions && previousSubscriptions.length > 0) {
+            console.log('[SUBSCRIPTION] Usuário já teve assinatura antes - NÃO pode ter trial novamente');
+            await AsyncStorage.removeItem(STORAGE_KEY);
+            
+            const expiredInfo: SubscriptionInfo = {
+              status: 'expired',
+              machineLimit: 0,
+              isActive: false,
+              trialActive: false,
+            };
+            
+            setSubscriptionInfo(expiredInfo);
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(expiredInfo));
+            console.log('[SUBSCRIPTION] Status definido como expired:', expiredInfo);
+            return;
+          } else {
+            console.log('[SUBSCRIPTION] Primeiro acesso - iniciando trial automático de 7 dias');
+            await AsyncStorage.removeItem(STORAGE_KEY);
+            
+            const trialEnd = new Date();
+            trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
+            
+            const newInfo: SubscriptionInfo = {
+              status: 'trial',
+              trialActive: true,
+              trialEndsAt: trialEnd.toISOString(),
+              isActive: true,
+              machineLimit: -1,
+              daysRemainingInTrial: TRIAL_DAYS,
+            };
+            
+            setSubscriptionInfo(newInfo);
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newInfo));
+            console.log('[SUBSCRIPTION] Trial automático iniciado:', newInfo);
+            return;
+          }
         }
       }
       

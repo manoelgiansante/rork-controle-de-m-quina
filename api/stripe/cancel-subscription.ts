@@ -78,15 +78,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Subscription real - cancela no Stripe E no Supabase
+    // Subscription real - cancela no final do período (período de graça)
     try {
-      console.log('[CANCEL] 🔄 Cancelando subscription real no Stripe:', stripeSubscriptionId);
+      console.log('[CANCEL] 🔄 Configurando cancelamento no final do período no Stripe:', stripeSubscriptionId);
       
-      const canceledSubscription = await stripe.subscriptions.cancel(stripeSubscriptionId);
+      const updatedSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
       
-      console.log('[CANCEL] ✅ Subscription cancelada no Stripe:', canceledSubscription.id);
+      console.log('[CANCEL] ✅ Subscription configurada para cancelar no final do período:', updatedSubscription.id);
+      console.log('[CANCEL] 🗓️ Período termina em:', new Date((updatedSubscription as any).current_period_end * 1000).toISOString());
     } catch (stripeError: any) {
-      console.error('[CANCEL] ❌ Erro ao cancelar no Stripe:', stripeError.message);
+      console.error('[CANCEL] ❌ Erro ao configurar cancelamento no Stripe:', stripeError.message);
       
       // Se erro é "subscription não encontrada", apenas atualiza Supabase
       if (stripeError.code === 'resource_missing') {
@@ -97,12 +100,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Atualiza status no Supabase
+    // Busca dados atualizados para pegar current_period_end
+    let currentPeriodEnd = subscription.current_period_end;
+    try {
+      const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+      currentPeriodEnd = (stripeSubscription as any).current_period_end 
+        ? new Date((stripeSubscription as any).current_period_end * 1000).toISOString()
+        : currentPeriodEnd;
+    } catch (err) {
+      console.error('[CANCEL] ⚠️ Erro ao buscar subscription no Stripe:', err);
+    }
+
+    // Atualiza status no Supabase - marca cancel_at_period_end mas mantém ativa
     const { error: updateError } = await supabase
       .from('subscriptions')
       .update({
-        status: 'canceled',
-        trial_active: false,
+        cancel_at_period_end: true,
+        current_period_end: currentPeriodEnd,
+        canceled_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
 
@@ -111,11 +126,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Erro ao atualizar banco de dados' });
     }
 
-    console.log('[CANCEL] ✅ Subscription cancelada com sucesso para userId:', userId);
+    console.log('[CANCEL] ✅ Subscription configurada para cancelar no final do período para userId:', userId);
 
     return res.status(200).json({
       success: true,
-      message: 'Assinatura cancelada com sucesso',
+      message: 'Assinatura será cancelada no final do período atual',
+      currentPeriodEnd,
     });
 
   } catch (error: any) {
