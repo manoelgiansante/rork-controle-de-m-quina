@@ -81,6 +81,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const loadData = useCallback(async () => {
     if (!currentPropertyId || !currentUser) {
+      console.log('[DATA] Aguardando property e user...', { currentPropertyId, currentUser: !!currentUser });
       setIsLoading(false);
       return;
     }
@@ -185,8 +186,14 @@ export const [DataProvider, useData] = createContextHook(() => {
   }, [currentPropertyId, currentUser, isWeb]);
 
   useEffect(() => {
+    if (!currentPropertyId || !currentUser) {
+      console.log('[DATA] Effect: Aguardando inicialização...');
+      setIsLoading(false);
+      return;
+    }
+    console.log('[DATA] Effect: Carregando dados...');
     loadData();
-  }, [loadData]);
+  }, [currentPropertyId, currentUser, loadData]);
 
   const addMachine = useCallback(
     async (machine: Omit<Machine, 'id' | 'createdAt' | 'updatedAt' | 'propertyId'>) => {

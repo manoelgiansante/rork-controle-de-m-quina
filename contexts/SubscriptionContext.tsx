@@ -213,12 +213,11 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     try {
       setIsLoading(true);
       
-      if (currentUser?.id) {
+      if (currentUser?.id && isWeb) {
         const supabaseData = await syncWithSupabase(currentUser.id);
         
         if (supabaseData) {
           console.log('[SUBSCRIPTION] Usando dados do Supabase');
-          setIsLoading(false);
           return;
         }
       }
@@ -252,14 +251,22 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         hint: error?.hint,
         stack: error?.stack
       });
+      const newInfo: SubscriptionInfo = {
+        status: 'none',
+        machineLimit: 0,
+        isActive: false,
+        trialActive: false,
+      };
+      setSubscriptionInfo(newInfo);
     } finally {
       setIsLoading(false);
     }
-  }, [syncWithSupabase, calculateSubscriptionStatus]);
+  }, [currentUser?.id, isWeb, syncWithSupabase, calculateSubscriptionStatus]);
 
   useEffect(() => {
+    if (currentUser === undefined) return;
     loadSubscription();
-  }, [loadSubscription]);
+  }, [currentUser, loadSubscription]);
 
   const startTrial = useCallback(async () => {
     const trialEnd = new Date();
