@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
+import CancelSubscriptionModal from '@/components/CancelSubscriptionModal';
 
 export default function SubscriptionScreen() {
   const {
@@ -27,6 +28,8 @@ export default function SubscriptionScreen() {
   } = useSubscription();
   const { currentUser } = useAuth();
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
+  const [canceling, setCanceling] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
 
   const handleSelectPlan = async (planType: PlanType, billingCycle: BillingCycle) => {
@@ -128,96 +131,82 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const CancelSubscriptionButton = () => {
-    const [canceling, setCanceling] = useState(false);
+  const handleCancelSubscription = async () => {
+    try {
+      setCanceling(true);
+      
+      console.log('[CANCEL] Iniciando cancelamento...');
 
-    const handleCancelSubscription = async () => {
-      Alert.alert(
-        'Cancelar Assinatura',
-        'Tem certeza que deseja cancelar sua assinatura? Você perderá acesso aos recursos Premium no final do período atual.',
-        [
-          {
-            text: 'Não, manter assinatura',
-            style: 'cancel',
+      if (!currentUser) {
+        if (Platform.OS === 'web') {
+          window.alert('Erro: Você precisa estar logado.');
+        } else {
+          Alert.alert('Erro', 'Você precisa estar logado.');
+        }
+        return;
+      }
+
+      const response = await fetch(
+        Platform.OS === 'web'
+          ? '/api/stripe/cancel-subscription'
+          : 'https://controledemaquina.com.br/api/stripe/cancel-subscription',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          {
-            text: 'Sim, cancelar',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                setCanceling(true);
-                
-                console.log('[CANCEL] Iniciando cancelamento...');
-
-                const response = await fetch('https://controledemaquina.com.br/api/stripe/cancel-subscription', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    userId: currentUser?.id,
-                  }),
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                  throw new Error(data.error || 'Erro ao cancelar assinatura');
-                }
-
-                console.log('[CANCEL] Assinatura cancelada com sucesso:', data);
-
-                Alert.alert(
-                  'Assinatura Cancelada',
-                  'Sua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.',
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => {
-                        refreshSubscription();
-                      },
-                    },
-                  ]
-                );
-
-              } catch (error: any) {
-                console.error('[CANCEL] Erro ao cancelar:', error);
-                Alert.alert(
-                  'Erro',
-                  'Não foi possível cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.',
-                  [{ text: 'OK' }]
-                );
-              } finally {
-                setCanceling(false);
-              }
-            },
-          },
-        ]
+          body: JSON.stringify({
+            userId: currentUser.id,
+          }),
+        }
       );
-    };
 
-    return (
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#dc2626',
-          padding: 16,
-          borderRadius: 8,
-          alignItems: 'center' as const,
-          marginTop: 20,
-          opacity: canceling ? 0.6 : 1,
-        }}
-        onPress={handleCancelSubscription}
-        disabled={canceling}
-      >
-        {canceling ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' as const }}>
-            Cancelar Assinatura
-          </Text>
-        )}
-      </TouchableOpacity>
-    );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao cancelar assinatura');
+      }
+
+      console.log('[CANCEL] Assinatura cancelada com sucesso:', data);
+
+      setShowCancelModal(false);
+
+      if (Platform.OS === 'web') {
+        window.alert(
+          'Assinatura Cancelada\n\nSua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.'
+        );
+      } else {
+        Alert.alert(
+          'Assinatura Cancelada',
+          'Sua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.',
+          [{ text: 'OK' }]
+        );
+      }
+
+      if (currentUser?.id) {
+        await syncWithSupabase(currentUser.id);
+      }
+      await refreshSubscription();
+
+    } catch (error: any) {
+      console.error('[CANCEL] Erro ao cancelar:', error);
+      
+      setShowCancelModal(false);
+
+      if (Platform.OS === 'web') {
+        window.alert(
+          'Erro\n\nNão foi possível cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.'
+        );
+      } else {
+        Alert.alert(
+          'Erro',
+          'Não foi possível cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.',
+          [{ text: 'OK' }]
+        );
+      }
+    } finally {
+      setCanceling(false);
+    }
   };
 
   const handleRefreshSubscription = async () => {
@@ -458,11 +447,18 @@ export default function SubscriptionScreen() {
           </View>
 
           {subscriptionInfo?.status === 'active' && !subscriptionInfo?.trialActive && Platform.OS === 'web' && (
-            <View style={{ marginTop: 20 }}>
-              <Text style={{ fontSize: 14, color: '#666', marginBottom: 10, textAlign: 'center' as const }}>
+            <View style={styles.cancelSection}>
+              <Text style={styles.cancelText}>
                 Não quer mais continuar? Você pode cancelar sua assinatura a qualquer momento.
               </Text>
-              <CancelSubscriptionButton />
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowCancelModal(true)}
+              >
+                <Text style={styles.cancelButtonText}>
+                  Cancelar Assinatura
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -480,6 +476,13 @@ export default function SubscriptionScreen() {
               <Text style={styles.manageButtonText}>Gerenciar Assinatura</Text>
             </TouchableOpacity>
           )}
+
+          <CancelSubscriptionModal
+            visible={showCancelModal}
+            onCancel={() => setShowCancelModal(false)}
+            onConfirm={handleCancelSubscription}
+            isLoading={canceling}
+          />
         </View>
       </ScrollView>
     );
@@ -779,5 +782,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#2D5016',
+  },
+  cancelSection: {
+    marginTop: 40,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  cancelText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center' as const,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  cancelButton: {
+    backgroundColor: '#DC2626',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    minHeight: 52,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });
