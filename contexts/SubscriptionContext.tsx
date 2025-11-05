@@ -180,39 +180,49 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       if (data) {
         console.log('[SUBSCRIPTION] Dados encontrados no Supabase:', data);
         
-        // Se assinatura foi cancelada (status = 'canceled'), NÃO considera mais como ativa
-        const isCanceled = data.status === 'canceled';
-        const isActive = data.status === 'active' && !isCanceled;
-        
-        // Se tem cancel_at_period_end = true, ainda está no período de graça
+        // Verifica período de graça (cancel_at_period_end)
         const cancelAtPeriodEnd = data.cancel_at_period_end || false;
         const currentPeriodEnd = data.current_period_end;
         
-        // Se está no período de graça, verifica se ainda é válido
-        let finalStatus: SubscriptionStatus = data.status === 'active' ? 'active' : 'expired';
-        let finalIsActive = isActive;
+        let finalStatus: SubscriptionStatus;
+        let finalIsActive: boolean;
         
-        if (isCanceled) {
-          // Assinatura foi cancelada permanentemente (sem período de graça)
-          finalStatus = 'expired';
-          finalIsActive = false;
-          console.log('[SUBSCRIPTION] ❌ Assinatura cancelada permanentemente');
-        } else if (cancelAtPeriodEnd && currentPeriodEnd) {
-          // Assinatura foi cancelada mas ainda está no período de graça
+        // LÓGICA CORRIGIDA: Se tem cancel_at_period_end = true, ainda está ATIVO no período de graça
+        if (cancelAtPeriodEnd && currentPeriodEnd) {
           const now = new Date();
           const periodEnd = new Date(currentPeriodEnd);
           
           if (now <= periodEnd) {
-            // Ainda está no período de graça - mantém ativo
+            // AINDA ESTÁ NO PERÍODO DE GRAÇA - mantém ativo!
             finalStatus = 'active';
             finalIsActive = true;
             console.log('[SUBSCRIPTION] ⚠️ Plano cancelado mas ainda no período de graça até:', currentPeriodEnd);
           } else {
-            // Período de graça expirou
+            // Período de graça EXPIROU
             finalStatus = 'expired';
             finalIsActive = false;
             console.log('[SUBSCRIPTION] ❌ Período de graça expirou');
           }
+        } else if (data.status === 'active') {
+          // Assinatura ativa normal (não cancelada)
+          finalStatus = 'active';
+          finalIsActive = true;
+          console.log('[SUBSCRIPTION] ✅ Assinatura ativa');
+        } else if (data.status === 'canceled') {
+          // Assinatura cancelada permanentemente (sem período de graça)
+          finalStatus = 'expired';
+          finalIsActive = false;
+          console.log('[SUBSCRIPTION] ❌ Assinatura cancelada permanentemente');
+        } else if (data.status === 'trial') {
+          // Trial ativo
+          finalStatus = 'trial';
+          finalIsActive = true;
+          console.log('[SUBSCRIPTION] ✅ Trial ativo');
+        } else {
+          // Qualquer outro status = expirado
+          finalStatus = 'expired';
+          finalIsActive = false;
+          console.log('[SUBSCRIPTION] ⚠️ Status desconhecido:', data.status);
         }
         
         const subscriptionData: SubscriptionInfo = {
