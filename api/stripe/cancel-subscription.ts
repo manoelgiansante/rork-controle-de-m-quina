@@ -45,15 +45,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const stripeSubscriptionId = subscription.stripe_subscription_id;
-    
+
+    // Verifica se é subscription de teste ou trial
+    const isTestSubscription = !stripeSubscriptionId || 
+                                stripeSubscriptionId.startsWith('sub_test_') ||
+                                subscription.status === 'trial';
+
+    if (isTestSubscription) {
+      // Subscription de teste ou trial - apenas atualiza Supabase
+      console.log('[CANCEL] ⚠️ Subscription de teste/trial detectada - pulando cancelamento no Stripe');
+      console.log('[CANCEL] 📝 Atualizando apenas no Supabase...');
+      
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'canceled',
+          trial_active: false,
+        })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('[CANCEL] ❌ Erro ao atualizar Supabase:', updateError);
+        return res.status(500).json({ error: 'Erro ao atualizar banco de dados' });
+      }
+
+      console.log('[CANCEL] ✅ Subscription de teste cancelada com sucesso (apenas Supabase)');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Assinatura cancelada com sucesso',
+        isTest: true,
+      });
+    }
+
+    // Subscription real - cancela no Stripe E no Supabase
     try {
+      console.log('[CANCEL] 🔄 Cancelando subscription real no Stripe:', stripeSubscriptionId);
+      
       const canceledSubscription = await stripe.subscriptions.cancel(stripeSubscriptionId);
+      
       console.log('[CANCEL] ✅ Subscription cancelada no Stripe:', canceledSubscription.id);
     } catch (stripeError: any) {
       console.error('[CANCEL] ❌ Erro ao cancelar no Stripe:', stripeError.message);
-      return res.status(500).json({ error: 'Erro ao cancelar no Stripe: ' + stripeError.message });
+      
+      // Se erro é "subscription não encontrada", apenas atualiza Supabase
+      if (stripeError.code === 'resource_missing') {
+        console.log('[CANCEL] ⚠️ Subscription não encontrada no Stripe - atualizando apenas Supabase');
+      } else {
+        // Outro erro - retorna erro para usuário
+        return res.status(500).json({ error: 'Erro ao cancelar no Stripe: ' + stripeError.message });
+      }
     }
 
+    // Atualiza status no Supabase
     const { error: updateError } = await supabase
       .from('subscriptions')
       .update({
@@ -72,8 +116,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       success: true,
       message: 'Assinatura cancelada com sucesso',
-      userId,
-      subscriptionId: stripeSubscriptionId,
     });
 
   } catch (error: any) {
