@@ -496,29 +496,10 @@ export default function SubscriptionScreen() {
         <View style={styles.content}>
           <View style={styles.header}>
             <CreditCard size={64} color="#2D5016" />
-            <Text style={styles.title}>Assinatura Ativa</Text>
+            <Text style={styles.title}>
+              {subscriptionInfo.cancelAtPeriodEnd ? 'Período de Graça' : 'Assinatura Ativa'}
+            </Text>
           </View>
-
-          {currentPlan && (
-            <View style={styles.statusCard}>
-              <Text style={styles.statusTitle}>{currentPlan.name}</Text>
-              <Text style={styles.statusText}>{currentPlan.description}</Text>
-              <View style={styles.statusDetail}>
-                <Text style={styles.statusLabel}>Valor:</Text>
-                <Text style={styles.statusValue}>
-                  R$ {currentPlan.price.toFixed(2)}/{currentPlan.billingCycle === 'monthly' ? 'mês' : 'ano'}
-                </Text>
-              </View>
-              {subscriptionInfo.subscriptionEndDate && (
-                <View style={styles.statusDetail}>
-                  <Text style={styles.statusLabel}>Próxima cobrança:</Text>
-                  <Text style={styles.statusValue}>
-                    {formatDate(subscriptionInfo.subscriptionEndDate)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
 
           {subscriptionInfo.cancelAtPeriodEnd && subscriptionInfo.currentPeriodEnd && (
             <View style={styles.gracePeriodCard}>
@@ -543,6 +524,27 @@ export default function SubscriptionScreen() {
                   <Text style={styles.reactivateButtonText}>Reativar Assinatura</Text>
                 )}
               </TouchableOpacity>
+            </View>
+          )}
+
+          {currentPlan && !subscriptionInfo.cancelAtPeriodEnd && (
+            <View style={styles.statusCard}>
+              <Text style={styles.statusTitle}>{currentPlan.name}</Text>
+              <Text style={styles.statusText}>{currentPlan.description}</Text>
+              <View style={styles.statusDetail}>
+                <Text style={styles.statusLabel}>Valor:</Text>
+                <Text style={styles.statusValue}>
+                  R$ {currentPlan.price.toFixed(2)}/{currentPlan.billingCycle === 'monthly' ? 'mês' : 'ano'}
+                </Text>
+              </View>
+              {subscriptionInfo.subscriptionEndDate && (
+                <View style={styles.statusDetail}>
+                  <Text style={styles.statusLabel}>Próxima cobrança:</Text>
+                  <Text style={styles.statusValue}>
+                    {formatDate(subscriptionInfo.subscriptionEndDate)}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -603,13 +605,13 @@ export default function SubscriptionScreen() {
         <View style={styles.header}>
           <CreditCard size={64} color="#D32F2F" />
           <Text style={[styles.title, { color: '#D32F2F' }]}>
-            Assinatura Necessária
+            Assinatura Expirada
           </Text>
         </View>
 
         <View style={styles.warningCard}>
           <Text style={styles.warningText}>
-            Seu período de teste terminou. Escolha um plano para continuar usando o app.
+            Sua assinatura expirou. Escolha um plano para continuar usando o app.
           </Text>
         </View>
 
