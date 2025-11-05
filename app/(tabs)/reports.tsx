@@ -393,19 +393,25 @@ export default function ReportsScreen() {
       'Excluir Abastecimento',
       'Tem certeza que deseja excluir este abastecimento? O combustível será devolvido ao tanque.',
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Cancelar', style: 'cancel', onPress: () => console.log('[REPORTS] Cancelado') },
         {
           text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
             try {
               console.log('[REPORTS] Excluindo abastecimento:', refuelingId);
+              console.log('[REPORTS] deleteRefueling disponível?', typeof deleteRefueling);
               await deleteRefueling(refuelingId);
               console.log('[REPORTS] Abastecimento excluído com sucesso');
               Alert.alert('Sucesso', 'Abastecimento excluído com sucesso!');
             } catch (error) {
               console.error('[REPORTS] Erro ao excluir abastecimento:', error);
-              Alert.alert('Erro', 'Não foi possível excluir o abastecimento');
+              console.error('[REPORTS] Erro stringificado:', JSON.stringify(error, null, 2));
+              console.error('[REPORTS] Erro detalhado:', {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+              });
+              Alert.alert('Erro', `Não foi possível excluir o abastecimento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
             }
           },
         },
