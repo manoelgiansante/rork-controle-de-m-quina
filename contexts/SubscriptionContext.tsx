@@ -192,27 +192,27 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         let finalStatus: SubscriptionStatus = data.status === 'active' ? 'active' : 'expired';
         let finalIsActive = isActive;
         
-        if (cancelAtPeriodEnd && currentPeriodEnd) {
+        if (isCanceled) {
+          // Assinatura foi cancelada permanentemente (sem período de graça)
+          finalStatus = 'expired';
+          finalIsActive = false;
+          console.log('[SUBSCRIPTION] ❌ Assinatura cancelada permanentemente');
+        } else if (cancelAtPeriodEnd && currentPeriodEnd) {
+          // Assinatura foi cancelada mas ainda está no período de graça
           const now = new Date();
           const periodEnd = new Date(currentPeriodEnd);
           
           if (now <= periodEnd) {
-            // Ainda está no período de graça
+            // Ainda está no período de graça - mantém ativo
             finalStatus = 'active';
             finalIsActive = true;
-            console.log('[SUBSCRIPTION] ⚠️ Assinatura cancelada mas ainda no período de graça até:', currentPeriodEnd);
+            console.log('[SUBSCRIPTION] ⚠️ Plano cancelado mas ainda no período de graça até:', currentPeriodEnd);
           } else {
             // Período de graça expirou
             finalStatus = 'expired';
             finalIsActive = false;
             console.log('[SUBSCRIPTION] ❌ Período de graça expirou');
           }
-        }
-        
-        if (isCanceled) {
-          finalStatus = 'expired';
-          finalIsActive = false;
-          console.log('[SUBSCRIPTION] ❌ Assinatura cancelada permanentemente');
         }
         
         const subscriptionData: SubscriptionInfo = {
