@@ -258,7 +258,9 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
           console.log('[SUBSCRIPTION] Usando dados do Supabase');
           return;
         } else {
-          console.log('[SUBSCRIPTION] Nenhuma assinatura encontrada - verificando histórico de trial');
+          // NÃO encontrou assinatura ativa no Supabase
+          // Verifica se o usuário JÁ TEVE qualquer assinatura antes (trial, básico, premium, cancelado, etc.)
+          console.log('[SUBSCRIPTION] Nenhuma assinatura ativa encontrada - verificando histórico completo');
           
           const { data: previousSubscriptions } = await supabase
             .from('subscriptions')
@@ -267,7 +269,10 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
             .limit(1);
           
           if (previousSubscriptions && previousSubscriptions.length > 0) {
-            console.log('[SUBSCRIPTION] Usuário já teve assinatura antes - NÃO pode ter trial novamente');
+            // Usuário JÁ TEVE assinatura antes (trial, básico, premium, cancelado, etc.)
+            // NÃO pode ter trial novamente!
+            console.log('[SUBSCRIPTION] ❌ Usuário já teve assinatura antes - NÃO pode ter trial novamente');
+            console.log('[SUBSCRIPTION] Histórico encontrado:', previousSubscriptions[0]);
             await AsyncStorage.removeItem(STORAGE_KEY);
             
             const expiredInfo: SubscriptionInfo = {
@@ -279,14 +284,38 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
             
             setSubscriptionInfo(expiredInfo);
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(expiredInfo));
-            console.log('[SUBSCRIPTION] Status definido como expired:', expiredInfo);
+            console.log('[SUBSCRIPTION] ✅ Status definido como EXPIRED (sem trial):', expiredInfo);
             return;
           } else {
-            console.log('[SUBSCRIPTION] Primeiro acesso - iniciando trial automático de 7 dias');
+            // Usuário NUNCA teve assinatura - é o primeiro acesso!
+            // Pode ter trial automático de 7 dias
+            console.log('[SUBSCRIPTION] ✅ Primeiro acesso - iniciando trial automático de 7 dias');
             await AsyncStorage.removeItem(STORAGE_KEY);
             
             const trialEnd = new Date();
             trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
+            
+            // Cria subscription no Supabase para marcar que teve trial
+            const { error: insertError } = await supabase
+              .from('subscriptions')
+              .insert({
+                user_id: currentUser.id,
+                status: 'trial',
+                plan_type: null,
+                billing_cycle: null,
+                machine_limit: -1,
+                trial_active: true,
+                trial_ends_at: trialEnd.toISOString(),
+                stripe_subscription_id: `sub_test_${currentUser.id}_trial`,
+                current_period_start: new Date().toISOString(),
+                current_period_end: trialEnd.toISOString(),
+              });
+            
+            if (insertError) {
+              console.error('[SUBSCRIPTION] ⚠️ Erro ao criar trial no Supabase:', insertError);
+            } else {
+              console.log('[SUBSCRIPTION] ✅ Trial criado no Supabase');
+            }
             
             const newInfo: SubscriptionInfo = {
               status: 'trial',
@@ -299,7 +328,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
             
             setSubscriptionInfo(newInfo);
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newInfo));
-            console.log('[SUBSCRIPTION] Trial automático iniciado:', newInfo);
+            console.log('[SUBSCRIPTION] ✅ Trial automático iniciado:', newInfo);
             return;
           }
         }
