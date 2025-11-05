@@ -272,12 +272,38 @@ export async function updateRefueling(
 }
 
 export async function deleteRefueling(refuelingId: string): Promise<void> {
+  console.log('[DB] Tentando deletar refueling:', refuelingId);
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('refuelings')
+    .select('id, property_id')
+    .eq('id', refuelingId)
+    .single();
+
+  if (fetchError) {
+    console.error('[DB] Erro ao buscar refueling para deletar:', fetchError);
+    throw new Error(`Erro ao buscar refueling: ${fetchError.message}`);
+  }
+
+  if (!existing) {
+    console.error('[DB] Refueling não encontrado para o ID:', refuelingId);
+    throw new Error('Abastecimento não encontrado para exclusão.');
+  }
+
+  console.log('[DB] Refueling encontrado, tentando deletar:', existing);
+
   const { error } = await supabase.from('refuelings').delete().eq('id', refuelingId);
 
   if (error) {
-    console.error('[DB] Error deleting refueling:', error);
-    throw error;
+    console.error('[DB] Erro ao deletar refueling:', {
+      message: error.message,
+      details: error.details,
+      code: error.code,
+    });
+    throw new Error(`Erro do Supabase: ${error.message}`);
   }
+
+  console.log('[DB] Refueling deletado com sucesso do Supabase!');
 }
 
 // ==================== MAINTENANCES ====================
