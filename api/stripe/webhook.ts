@@ -171,77 +171,71 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const subscription = event.data.object as Stripe.Subscription;
         const userId = subscription.metadata?.userId;
 
-        console.log('[WEBHOOK] 🔄 Assinatura atualizada:', subscription.id);
+        console.log('[WEBHOOK] 🔄 Subscription atualizada:', subscription.id);
+        console.log('[WEBHOOK] User ID:', userId);
+        console.log('[WEBHOOK] Status:', subscription.status);
 
         if (!userId) {
-          console.error('[WEBHOOK] ⚠️ No userId in metadata');
+          console.error('[WEBHOOK] ⚠️ userId ausente no metadata da subscription atualizada');
           break;
         }
 
-        const priceId = subscription.items.data[0].price.id;
-        let planType: 'basic' | 'premium' = 'basic';
-        let billingCycle: 'monthly' | 'annual' = 'monthly';
-        let machineLimit = 10;
+        const { data: existingSub } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
 
-        if (priceId === process.env.NEXT_PUBLIC_PRICE_BASIC_MONTHLY) {
-          planType = 'basic';
-          billingCycle = 'monthly';
-          machineLimit = 10;
-        } else if (priceId === process.env.NEXT_PUBLIC_PRICE_BASIC_YEARLY) {
-          planType = 'basic';
-          billingCycle = 'annual';
-          machineLimit = 10;
-        } else if (priceId === process.env.NEXT_PUBLIC_PRICE_PREMIUM_MONTHLY) {
-          planType = 'premium';
-          billingCycle = 'monthly';
-          machineLimit = -1;
-        } else if (priceId === process.env.NEXT_PUBLIC_PRICE_PREMIUM_YEARLY) {
-          planType = 'premium';
-          billingCycle = 'annual';
-          machineLimit = -1;
+        if (!existingSub) {
+          console.error('[WEBHOOK] ⚠️ Subscription não encontrada no Supabase');
+          break;
         }
 
         const { error } = await supabase
           .from('subscriptions')
           .update({
-            plan_type: planType,
-            billing_cycle: billingCycle,
-            machine_limit: machineLimit,
-            status: subscription.status === 'active' ? 'active' : 'expired',
-            current_period_start: (subscription as any).current_period_start 
+            status: subscription.status === 'active' ? 'active' : subscription.status === 'canceled' ? 'canceled' : 'expired',
+            current_period_start: (subscription as any).current_period_start
               ? new Date((subscription as any).current_period_start * 1000).toISOString()
-              : new Date().toISOString(),
+              : existingSub.current_period_start,
             current_period_end: (subscription as any).current_period_end
               ? new Date((subscription as any).current_period_end * 1000).toISOString()
-              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              : existingSub.current_period_end,
           })
-          .eq('stripe_subscription_id', subscription.id);
+          .eq('user_id', userId);
 
         if (error) {
           console.error('[WEBHOOK] ❌ Erro ao atualizar subscription:', error);
         } else {
-          console.log('[WEBHOOK] ✅ Subscription atualizada para user:', userId);
+          console.log('[WEBHOOK] ✅ Subscription atualizada no Supabase para userId:', userId);
         }
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
+        const userId = subscription.metadata?.userId;
 
-        console.log('[WEBHOOK] 🔴 Assinatura cancelada:', subscription.id);
+        console.log('[WEBHOOK] 🗑️ Subscription deletada:', subscription.id);
+        console.log('[WEBHOOK] User ID:', userId);
+
+        if (!userId) {
+          console.error('[WEBHOOK] ⚠️ userId ausente no metadata da subscription deletada');
+          break;
+        }
 
         const { error } = await supabase
           .from('subscriptions')
           .update({
-            status: 'expired',
-            machine_limit: 0,
+            status: 'canceled',
+            trial_active: false,
           })
-          .eq('stripe_subscription_id', subscription.id);
+          .eq('user_id', userId);
 
         if (error) {
           console.error('[WEBHOOK] ❌ Erro ao cancelar subscription:', error);
         } else {
-          console.log('[WEBHOOK] ✅ Subscription cancelada:', subscription.id);
+          console.log('[WEBHOOK] ✅ Subscription cancelada no Supabase para userId:', userId);
         }
         break;
       }

@@ -128,6 +128,98 @@ export default function SubscriptionScreen() {
     }
   };
 
+  const CancelSubscriptionButton = () => {
+    const [canceling, setCanceling] = useState(false);
+
+    const handleCancelSubscription = async () => {
+      Alert.alert(
+        'Cancelar Assinatura',
+        'Tem certeza que deseja cancelar sua assinatura? Você perderá acesso aos recursos Premium no final do período atual.',
+        [
+          {
+            text: 'Não, manter assinatura',
+            style: 'cancel',
+          },
+          {
+            text: 'Sim, cancelar',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setCanceling(true);
+                
+                console.log('[CANCEL] Iniciando cancelamento...');
+
+                const response = await fetch('https://controledemaquina.com.br/api/stripe/cancel-subscription', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    userId: currentUser?.id,
+                  }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                  throw new Error(data.error || 'Erro ao cancelar assinatura');
+                }
+
+                console.log('[CANCEL] Assinatura cancelada com sucesso:', data);
+
+                Alert.alert(
+                  'Assinatura Cancelada',
+                  'Sua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        refreshSubscription();
+                      },
+                    },
+                  ]
+                );
+
+              } catch (error: any) {
+                console.error('[CANCEL] Erro ao cancelar:', error);
+                Alert.alert(
+                  'Erro',
+                  'Não foi possível cancelar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.',
+                  [{ text: 'OK' }]
+                );
+              } finally {
+                setCanceling(false);
+              }
+            },
+          },
+        ]
+      );
+    };
+
+    return (
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#dc2626',
+          padding: 16,
+          borderRadius: 8,
+          alignItems: 'center' as const,
+          marginTop: 20,
+          opacity: canceling ? 0.6 : 1,
+        }}
+        onPress={handleCancelSubscription}
+        disabled={canceling}
+      >
+        {canceling ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' as const }}>
+            Cancelar Assinatura
+          </Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   const handleRefreshSubscription = async () => {
     if (!currentUser?.id) {
       if (Platform.OS === 'web') {
@@ -364,6 +456,15 @@ export default function SubscriptionScreen() {
               return renderPlanCard(plan, isCurrentPlan);
             })}
           </View>
+
+          {subscriptionInfo?.status === 'active' && !subscriptionInfo?.trialActive && Platform.OS === 'web' && (
+            <View style={{ marginTop: 20 }}>
+              <Text style={{ fontSize: 14, color: '#666', marginBottom: 10, textAlign: 'center' as const }}>
+                Não quer mais continuar? Você pode cancelar sua assinatura a qualquer momento.
+              </Text>
+              <CancelSubscriptionButton />
+            </View>
+          )}
 
           {Platform.OS !== 'web' && (
             <TouchableOpacity
