@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import type { BillingCycle, PlanType, SubscriptionInfo, SubscriptionPlan } from '@/types';
 import { fetchSubscription } from '@/lib/supabase/database';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/lib/supabase/client';
 
 const STORAGE_KEY = '@controle_maquina:subscription';
 const TRIAL_DAYS = 7;
@@ -162,62 +163,86 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     };
   }, []);
 
+  const syncWithSupabase = useCallback(async (userId: string) => {
+    try {
+      console.log('[SUBSCRIPTION] Sincronizando com Supabase para user:', userId);
+      
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('[SUBSCRIPTION] Erro ao buscar subscription:', error);
+        return null;
+      }
+
+      if (data) {
+        console.log('[SUBSCRIPTION] Dados encontrados no Supabase:', data);
+        
+        const subscriptionData: SubscriptionInfo = {
+          status: data.status === 'active' ? 'active' : 'expired',
+          planType: data.plan_type,
+          billingCycle: data.billing_cycle,
+          machineLimit: data.machine_limit,
+          subscriptionStartDate: data.current_period_start,
+          subscriptionEndDate: data.current_period_end,
+          isActive: data.status === 'active',
+          trialActive: data.trial_active || false,
+          trialEndsAt: data.trial_ends_at,
+        };
+
+        const calculated = calculateSubscriptionStatus(subscriptionData);
+        
+        setSubscriptionInfo(calculated);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(calculated));
+        
+        console.log('[SUBSCRIPTION] Sincronização concluída:', calculated);
+        return calculated;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('[SUBSCRIPTION] Erro na sincronização:', error);
+      return null;
+    }
+  }, [calculateSubscriptionStatus]);
+
   const loadSubscription = useCallback(async () => {
     console.log('[SUBSCRIPTION] Carregando subscription...', { isWeb, userId: currentUser?.id });
     try {
-      if (isWeb && currentUser?.id) {
-        console.log('[SUBSCRIPTION WEB] Buscando do Supabase...');
-        const dbSub = await fetchSubscription(currentUser.id);
+      setIsLoading(true);
+      
+      if (currentUser?.id) {
+        const supabaseData = await syncWithSupabase(currentUser.id);
         
-        if (dbSub && dbSub.status === 'active') {
-          console.log('[SUBSCRIPTION WEB] Subscription ativa encontrada:', dbSub);
-          const subInfo: SubscriptionInfo = {
-            status: 'active',
-            planType: dbSub.planType,
-            billingCycle: dbSub.billingCycle,
-            machineLimit: dbSub.machineLimit,
-            subscriptionStartDate: dbSub.currentPeriodStart,
-            subscriptionEndDate: dbSub.currentPeriodEnd,
-            isActive: true,
-            trialActive: false,
-          };
-          setSubscriptionInfo(subInfo);
-          console.log('[SUBSCRIPTION WEB] Subscription Info atualizada:', subInfo);
-        } else {
-          console.log('[SUBSCRIPTION WEB] Nenhuma subscription ativa, carregando do AsyncStorage...');
-          const data = await AsyncStorage.getItem(STORAGE_KEY);
-          if (data) {
-            const parsed = JSON.parse(data);
-            const calculated = calculateSubscriptionStatus(parsed);
-            setSubscriptionInfo(calculated);
-          } else {
-            setSubscriptionInfo({
-              status: 'none',
-              machineLimit: 0,
-              isActive: false,
-              trialActive: false,
-            });
-          }
+        if (supabaseData) {
+          console.log('[SUBSCRIPTION] Usando dados do Supabase');
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      console.log('[SUBSCRIPTION] Usando dados do cache local');
+      const data = await AsyncStorage.getItem(STORAGE_KEY);
+      
+      if (data) {
+        const parsed = JSON.parse(data);
+        const calculated = calculateSubscriptionStatus(parsed);
+        setSubscriptionInfo(calculated);
+        
+        if (calculated.status !== parsed.status || calculated.isActive !== parsed.isActive) {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(calculated));
         }
       } else {
-        console.log('[SUBSCRIPTION MOBILE] Carregando do AsyncStorage...');
-        const data = await AsyncStorage.getItem(STORAGE_KEY);
-        if (data) {
-          const parsed = JSON.parse(data);
-          const calculated = calculateSubscriptionStatus(parsed);
-          setSubscriptionInfo(calculated);
-          
-          if (calculated.status !== parsed.status || calculated.isActive !== parsed.isActive) {
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(calculated));
-          }
-        } else {
-          setSubscriptionInfo({
-            status: 'none',
-            machineLimit: 0,
-            isActive: false,
-            trialActive: false,
-          });
-        }
+        const newInfo: SubscriptionInfo = {
+          status: 'none',
+          machineLimit: 0,
+          isActive: false,
+          trialActive: false,
+        };
+        setSubscriptionInfo(newInfo);
       }
     } catch (error: any) {
       console.error('[SUBSCRIPTION] Error loading subscription:', error);
@@ -231,7 +256,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [calculateSubscriptionStatus, isWeb, currentUser]);
+  }, [syncWithSupabase, calculateSubscriptionStatus, currentUser]);
 
   useEffect(() => {
     loadSubscription();
@@ -365,6 +390,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       canAddMachine,
       getRemainingMachineSlots,
       refreshSubscription,
+      syncWithSupabase,
       needsTrialActivation,
       needsSubscription,
       isInTrial,
@@ -379,6 +405,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
       canAddMachine,
       getRemainingMachineSlots,
       refreshSubscription,
+      syncWithSupabase,
       needsTrialActivation,
       needsSubscription,
       isInTrial,

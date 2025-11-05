@@ -23,6 +23,7 @@ export default function SubscriptionScreen() {
     startTrial,
     needsTrialActivation,
     refreshSubscription,
+    syncWithSupabase,
   } = useSubscription();
   const { currentUser } = useAuth();
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -122,6 +123,41 @@ export default function SubscriptionScreen() {
     } catch (error) {
       console.error('Error starting trial:', error);
       Alert.alert('Erro', 'Não foi possível iniciar o teste gratuito.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRefreshSubscription = async () => {
+    if (!currentUser?.id) {
+      if (Platform.OS === 'web') {
+        window.alert('Você precisa estar logado.');
+      } else {
+        Alert.alert('Erro', 'Você precisa estar logado.');
+      }
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      console.log('[SUBSCRIPTION] Atualizando status da assinatura...');
+      
+      await syncWithSupabase(currentUser.id);
+      
+      if (Platform.OS === 'web') {
+        window.alert('Status da assinatura atualizado com sucesso!');
+      } else {
+        Alert.alert('Sucesso', 'Status da assinatura atualizado com sucesso!');
+      }
+    } catch (error) {
+      console.error('[SUBSCRIPTION] Erro ao atualizar:', error);
+      
+      if (Platform.OS === 'web') {
+        window.alert('Erro ao atualizar status. Tente novamente.');
+      } else {
+        Alert.alert('Erro', 'Não foi possível atualizar o status. Tente novamente.');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -265,23 +301,17 @@ export default function SubscriptionScreen() {
             </View>
           </View>
 
-          {Platform.OS === 'web' && (
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={async () => {
-                setIsProcessing(true);
-                await refreshSubscription();
-                setIsProcessing(false);
-              }}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <ActivityIndicator color="#2D5016" />
-              ) : (
-                <Text style={styles.refreshButtonText}>Atualizar Status da Assinatura</Text>
-              )}
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[styles.refreshButton, isProcessing && styles.refreshButtonDisabled]}
+            onPress={handleRefreshSubscription}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <ActivityIndicator color="#2D5016" size="small" />
+            ) : (
+              <Text style={styles.refreshButtonText}>Atualizar Status da Assinatura</Text>
+            )}
+          </TouchableOpacity>
 
           <Text style={styles.sectionTitle}>Escolha seu plano para continuar</Text>
           <View style={styles.plansGrid}>
@@ -634,12 +664,15 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 16,
     alignItems: 'center' as const,
     marginVertical: 16,
     borderWidth: 2,
     borderColor: '#2D5016',
+  },
+  refreshButtonDisabled: {
+    opacity: 0.5,
   },
   refreshButtonText: {
     fontSize: 16,
