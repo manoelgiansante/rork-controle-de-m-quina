@@ -401,12 +401,13 @@ export default function ReportsScreen() {
         (async () => {
           try {
             console.log('[REPORTS] Excluindo abastecimento:', refuelingId);
+            console.log('[REPORTS] deleteRefueling disponível?', typeof deleteRefueling);
             await deleteRefueling(refuelingId);
             console.log('[REPORTS] Abastecimento excluído com sucesso');
             window.alert('Abastecimento excluído com sucesso!');
           } catch (error) {
-            console.error('[REPORTS] Erro ao excluir:', error);
-            window.alert('Erro ao excluir abastecimento');
+            console.error('[REPORTS] Erro ao excluir abastecimento:', error);
+            window.alert(`Não foi possível excluir o abastecimento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
           }
         })();
       } else {
@@ -424,12 +425,13 @@ export default function ReportsScreen() {
             onPress: async () => {
               try {
                 console.log('[REPORTS] Excluindo abastecimento:', refuelingId);
+                console.log('[REPORTS] deleteRefueling disponível?', typeof deleteRefueling);
                 await deleteRefueling(refuelingId);
                 console.log('[REPORTS] Abastecimento excluído com sucesso');
                 Alert.alert('Sucesso', 'Abastecimento excluído com sucesso!');
               } catch (error) {
-                console.error('[REPORTS] Erro ao excluir:', error);
-                Alert.alert('Erro', 'Não foi possível excluir o abastecimento');
+                console.error('[REPORTS] Erro ao excluir abastecimento:', error);
+                Alert.alert('Erro', `Não foi possível excluir o abastecimento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
               }
             },
           },
