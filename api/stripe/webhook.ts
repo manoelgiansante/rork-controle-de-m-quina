@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const supabase = createClient(
       process.env.EXPO_PUBLIC_SUPABASE_URL!,
-      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     switch (event.type) {
