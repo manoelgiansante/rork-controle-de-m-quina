@@ -46,9 +46,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const stripeSubscriptionId = subscription.stripe_subscription_id;
 
-    if (!stripeSubscriptionId || stripeSubscriptionId.startsWith('sub_test_')) {
-      console.log('[REACTIVATE] ⚠️ Subscription de teste - não pode reativar no Stripe');
-      return res.status(400).json({ error: 'Assinatura de teste não pode ser reativada' });
+    const isTestSubscription = !stripeSubscriptionId || 
+                                stripeSubscriptionId.startsWith('sub_test_') ||
+                                subscription.status === 'trial';
+
+    if (isTestSubscription) {
+      console.log('[REACTIVATE] ⚠️ Subscription de teste/trial detectada - atualizando apenas Supabase');
+      
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({
+          cancel_at_period_end: false,
+          canceled_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('[REACTIVATE] ❌ Erro ao atualizar Supabase:', updateError);
+        return res.status(500).json({ error: 'Erro ao atualizar banco de dados' });
+      }
+
+      console.log('[REACTIVATE] ✅ Subscription de teste reativada com sucesso (apenas Supabase)');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Assinatura reativada com sucesso',
+        isTest: true,
+      });
     }
 
     try {
@@ -61,7 +86,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('[REACTIVATE] ✅ Subscription reativada no Stripe:', updatedSubscription.id);
     } catch (stripeError: any) {
       console.error('[REACTIVATE] ❌ Erro ao reativar no Stripe:', stripeError.message);
-      return res.status(500).json({ error: 'Erro ao reativar no Stripe: ' + stripeError.message });
+      
+      if (stripeError.code === 'resource_missing') {
+        console.log('[REACTIVATE] ⚠️ Subscription não encontrada no Stripe - atualizando apenas Supabase');
+      } else {
+        return res.status(500).json({ error: 'Erro ao reativar no Stripe: ' + stripeError.message });
+      }
     }
 
     const { error: updateError } = await supabase
@@ -69,6 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({
         cancel_at_period_end: false,
         canceled_at: null,
+        updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId);
 
