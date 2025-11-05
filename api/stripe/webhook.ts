@@ -92,8 +92,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             billing_cycle: billingCycle,
             machine_limit: machineLimit,
             status: 'active',
-            current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-            current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+            current_period_start: (subscription as any).current_period_start 
+              ? new Date((subscription as any).current_period_start * 1000).toISOString()
+              : new Date().toISOString(),
+            current_period_end: (subscription as any).current_period_end
+              ? new Date((subscription as any).current_period_end * 1000).toISOString()
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             trial_active: false,
           });
 
@@ -118,8 +122,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .from('subscriptions')
             .update({
               status: 'active',
-              current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-              current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+              current_period_start: (subscription as any).current_period_start 
+                ? new Date((subscription as any).current_period_start * 1000).toISOString()
+                : new Date().toISOString(),
+              current_period_end: (subscription as any).current_period_end
+                ? new Date((subscription as any).current_period_end * 1000).toISOString()
+                : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             })
             .eq('stripe_subscription_id', subscriptionId);
 
@@ -200,8 +208,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             billing_cycle: billingCycle,
             machine_limit: machineLimit,
             status: subscription.status === 'active' ? 'active' : 'expired',
-            current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-            current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+            current_period_start: (subscription as any).current_period_start 
+              ? new Date((subscription as any).current_period_start * 1000).toISOString()
+              : new Date().toISOString(),
+            current_period_end: (subscription as any).current_period_end
+              ? new Date((subscription as any).current_period_end * 1000).toISOString()
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           })
           .eq('stripe_subscription_id', subscription.id);
 
