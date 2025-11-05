@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Tractor } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -25,7 +25,9 @@ export default function LoginScreen() {
   const { login, register, resetPassword, isAuthenticated } = useAuth();
   const { needsTrialActivation, startTrial } = useSubscription();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const [showConfirmationMessage, setShowConfirmationMessage] = useState<boolean>(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -34,6 +36,15 @@ export default function LoginScreen() {
       }, 0);
     }
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (params.emailConfirmed === 'true') {
+      setShowConfirmationMessage(true);
+      setTimeout(() => {
+        setShowConfirmationMessage(false);
+      }, 5000);
+    }
+  }, [params]);
 
   const handleLogin = async () => {
     console.log('[LOGIN] Iniciando processo de login...');
@@ -144,6 +155,14 @@ export default function LoginScreen() {
           <Text style={styles.title}>Controle de Máquina</Text>
           <Text style={styles.subtitle}>Gestão de Equipamentos Agrícolas</Text>
         </View>
+
+        {showConfirmationMessage && (
+          <View style={styles.confirmationBanner}>
+            <Text style={styles.confirmationText}>
+              ✓ Email confirmado com sucesso! Faça login para continuar.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.form}>
           {isRegistering && (
@@ -355,5 +374,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textDecorationLine: 'underline' as const,
+  },
+  confirmationBanner: {
+    backgroundColor: '#D4EDDA',
+    borderWidth: 1,
+    borderColor: '#C3E6CB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  confirmationText: {
+    color: '#155724',
+    fontSize: 15,
+    fontWeight: '600' as const,
+    textAlign: 'center',
   },
 });
