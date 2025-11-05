@@ -1,7 +1,6 @@
 import AsyncStorage from '@/lib/storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
 import type {
   Alert,
   AlertStatus,
@@ -39,7 +38,7 @@ const STORAGE_KEYS = {
 export const [DataProvider, useData] = createContextHook(() => {
   const { currentUser } = useAuth();
   const { currentPropertyId } = useProperty();
-  const [isWeb] = useState(() => Platform.OS === 'web');
+  const [isWeb] = useState(() => typeof window !== 'undefined' && typeof document !== 'undefined');
   const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [allRefuelings, setAllRefuelings] = useState<Refueling[]>([]);
   const [allMaintenances, setAllMaintenances] = useState<Maintenance[]>([]);
