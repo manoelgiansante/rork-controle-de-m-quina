@@ -219,6 +219,17 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         if (supabaseData) {
           console.log('[SUBSCRIPTION] Usando dados do Supabase');
           return;
+        } else {
+          console.log('[SUBSCRIPTION] Nenhuma assinatura encontrada no Supabase - limpando cache');
+          await AsyncStorage.removeItem(STORAGE_KEY);
+          const newInfo: SubscriptionInfo = {
+            status: 'none',
+            machineLimit: 0,
+            isActive: false,
+            trialActive: false,
+          };
+          setSubscriptionInfo(newInfo);
+          return;
         }
       }
       
