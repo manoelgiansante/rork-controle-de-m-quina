@@ -3,7 +3,6 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import type { BillingCycle, PlanType, SubscriptionInfo, SubscriptionPlan } from '@/types';
-import { fetchSubscription } from '@/lib/supabase/database';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/lib/supabase/client';
 
@@ -256,7 +255,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [syncWithSupabase, calculateSubscriptionStatus, currentUser]);
+  }, [syncWithSupabase, calculateSubscriptionStatus]);
 
   useEffect(() => {
     loadSubscription();
