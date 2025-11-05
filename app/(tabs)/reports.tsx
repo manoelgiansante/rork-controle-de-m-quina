@@ -389,34 +389,53 @@ export default function ReportsScreen() {
 
   const handleDeleteRefueling = (refuelingId: string) => {
     console.log('[REPORTS] handleDeleteRefueling chamado:', refuelingId);
-    Alert.alert(
-      'Excluir Abastecimento',
-      'Tem certeza que deseja excluir este abastecimento? O combustível será devolvido ao tanque.',
-      [
-        { text: 'Cancelar', style: 'cancel', onPress: () => console.log('[REPORTS] Cancelado') },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('[REPORTS] Excluindo abastecimento:', refuelingId);
-              console.log('[REPORTS] deleteRefueling disponível?', typeof deleteRefueling);
-              await deleteRefueling(refuelingId);
-              console.log('[REPORTS] Abastecimento excluído com sucesso');
-              Alert.alert('Sucesso', 'Abastecimento excluído com sucesso!');
-            } catch (error) {
-              console.error('[REPORTS] Erro ao excluir abastecimento:', error);
-              console.error('[REPORTS] Erro stringificado:', JSON.stringify(error, null, 2));
-              console.error('[REPORTS] Erro detalhado:', {
-                message: error instanceof Error ? error.message : 'Unknown error',
-                stack: error instanceof Error ? error.stack : undefined,
-              });
-              Alert.alert('Erro', `Não foi possível excluir o abastecimento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-            }
+    
+    const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+    
+    if (isWeb) {
+      const confirmed = window.confirm(
+        'Tem certeza que deseja excluir este abastecimento? O combustível será devolvido ao tanque.'
+      );
+      
+      if (confirmed) {
+        (async () => {
+          try {
+            console.log('[REPORTS] Excluindo abastecimento:', refuelingId);
+            await deleteRefueling(refuelingId);
+            console.log('[REPORTS] Abastecimento excluído com sucesso');
+            window.alert('Abastecimento excluído com sucesso!');
+          } catch (error) {
+            console.error('[REPORTS] Erro ao excluir:', error);
+            window.alert('Erro ao excluir abastecimento');
+          }
+        })();
+      } else {
+        console.log('[REPORTS] Cancelado');
+      }
+    } else {
+      Alert.alert(
+        'Excluir Abastecimento',
+        'Tem certeza que deseja excluir este abastecimento? O combustível será devolvido ao tanque.',
+        [
+          { text: 'Cancelar', style: 'cancel', onPress: () => console.log('[REPORTS] Cancelado') },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                console.log('[REPORTS] Excluindo abastecimento:', refuelingId);
+                await deleteRefueling(refuelingId);
+                console.log('[REPORTS] Abastecimento excluído com sucesso');
+                Alert.alert('Sucesso', 'Abastecimento excluído com sucesso!');
+              } catch (error) {
+                console.error('[REPORTS] Erro ao excluir:', error);
+                Alert.alert('Erro', 'Não foi possível excluir o abastecimento');
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleSaveMaintenance = async () => {
