@@ -105,30 +105,42 @@ export default function FuelTankScreen() {
   };
 
   const handleAdjustment = async () => {
+    console.log('[FUEL-TANK] Iniciando ajuste...', { adjustmentValue, adjustmentType, adjustmentReason });
+    
     const liters = parseFloat(adjustmentValue);
+    console.log('[FUEL-TANK] Litros parseados:', liters);
 
     if (isNaN(liters) || liters <= 0) {
+      console.log('[FUEL-TANK] Erro: valor inválido');
       Alert.alert('Erro', 'Por favor, insira uma quantidade válida');
       return;
     }
 
     if (!adjustmentReason.trim()) {
+      console.log('[FUEL-TANK] Erro: motivo vazio');
       Alert.alert('Erro', 'Por favor, informe o motivo do ajuste');
       return;
     }
 
     const finalValue = adjustmentType === 'add' ? liters : -liters;
+    console.log('[FUEL-TANK] Valor final do ajuste:', finalValue);
 
-    await adjustTankFuel(finalValue, adjustmentReason);
+    try {
+      await adjustTankFuel(finalValue, adjustmentReason);
+      console.log('[FUEL-TANK] Ajuste realizado com sucesso');
 
-    setAdjustmentValue('');
-    setAdjustmentReason('');
-    setIsAdjustModalOpen(false);
+      setAdjustmentValue('');
+      setAdjustmentReason('');
+      setIsAdjustModalOpen(false);
 
-    Alert.alert(
-      'Ajuste Realizado',
-      `${adjustmentType === 'add' ? 'Adicionados' : 'Removidos'} ${liters.toFixed(0)} litros do tanque.\n\nMotivo: ${adjustmentReason}`
-    );
+      Alert.alert(
+        'Ajuste Realizado',
+        `${adjustmentType === 'add' ? 'Adicionados' : 'Removidos'} ${liters.toFixed(0)} litros do tanque.\n\nMotivo: ${adjustmentReason}`
+      );
+    } catch (error) {
+      console.error('[FUEL-TANK] Erro ao realizar ajuste:', error);
+      Alert.alert('Erro', 'Não foi possível realizar o ajuste. Tente novamente.');
+    }
   };
 
 
