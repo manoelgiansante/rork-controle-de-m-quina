@@ -121,7 +121,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     return () => { cancelled = true; };
   }, [loadData]);
 
-  const syncSubscriptionAfterLogin = useCallback(async (userId: string) => {
+  // Função para sincronizar assinatura após login (sem useCallback para evitar erro de hooks)
+  const syncSubscriptionAfterLogin = async (userId: string) => {
     try {
       console.log('[AUTH] Sincronizando assinatura após login para user:', userId);
       
@@ -157,7 +158,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     } catch (error) {
       console.error('[AUTH] Erro ao sincronizar assinatura:', error);
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (!isWeb || !supabase) {
@@ -214,7 +215,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[AUTH] Removendo listener de autenticação');
       authListener.subscription.unsubscribe();
     };
-  }, [isWeb, syncSubscriptionAfterLogin]);
+  }, [isWeb]);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     console.log('[AUTH] Tentando fazer login...', { username, platform: Platform.OS });
@@ -284,7 +285,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     console.log('[AUTH] Login falhou - credenciais inválidas');
     return false;
-  }, [isWeb, users, syncSubscriptionAfterLogin]);
+  }, [isWeb, users]);
 
   const logout = useCallback(async () => {
     console.log('[AUTH] Executando logout...');
@@ -405,7 +406,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
 
     return true;
-  }, [isWeb, users, syncSubscriptionAfterLogin]);
+  }, [isWeb, users]);
 
   const createEmployee = useCallback(async (
     username: string,
