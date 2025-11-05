@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -36,6 +37,11 @@ export default function FuelTankScreen() {
   const [adjustmentValue, setAdjustmentValue] = useState<string>('');
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract'>('add');
   const [adjustmentReason, setAdjustmentReason] = useState<string>('');
+
+  const [isEditTankModalOpen, setIsEditTankModalOpen] = useState<boolean>(false);
+  const [editCapacityLiters, setEditCapacityLiters] = useState<string>('');
+  const [editFuelType, setEditFuelType] = useState<FuelType>('Diesel comum');
+  const [editAlertLevelLiters, setEditAlertLevelLiters] = useState<string>('');
 
   const handleSetupTank = async () => {
     const capacity = parseFloat(capacityLiters);
@@ -140,6 +146,85 @@ export default function FuelTankScreen() {
     } catch (error) {
       console.error('[FUEL-TANK] Erro ao realizar ajuste:', error);
       Alert.alert('Erro', 'Não foi possível realizar o ajuste. Tente novamente.');
+    }
+  };
+
+  const handleEditTank = async () => {
+    const capacity = parseFloat(editCapacityLiters);
+    const alertLevel = parseFloat(editAlertLevelLiters);
+
+    if (isNaN(capacity) || capacity <= 0) {
+      if (Platform.OS === 'web') {
+        window.alert('Por favor, insira uma capacidade válida');
+      } else {
+        Alert.alert('Erro', 'Por favor, insira uma capacidade válida');
+      }
+      return;
+    }
+
+    if (isNaN(alertLevel) || alertLevel < 0 || alertLevel > capacity) {
+      if (Platform.OS === 'web') {
+        window.alert('Por favor, insira um nível de alerta válido');
+      } else {
+        Alert.alert('Erro', 'Por favor, insira um nível de alerta válido');
+      }
+      return;
+    }
+
+    if (farmTank && farmTank.currentLiters > capacity) {
+      if (Platform.OS === 'web') {
+        const confirmar = window.confirm(
+          `A quantidade atual (${farmTank.currentLiters.toFixed(0)}L) é maior que a nova capacidade (${capacity.toFixed(0)}L). Deseja continuar mesmo assim?`
+        );
+        if (!confirmar) return;
+      } else {
+        Alert.alert(
+          'Atenção',
+          `A quantidade atual (${farmTank.currentLiters.toFixed(0)}L) é maior que a nova capacidade (${capacity.toFixed(0)}L). Deseja continuar mesmo assim?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Continuar',
+              onPress: async () => {
+                await saveEditedTank(capacity, alertLevel);
+              },
+            },
+          ]
+        );
+        return;
+      }
+    }
+
+    await saveEditedTank(capacity, alertLevel);
+  };
+
+  const saveEditedTank = async (capacity: number, alertLevel: number) => {
+    if (!farmTank) return;
+
+    await updateTankInitialData({
+      capacityLiters: capacity,
+      currentLiters: farmTank.currentLiters,
+      fuelType: editFuelType,
+      alertLevelLiters: alertLevel,
+    });
+
+    setIsEditTankModalOpen(false);
+    setEditCapacityLiters('');
+    setEditAlertLevelLiters('');
+    
+    if (Platform.OS === 'web') {
+      window.alert('Configurações do tanque atualizadas com sucesso!');
+    } else {
+      Alert.alert('Sucesso', 'Configurações do tanque atualizadas com sucesso!');
+    }
+  };
+
+  const openEditTankModal = () => {
+    if (farmTank) {
+      setEditCapacityLiters(farmTank.capacityLiters.toString());
+      setEditFuelType(farmTank.fuelType);
+      setEditAlertLevelLiters(farmTank.alertLevelLiters.toString());
+      setIsEditTankModalOpen(true);
     }
   };
 
@@ -344,6 +429,13 @@ export default function FuelTankScreen() {
             <Settings size={24} color="#2D5016" />
             <Text style={styles.actionButtonSecondaryText}>Ajustar Estoque</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButtonSecondary}
+            onPress={openEditTankModal}
+          >
+            <Text style={styles.actionButtonSecondaryText}>Ajustar Configurações do Tanque</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -385,6 +477,84 @@ export default function FuelTankScreen() {
                 <Text style={styles.modalButtonSaveText}>Adicionar</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isEditTankModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsEditTankModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>Ajustar Configurações do Tanque</Text>
+
+              <Text style={styles.label}>Capacidade total do tanque (litros)</Text>
+              <TextInput
+                style={styles.input}
+                value={editCapacityLiters}
+                onChangeText={setEditCapacityLiters}
+                placeholder="Ex: 5000"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.label}>Tipo de diesel</Text>
+              <View style={styles.typeContainer}>
+                {FUEL_TYPES.map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.typeButton,
+                      editFuelType === type && styles.typeButtonSelected,
+                    ]}
+                    onPress={() => setEditFuelType(type)}
+                  >
+                    <Text
+                      style={[
+                        styles.typeButtonText,
+                        editFuelType === type && styles.typeButtonTextSelected,
+                      ]}
+                    >
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Nível mínimo de alerta (litros)</Text>
+              <TextInput
+                style={styles.input}
+                value={editAlertLevelLiters}
+                onChangeText={setEditAlertLevelLiters}
+                placeholder="Ex: 500"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.hint}>
+                Quantidade atual no tanque: {farmTank?.currentLiters.toFixed(0)} L (não será alterada)
+              </Text>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.modalButtonCancel}
+                  onPress={() => {
+                    setIsEditTankModalOpen(false);
+                    setEditCapacityLiters('');
+                    setEditAlertLevelLiters('');
+                  }}
+                >
+                  <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalButtonSave} onPress={handleEditTank}>
+                  <Text style={styles.modalButtonSaveText}>Salvar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
