@@ -2,7 +2,7 @@ import AsyncStorage from '@/lib/storage';
 import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
-import type { User } from '@/types';
+import type { User, SubscriptionInfo } from '@/types';
 import { appLogout } from '@/lib/logout';
 import { supabase } from '@/lib/supabase/client';
 
@@ -121,6 +121,44 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     return () => { cancelled = true; };
   }, [loadData]);
 
+  const syncSubscriptionAfterLogin = useCallback(async (userId: string) => {
+    try {
+      console.log('[AUTH] Sincronizando assinatura após login para user:', userId);
+      
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.log('[AUTH] Nenhuma assinatura encontrada no Supabase (normal para novos usuários)');
+        return;
+      }
+
+      if (data) {
+        console.log('[AUTH] Assinatura encontrada, salvando no cache:', data);
+        
+        const subscriptionData: SubscriptionInfo = {
+          status: data.status === 'active' ? 'active' : 'expired',
+          planType: data.plan_type,
+          billingCycle: data.billing_cycle,
+          machineLimit: data.machine_limit,
+          subscriptionStartDate: data.current_period_start,
+          subscriptionEndDate: data.current_period_end,
+          isActive: data.status === 'active',
+          trialActive: data.trial_active || false,
+          trialEndsAt: data.trial_ends_at,
+        };
+
+        await AsyncStorage.setItem('@controle_maquina:subscription', JSON.stringify(subscriptionData));
+        console.log('[AUTH] Assinatura sincronizada com sucesso');
+      }
+    } catch (error) {
+      console.error('[AUTH] Erro ao sincronizar assinatura:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (!isWeb || !supabase) {
       return;
@@ -158,6 +196,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
         }
+        syncSubscriptionAfterLogin(session.user.id);
       }
       
       if (event === 'SIGNED_OUT') {
@@ -175,7 +214,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[AUTH] Removendo listener de autenticação');
       authListener.subscription.unsubscribe();
     };
-  }, [isWeb]);
+  }, [isWeb, syncSubscriptionAfterLogin]);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     console.log('[AUTH] Tentando fazer login...', { username, platform: Platform.OS });
@@ -213,6 +252,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
           }
           
+          await syncSubscriptionAfterLogin(data.user.id);
+          
           return true;
         }
         
@@ -243,7 +284,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     console.log('[AUTH] Login falhou - credenciais inválidas');
     return false;
-  }, [isWeb, users]);
+  }, [isWeb, users, syncSubscriptionAfterLogin]);
 
   const logout = useCallback(async () => {
     console.log('[AUTH] Executando logout...');
@@ -330,6 +371,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
           }
           
+          await syncSubscriptionAfterLogin(data.user.id);
+          
           return true;
         }
         
@@ -362,7 +405,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
 
     return true;
-  }, [isWeb, users]);
+  }, [isWeb, users, syncSubscriptionAfterLogin]);
 
   const createEmployee = useCallback(async (
     username: string,
