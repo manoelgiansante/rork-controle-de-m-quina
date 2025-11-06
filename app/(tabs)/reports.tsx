@@ -371,25 +371,52 @@ export default function ReportsScreen() {
   };
 
   const handleDeleteMaintenance = (maintenanceId: string) => {
-    Alert.alert(
-      'Excluir Manutenção',
-      'Tem certeza que deseja excluir esta manutenção?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteMaintenance(maintenanceId);
-            } catch (error) {
-              console.error('Erro ao excluir manutenção:', error);
-              Alert.alert('Erro', 'Não foi possível excluir a manutenção');
-            }
+    const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+    
+    if (isWeb) {
+      const confirmed = window.confirm(
+        'Tem certeza que deseja excluir esta manutenção? Os alertas relacionados também serão removidos.'
+      );
+      
+      if (confirmed) {
+        (async () => {
+          try {
+            console.log('[REPORTS] Excluindo manutenção:', maintenanceId);
+            await deleteMaintenance(maintenanceId);
+            console.log('[REPORTS] Manutenção excluída com sucesso');
+            window.alert('Manutenção excluída com sucesso!');
+          } catch (error) {
+            console.error('[REPORTS] Erro ao excluir manutenção:', error);
+            window.alert(`Não foi possível excluir a manutenção: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+          }
+        })();
+      } else {
+        console.log('[REPORTS] Cancelado');
+      }
+    } else {
+      Alert.alert(
+        'Excluir Manutenção',
+        'Tem certeza que deseja excluir esta manutenção? Os alertas relacionados também serão removidos.',
+        [
+          { text: 'Cancelar', style: 'cancel', onPress: () => console.log('[REPORTS] Cancelado') },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                console.log('[REPORTS] Excluindo manutenção:', maintenanceId);
+                await deleteMaintenance(maintenanceId);
+                console.log('[REPORTS] Manutenção excluída com sucesso');
+                Alert.alert('Sucesso', 'Manutenção excluída com sucesso!');
+              } catch (error) {
+                console.error('[REPORTS] Erro ao excluir manutenção:', error);
+                Alert.alert('Erro', `Não foi possível excluir a manutenção: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleDeleteRefueling = (refuelingId: string) => {
