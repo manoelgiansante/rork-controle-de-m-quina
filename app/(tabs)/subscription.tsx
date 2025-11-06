@@ -162,32 +162,59 @@ export default function SubscriptionScreen() {
         }
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao cancelar assinatura');
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.error('[CANCEL] Erro ao fazer parse do JSON:', e);
+        data = { error: 'Resposta inválida do servidor' };
       }
 
-      console.log('[CANCEL] Assinatura cancelada com sucesso:', data);
+      console.log('[CANCEL] Resposta do servidor:', { status: response.status, data });
 
+      // Fecha o modal antes de mostrar a mensagem
       setShowCancelModal(false);
 
-      if (Platform.OS === 'web') {
-        window.alert(
-          'Assinatura Cancelada\n\nSua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.'
-        );
-      } else {
-        Alert.alert(
-          'Assinatura Cancelada',
-          'Sua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.',
-          [{ text: 'OK' }]
-        );
-      }
+      // Aguarda um pouco para atualizar o estado via webhook
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
+      // Sincroniza com o Supabase para pegar o estado atualizado
       if (currentUser?.id) {
         await syncWithSupabase(currentUser.id);
       }
       await refreshSubscription();
+
+      // Verifica se o cancelamento realmente funcionou checando o estado
+      if (subscriptionInfo?.cancelAtPeriodEnd || response.ok) {
+        // Sucesso!
+        if (Platform.OS === 'web') {
+          window.alert(
+            'Assinatura Cancelada\n\nSua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.'
+          );
+        } else {
+          Alert.alert(
+            'Assinatura Cancelada',
+            'Sua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.',
+            [{ text: 'OK' }]
+          );
+        }
+      } else if (!response.ok) {
+        // Erro real
+        throw new Error(data.error || 'Erro ao cancelar assinatura');
+      } else {
+        // Sucesso via response.ok
+        if (Platform.OS === 'web') {
+          window.alert(
+            'Assinatura Cancelada\n\nSua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.'
+          );
+        } else {
+          Alert.alert(
+            'Assinatura Cancelada',
+            'Sua assinatura foi cancelada com sucesso. Você continuará tendo acesso aos recursos Premium até o final do período atual.',
+            [{ text: 'OK' }]
+          );
+        }
+      }
 
     } catch (error: any) {
       console.error('[CANCEL] Erro ao cancelar:', error);

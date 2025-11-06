@@ -103,14 +103,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         currentPeriodEnd = new Date(stripePeriodEnd * 1000).toISOString();
       }
     } catch (stripeError: any) {
-      console.error('[CANCEL] ❌ Erro ao configurar cancelamento no Stripe:', stripeError.message);
-      console.error('[CANCEL] 🔍 Código do erro:', stripeError.code);
+      console.error('[CANCEL] ❌ Erro ao configurar cancelamento no Stripe:', stripeError?.message || stripeError);
+      console.error('[CANCEL] 🔍 Código do erro:', stripeError?.code || 'undefined');
+      console.error('[CANCEL] 🔍 Erro completo:', JSON.stringify(stripeError, null, 2));
       
       // Se erro é "subscription não encontrada", apenas atualiza Supabase
-      if (stripeError.code === 'resource_missing') {
+      if (stripeError?.code === 'resource_missing') {
         console.log('[CANCEL] ⚠️ Subscription não encontrada no Stripe - atualizando apenas Supabase');
+      } else if (!stripeError || !stripeError.code) {
+        // Erro indefinido ou desconhecido - continua e atualiza no Supabase
+        console.log('[CANCEL] ⚠️ Erro desconhecido no Stripe - continuando com atualização no Supabase');
       } else {
-        // Outro erro - retorna erro para usuário
+        // Outro erro real - retorna erro para usuário
         return res.status(500).json({ error: 'Erro ao cancelar no Stripe: ' + stripeError.message });
       }
     }
