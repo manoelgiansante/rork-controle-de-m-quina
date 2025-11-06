@@ -613,6 +613,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         return;
       }
 
+      console.log('[DATA] ========== EXCLUSÃO DE ABASTECIMENTO ==========');
       console.log('[DATA] Excluindo abastecimento:', {
         id: refuelingId,
         machineId: refueling.machineId,
@@ -636,31 +637,49 @@ export const [DataProvider, useData] = createContextHook(() => {
       const machineRefuelings = updated.filter(r => r.machineId === refueling.machineId);
       const machineMaintenances = allMaintenances.filter(m => m.machineId === refueling.machineId);
       
+      const machine = allMachines.find(m => m.id === refueling.machineId);
+      console.log('[DATA] Estado atual da máquina:', {
+        machineId: refueling.machineId,
+        currentHourMeter: machine?.currentHourMeter,
+        abastecimentosRestantes: machineRefuelings.length,
+        manutençõesExistentes: machineMaintenances.length,
+      });
+      
       let newHourMeter = 0;
       
       if (machineRefuelings.length > 0) {
         const latestRefueling = machineRefuelings.reduce((latest, current) => {
           return current.hourMeter > latest.hourMeter ? current : latest;
         });
-        newHourMeter = latestRefueling.hourMeter;
+        newHourMeter = Math.max(newHourMeter, latestRefueling.hourMeter);
         
-        console.log('[DATA] Usando horímetro do último abastecimento restante:', {
-          machineId: refueling.machineId,
-          newHourMeter,
+        console.log('[DATA] Último abastecimento restante:', {
+          id: latestRefueling.id,
+          hourMeter: latestRefueling.hourMeter,
         });
-      } else if (machineMaintenances.length > 0) {
+      }
+      
+      if (machineMaintenances.length > 0) {
         const latestMaintenance = machineMaintenances.reduce((latest, current) => {
           return current.hourMeter > latest.hourMeter ? current : latest;
         });
-        newHourMeter = latestMaintenance.hourMeter;
+        newHourMeter = Math.max(newHourMeter, latestMaintenance.hourMeter);
         
-        console.log('[DATA] Usando horímetro da última manutenção:', {
-          machineId: refueling.machineId,
-          newHourMeter,
+        console.log('[DATA] Última manutenção:', {
+          id: latestMaintenance.id,
+          hourMeter: latestMaintenance.hourMeter,
         });
-      } else {
-        console.log('[DATA] Sem dados de horímetro, resetando para 0');
       }
+      
+      if (newHourMeter === 0) {
+        console.log('[DATA] ⚠️ Sem dados de horímetro, resetando para 0');
+      }
+
+      console.log('[DATA] 🔄 Atualizando horímetro da máquina:', {
+        machineId: refueling.machineId,
+        antigoHorímetro: machine?.currentHourMeter,
+        novoHorímetro: newHourMeter,
+      });
 
       await updateMachine(refueling.machineId, {
         currentHourMeter: newHourMeter,
@@ -747,7 +766,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         });
       }
     },
-    [allRefuelings, allMaintenances, allAlerts, farmTank, allFarmTanks, isWeb, updateMachine, calculateAlertStatus]
+    [allRefuelings, allMaintenances, allAlerts, allMachines, farmTank, allFarmTanks, isWeb, updateMachine, calculateAlertStatus]
   );
 
   const deleteMaintenance = useCallback(
@@ -758,6 +777,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         return;
       }
 
+      console.log('[DATA] ========== EXCLUSÃO DE MANUTENÇÃO ==========');
       console.log('[DATA] Excluindo manutenção:', {
         id: maintenanceId,
         machineId: maintenance.machineId,
@@ -787,6 +807,14 @@ export const [DataProvider, useData] = createContextHook(() => {
       const machineMaintenances = updated.filter(m => m.machineId === maintenance.machineId);
       const machineRefuelings = allRefuelings.filter(r => r.machineId === maintenance.machineId);
       
+      const machine = allMachines.find(m => m.id === maintenance.machineId);
+      console.log('[DATA] Estado atual da máquina:', {
+        machineId: maintenance.machineId,
+        currentHourMeter: machine?.currentHourMeter,
+        manutencoesRestantes: machineMaintenances.length,
+        abastecimentos: machineRefuelings.length,
+      });
+      
       let newHourMeter = 0;
       
       if (machineRefuelings.length > 0) {
@@ -794,6 +822,10 @@ export const [DataProvider, useData] = createContextHook(() => {
           return current.hourMeter > latest.hourMeter ? current : latest;
         });
         newHourMeter = Math.max(newHourMeter, latestRefueling.hourMeter);
+        console.log('[DATA] Último abastecimento:', {
+          id: latestRefueling.id,
+          hourMeter: latestRefueling.hourMeter,
+        });
       }
       
       if (machineMaintenances.length > 0) {
@@ -801,11 +833,20 @@ export const [DataProvider, useData] = createContextHook(() => {
           return current.hourMeter > latest.hourMeter ? current : latest;
         });
         newHourMeter = Math.max(newHourMeter, latestMaintenance.hourMeter);
+        console.log('[DATA] Última manutenção restante:', {
+          id: latestMaintenance.id,
+          hourMeter: latestMaintenance.hourMeter,
+        });
+      }
+      
+      if (newHourMeter === 0) {
+        console.log('[DATA] ⚠️ Sem dados de horímetro, resetando para 0');
       }
 
-      console.log('[DATA] Novo horímetro calculado:', {
+      console.log('[DATA] 🔄 Atualizando horímetro da máquina:', {
         machineId: maintenance.machineId,
-        newHourMeter,
+        antigoHorímetro: machine?.currentHourMeter,
+        novoHorímetro: newHourMeter,
       });
 
       await updateMachine(maintenance.machineId, {
@@ -846,7 +887,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(finalAlerts));
       }
     },
-    [allMaintenances, allAlerts, allRefuelings, isWeb, updateMachine, calculateAlertStatus]
+    [allMaintenances, allAlerts, allRefuelings, allMachines, isWeb, updateMachine, calculateAlertStatus]
   );
 
   const alertsRef = useRef(allAlerts);
