@@ -340,6 +340,20 @@ export default function SubscriptionScreen() {
           )}
         </TouchableOpacity>
       )}
+
+      {isCurrentPlan && subscriptionInfo.isActive && subscriptionInfo.cancelAtPeriodEnd && (
+        <TouchableOpacity
+          style={[styles.selectButton, isProcessing && styles.selectButtonDisabled]}
+          onPress={() => handleSelectPlan(plan.planType, plan.billingCycle)}
+          disabled={isProcessing}
+        >
+          {isProcessing ? (
+            <ActivityIndicator color="#FFF" size="small" />
+          ) : (
+            <Text style={styles.selectButtonText}>Reativar Este Plano</Text>
+          )}
+        </TouchableOpacity>
+      )}
     </View>
   );
 
