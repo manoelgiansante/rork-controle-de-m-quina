@@ -222,10 +222,15 @@ export default function ReportsScreen() {
                                   <Edit2 size={18} color="#2D5016" />
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                  onPress={() => handleDeleteMaintenance(maintenance.id)}
-                                  style={styles.actionButton}
+                                  onPress={() => {
+                                    console.log('[REPORTS] Botão excluir manutenção pressionado:', maintenance.id);
+                                    handleDeleteMaintenance(maintenance.id);
+                                  }}
+                                  style={styles.deleteButton}
+                                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                                  testID={`delete-maintenance-${maintenance.id}`}
                                 >
-                                  <Trash2 size={18} color="#F44336" />
+                                  <Trash2 size={20} color="#FFF" />
                                 </TouchableOpacity>
                               </View>
                             </View>
