@@ -65,16 +65,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[CHECKOUT] Email do usuário:', userEmail);
 
     // Buscar ou criar customer no Stripe
+    // IMPORTANTE: Busca por userId no metadata para evitar conflito entre contas
     let customerId: string;
-    const existingCustomers = await stripe.customers.list({
-      email: userEmail,
+    
+    // Primeiro, tenta buscar customer por userId no metadata
+    const customersByUserId = await stripe.customers.search({
+      query: `metadata['userId']:'${userId}'`,
       limit: 1,
     });
 
-    if (existingCustomers.data.length > 0) {
-      customerId = existingCustomers.data[0].id;
-      console.log('[CHECKOUT] Customer existente encontrado:', customerId);
+    if (customersByUserId.data.length > 0) {
+      // Encontrou customer pelo userId - verifica se email está correto
+      const existingCustomer = customersByUserId.data[0];
+      customerId = existingCustomer.id;
+      console.log('[CHECKOUT] Customer existente encontrado pelo userId:', customerId);
+      
+      // Atualiza email se necessário
+      if (existingCustomer.email !== userEmail) {
+        console.log('[CHECKOUT] ⚠️ Email do customer está desatualizado, atualizando de', existingCustomer.email, 'para', userEmail);
+        await stripe.customers.update(customerId, {
+          email: userEmail,
+        });
+      }
     } else {
+      // Não encontrou pelo userId - cria novo customer
+      console.log('[CHECKOUT] Nenhum customer encontrado para userId:', userId, '- criando novo...');
       const newCustomer = await stripe.customers.create({
         email: userEmail,
         metadata: {
