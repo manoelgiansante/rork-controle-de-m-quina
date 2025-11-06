@@ -582,6 +582,13 @@ export const [DataProvider, useData] = createContextHook(() => {
         return;
       }
 
+      console.log('[DATA] Excluindo abastecimento:', {
+        id: refuelingId,
+        machineId: refueling.machineId,
+        hourMeter: refueling.hourMeter,
+        liters: refueling.liters,
+      });
+
       if (isWeb) {
         console.log('[DATA WEB] Deletando abastecimento no Supabase...');
         await db.deleteRefueling(refuelingId);
@@ -593,6 +600,48 @@ export const [DataProvider, useData] = createContextHook(() => {
         STORAGE_KEYS.REFUELINGS,
         JSON.stringify(updated)
       );
+
+      console.log('[DATA] Recalculando horímetro da máquina após exclusão...');
+      const machineRefuelings = updated.filter(r => r.machineId === refueling.machineId);
+      
+      if (machineRefuelings.length > 0) {
+        const latestRefueling = machineRefuelings.reduce((latest, current) => {
+          return current.hourMeter > latest.hourMeter ? current : latest;
+        });
+        
+        console.log('[DATA] Atualizando horímetro da máquina:', {
+          machineId: refueling.machineId,
+          newHourMeter: latestRefueling.hourMeter,
+          from: 'último abastecimento restante',
+        });
+
+        await updateMachine(refueling.machineId, {
+          currentHourMeter: latestRefueling.hourMeter,
+        });
+      } else {
+        console.log('[DATA] Nenhum abastecimento restante para esta máquina');
+        const machineMaintenances = allMaintenances.filter(m => m.machineId === refueling.machineId);
+        
+        if (machineMaintenances.length > 0) {
+          const latestMaintenance = machineMaintenances.reduce((latest, current) => {
+            return current.hourMeter > latest.hourMeter ? current : latest;
+          });
+          
+          console.log('[DATA] Usando horímetro da última manutenção:', {
+            machineId: refueling.machineId,
+            newHourMeter: latestMaintenance.hourMeter,
+          });
+
+          await updateMachine(refueling.machineId, {
+            currentHourMeter: latestMaintenance.hourMeter,
+          });
+        } else {
+          console.log('[DATA] Sem dados de horímetro, resetando para 0');
+          await updateMachine(refueling.machineId, {
+            currentHourMeter: 0,
+          });
+        }
+      }
 
       console.log('[DATA] Ajustando tanque devido a exclusão de abastecimento:', {
         litros: refueling.liters,
@@ -641,7 +690,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         });
       }
     },
-    [allRefuelings, farmTank, allFarmTanks, isWeb]
+    [allRefuelings, allMaintenances, farmTank, allFarmTanks, isWeb, updateMachine]
   );
 
   const deleteMaintenance = useCallback(
