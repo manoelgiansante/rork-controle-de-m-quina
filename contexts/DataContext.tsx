@@ -416,6 +416,37 @@ export const [DataProvider, useData] = createContextHook(() => {
         JSON.stringify(updated)
       );
 
+      if (updates.hourMeter !== undefined && updates.hourMeter !== originalMaintenance.hourMeter) {
+        console.log('[DATA] Horímetro da manutenção foi alterado, verificando se precisa atualizar máquina...');
+        
+        const machineMaintenances = updated.filter(m => m.machineId === originalMaintenance.machineId);
+        const machineRefuelings = allRefuelings.filter(r => r.machineId === originalMaintenance.machineId);
+        
+        const latestMaintenanceHourMeter = machineMaintenances.reduce(
+          (max, m) => Math.max(max, m.hourMeter),
+          0
+        );
+        const latestRefuelingHourMeter = machineRefuelings.reduce(
+          (max, r) => Math.max(max, r.hourMeter),
+          0
+        );
+        
+        const newMachineHourMeter = Math.max(latestMaintenanceHourMeter, latestRefuelingHourMeter);
+        
+        const machine = allMachines.find(m => m.id === originalMaintenance.machineId);
+        if (machine && machine.currentHourMeter !== newMachineHourMeter) {
+          console.log('[DATA] Atualizando horímetro da máquina:', {
+            machineId: originalMaintenance.machineId,
+            oldHourMeter: machine.currentHourMeter,
+            newHourMeter: newMachineHourMeter,
+          });
+          
+          await updateMachine(originalMaintenance.machineId, {
+            currentHourMeter: newMachineHourMeter,
+          });
+        }
+      }
+
       if (updates.itemRevisions) {
         console.log('[DATA] Atualizando alertas relacionados à manutenção...');
         
@@ -465,7 +496,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         }
       }
     },
-    [allMaintenances, allAlerts, allMachines, isWeb, calculateAlertStatus]
+    [allMaintenances, allAlerts, allMachines, allRefuelings, isWeb, calculateAlertStatus, updateMachine]
   );
 
   const updateRefueling = useCallback(
