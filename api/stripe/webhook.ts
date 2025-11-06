@@ -43,19 +43,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const userId = session.metadata?.userId;
+        let userId = session.metadata?.userId;
         const subscriptionId = session.subscription as string;
 
         console.log('[WEBHOOK] ✅ Pagamento concluído:', session.id);
-        console.log('[WEBHOOK] User ID:', userId);
+        console.log('[WEBHOOK] User ID from session:', userId);
         console.log('[WEBHOOK] Subscription ID:', subscriptionId);
 
-        if (!userId || !subscriptionId) {
-          console.error('[WEBHOOK] ⚠️ Dados ausentes no metadata');
+        if (!subscriptionId) {
+          console.error('[WEBHOOK] ⚠️ Subscription ID ausente');
           break;
         }
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        
+        // Se não tem userId na sessão, busca do metadata da subscription
+        if (!userId && subscription.metadata?.userId) {
+          userId = subscription.metadata.userId;
+          console.log('[WEBHOOK] User ID from subscription metadata:', userId);
+        }
+        
+        if (!userId) {
+          console.error('[WEBHOOK] ⚠️ userId não encontrado em nenhum metadata');
+          break;
+        }
         const priceId = subscription.items.data[0]?.price.id;
 
         let planType: 'basic' | 'premium' = 'basic';
