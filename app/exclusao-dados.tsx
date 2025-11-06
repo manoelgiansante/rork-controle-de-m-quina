@@ -1,5 +1,4 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase/client';
 import { Stack, useRouter } from 'expo-router';
 import { AlertCircle, Trash2, CheckCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -82,53 +81,31 @@ export default function DeleteAccountScreen() {
     try {
       console.log('[DELETE ACCOUNT] Iniciando exclusão da conta...', { userId: currentUser.id });
 
-      if (Platform.OS === 'web') {
-        const { error: deleteError } = await supabase.rpc('delete_user_account', {
-          user_id_to_delete: currentUser.id
-        });
+      const response = await fetch('https://controledemaquina.com.br/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+        }),
+      });
 
-        if (deleteError) {
-          console.error('[DELETE ACCOUNT] Erro ao excluir dados:', deleteError);
-          throw deleteError;
-        }
-
-        const { error: authError } = await supabase.auth.admin.deleteUser(currentUser.id);
-
-        if (authError) {
-          console.error('[DELETE ACCOUNT] Erro ao excluir usuário do auth:', authError);
-        }
-
-        console.log('[DELETE ACCOUNT] Conta excluída com sucesso');
-        setDeleteSuccess(true);
-
-        setTimeout(async () => {
-          await logout();
-          router.replace('/login');
-        }, 3000);
-      } else {
-        const response = await fetch('https://controledemaquina.com.br/api/delete-account', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erro ao excluir conta');
-        }
-
-        console.log('[DELETE ACCOUNT] Conta excluída com sucesso');
-        setDeleteSuccess(true);
-
-        setTimeout(async () => {
-          await logout();
-          router.replace('/login');
-        }, 3000);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[DELETE ACCOUNT] Erro da API:', errorData);
+        throw new Error(errorData.error || 'Erro ao excluir conta');
       }
+
+      const result = await response.json();
+      console.log('[DELETE ACCOUNT] Resposta da API:', result);
+      console.log('[DELETE ACCOUNT] Conta excluída com sucesso');
+      setDeleteSuccess(true);
+
+      setTimeout(async () => {
+        await logout();
+        router.replace('/login');
+      }, 3000);
 
     } catch (error: any) {
       console.error('[DELETE ACCOUNT] Erro:', error);
