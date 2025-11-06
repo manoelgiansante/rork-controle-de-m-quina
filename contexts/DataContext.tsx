@@ -434,6 +434,28 @@ export const [DataProvider, useData] = createContextHook(() => {
         JSON.stringify(updated)
       );
 
+      if (updates.hourMeter !== undefined && updates.hourMeter !== refueling.hourMeter) {
+        console.log('[DATA] Horímetro do abastecimento mudou:', {
+          machineId: refueling.machineId,
+          oldHourMeter: refueling.hourMeter,
+          newHourMeter: updates.hourMeter,
+        });
+
+        const machineRefuelings = updated.filter(r => r.machineId === refueling.machineId);
+        const latestRefueling = machineRefuelings.reduce((latest, current) => {
+          return current.hourMeter > latest.hourMeter ? current : latest;
+        });
+
+        console.log('[DATA] Atualizando horímetro da máquina:', {
+          machineId: refueling.machineId,
+          newHourMeter: latestRefueling.hourMeter,
+        });
+
+        await updateMachine(refueling.machineId, {
+          currentHourMeter: latestRefueling.hourMeter,
+        });
+      }
+
       if (updates.liters !== undefined && updates.liters !== refueling.liters) {
         const oldLiters = refueling.liters;
         const newLiters = updates.liters;
@@ -493,7 +515,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         }
       }
     },
-    [allRefuelings, farmTank, allFarmTanks, isWeb]
+    [allRefuelings, farmTank, allFarmTanks, isWeb, updateMachine]
   );
 
   const deleteRefueling = useCallback(
