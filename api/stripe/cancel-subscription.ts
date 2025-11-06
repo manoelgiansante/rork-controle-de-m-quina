@@ -46,8 +46,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const stripeSubscriptionId = subscription.stripe_subscription_id;
 
+    // Log para debug
+    console.log('[CANCEL] stripe_subscription_id:', stripeSubscriptionId);
+    console.log('[CANCEL] subscription.status:', subscription.status);
+
     // Verifica se é subscription de teste ou trial
     const isTestSubscription = !stripeSubscriptionId || 
+                                stripeSubscriptionId === '' ||
+                                stripeSubscriptionId === null ||
                                 stripeSubscriptionId.startsWith('sub_test_') ||
                                 subscription.status === 'trial';
 
@@ -79,6 +85,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Subscription real - cancela no final do período (período de graça)
+    let currentPeriodEnd = subscription.current_period_end;
+    
     try {
       console.log('[CANCEL] 🔄 Configurando cancelamento no final do período no Stripe:', stripeSubscriptionId);
       
@@ -88,8 +96,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       console.log('[CANCEL] ✅ Subscription configurada para cancelar no final do período:', updatedSubscription.id);
       console.log('[CANCEL] 🗓️ Período termina em:', new Date((updatedSubscription as any).current_period_end * 1000).toISOString());
+      
+      // Atualiza currentPeriodEnd com valor do Stripe
+      const stripePeriodEnd = (updatedSubscription as any).current_period_end;
+      if (stripePeriodEnd) {
+        currentPeriodEnd = new Date(stripePeriodEnd * 1000).toISOString();
+      }
     } catch (stripeError: any) {
       console.error('[CANCEL] ❌ Erro ao configurar cancelamento no Stripe:', stripeError.message);
+      console.error('[CANCEL] 🔍 Código do erro:', stripeError.code);
       
       // Se erro é "subscription não encontrada", apenas atualiza Supabase
       if (stripeError.code === 'resource_missing') {
@@ -100,30 +115,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Busca dados atualizados para pegar current_period_end
-    let currentPeriodEnd = subscription.current_period_end;
-    try {
-      const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-      const stripePeriodEnd = (stripeSubscription as any).current_period_end;
+    // Se ainda não temos currentPeriodEnd, tenta buscar do Stripe ou usa fallback
+    if (!currentPeriodEnd) {
+      console.log('[CANCEL] ⚠️ currentPeriodEnd não definido, tentando buscar...');
       
-      if (stripePeriodEnd) {
-        // Stripe tem data válida - usa ela
-        currentPeriodEnd = new Date(stripePeriodEnd * 1000).toISOString();
-      } else if (!currentPeriodEnd) {
-        // Fallback: se não tem em lugar nenhum, usa 30 dias
-        const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + 30);
-        currentPeriodEnd = futureDate.toISOString();
-        console.log('[CANCEL] ⚠️ Usando fallback de 30 dias:', currentPeriodEnd);
+      try {
+        const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+        const stripePeriodEnd = (stripeSubscription as any).current_period_end;
+        
+        if (stripePeriodEnd) {
+          currentPeriodEnd = new Date(stripePeriodEnd * 1000).toISOString();
+          console.log('[CANCEL] ✅ currentPeriodEnd obtido do Stripe:', currentPeriodEnd);
+        }
+      } catch (err: any) {
+        console.error('[CANCEL] ⚠️ Erro ao buscar subscription no Stripe:', err.message);
       }
-    } catch (err) {
-      console.error('[CANCEL] ⚠️ Erro ao buscar subscription no Stripe:', err);
-      // Se deu erro e não tem currentPeriodEnd, usa fallback de 30 dias
+      
+      // Fallback final: usa data baseada no tipo de plano
       if (!currentPeriodEnd) {
         const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + 30);
+        
+        // Se é mensal, adiciona 30 dias; se é anual, adiciona 365 dias
+        if (subscription.billing_cycle === 'annual') {
+          futureDate.setDate(futureDate.getDate() + 365);
+          console.log('[CANCEL] ⚠️ Usando fallback de 365 dias (anual):', futureDate.toISOString());
+        } else {
+          futureDate.setDate(futureDate.getDate() + 30);
+          console.log('[CANCEL] ⚠️ Usando fallback de 30 dias (mensal):', futureDate.toISOString());
+        }
+        
         currentPeriodEnd = futureDate.toISOString();
-        console.log('[CANCEL] ⚠️ Usando fallback de 30 dias após erro:', currentPeriodEnd);
       }
     }
 
