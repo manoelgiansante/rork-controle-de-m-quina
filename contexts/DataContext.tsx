@@ -507,6 +507,16 @@ export const [DataProvider, useData] = createContextHook(() => {
         return;
       }
 
+      console.log('[DATA] ========== EDIÇÃO DE ABASTECIMENTO ==========');
+      console.log('[DATA] Editando abastecimento:', {
+        id: refuelingId,
+        machineId: refueling.machineId,
+        oldHourMeter: refueling.hourMeter,
+        newHourMeter: updates.hourMeter,
+        oldLiters: refueling.liters,
+        newLiters: updates.liters,
+      });
+
       if (isWeb) {
         console.log('[DATA WEB] Atualizando abastecimento no Supabase...');
         await db.updateRefueling(refuelingId, updates);
@@ -522,11 +532,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       );
 
       if (updates.hourMeter !== undefined && updates.hourMeter !== refueling.hourMeter) {
-        console.log('[DATA] Horímetro do abastecimento mudou:', {
-          machineId: refueling.machineId,
-          oldHourMeter: refueling.hourMeter,
-          newHourMeter: updates.hourMeter,
-        });
+        console.log('[DATA] Horímetro do abastecimento mudou, recalculando horímetro da máquina...');
 
         const machineRefuelings = updated.filter(r => r.machineId === refueling.machineId);
         const machineMaintenances = allMaintenances.filter(m => m.machineId === refueling.machineId);
@@ -542,19 +548,32 @@ export const [DataProvider, useData] = createContextHook(() => {
         
         const newMachineHourMeter = Math.max(latestRefuelingHourMeter, latestMaintenanceHourMeter);
 
-        console.log('[DATA] Atualizando horímetro da máquina:', {
+        console.log('[DATA] 🔄 Novo horímetro da máquina calculado:', {
           machineId: refueling.machineId,
           newHourMeter: newMachineHourMeter,
           fromRefueling: latestRefuelingHourMeter,
           fromMaintenance: latestMaintenanceHourMeter,
         });
 
-        await updateMachine(refueling.machineId, {
-          currentHourMeter: newMachineHourMeter,
-        });
+        const updatedMachines = allMachines.map((m) =>
+          m.id === refueling.machineId
+            ? { ...m, currentHourMeter: newMachineHourMeter, updatedAt: new Date().toISOString() }
+            : m
+        );
+        setAllMachines(updatedMachines);
+        await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updatedMachines));
 
-        console.log('[DATA] Recalculando status dos alertas após mudança no horímetro...');
+        if (isWeb) {
+          console.log('[DATA WEB] Atualizando máquina no Supabase...');
+          await db.updateMachine(refueling.machineId, {
+            currentHourMeter: newMachineHourMeter,
+          });
+        }
+
+        console.log('[DATA] 📊 Recalculando status dos alertas com novo horímetro...');
         const machineAlerts = allAlerts.filter(a => a.machineId === refueling.machineId);
+        console.log('[DATA] Alertas encontrados para esta máquina:', machineAlerts.length);
+
         if (machineAlerts.length > 0) {
           const updatedAlerts = allAlerts.map(alert => {
             if (alert.machineId !== refueling.machineId) return alert;
@@ -564,15 +583,18 @@ export const [DataProvider, useData] = createContextHook(() => {
               alert.nextRevisionHourMeter
             );
 
+            console.log('[DATA] Alerta:', {
+              item: alert.maintenanceItem,
+              currentHourMeter: newMachineHourMeter,
+              nextRevisionHourMeter: alert.nextRevisionHourMeter,
+              remaining: alert.nextRevisionHourMeter - newMachineHourMeter,
+              oldStatus: alert.status,
+              newStatus,
+              needsUpdate: newStatus !== alert.status,
+            });
+
             if (newStatus !== alert.status) {
-              console.log('[DATA] Atualizando status do alerta:', {
-                alertId: alert.id,
-                item: alert.maintenanceItem,
-                oldStatus: alert.status,
-                newStatus,
-                oldHourMeter: refueling.hourMeter,
-                newHourMeter: newMachineHourMeter,
-              });
+              console.log('[DATA] ✅ Atualizando status do alerta de', alert.status, 'para', newStatus);
 
               if (isWeb) {
                 db.updateAlert(alert.id, { status: newStatus }).catch(err => 
@@ -587,6 +609,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
           setAllAlerts(updatedAlerts);
           await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts));
+          console.log('[DATA] ✅ Alertas recalculados e salvos');
         }
       }
 
@@ -649,7 +672,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         }
       }
     },
-    [allRefuelings, allMaintenances, allAlerts, farmTank, allFarmTanks, isWeb, updateMachine, calculateAlertStatus]
+    [allRefuelings, allMaintenances, allAlerts, allMachines, farmTank, allFarmTanks, isWeb, calculateAlertStatus]
   );
 
   const deleteRefueling = useCallback(
