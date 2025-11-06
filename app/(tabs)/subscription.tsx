@@ -472,7 +472,7 @@ export default function SubscriptionScreen() {
           <View style={styles.header}>
             <CreditCard size={64} color="#2D5016" />
             <Text style={styles.title}>
-              {subscriptionInfo.cancelAtPeriodEnd ? 'Período de Graça' : 'Assinatura Ativa'}
+              {subscriptionInfo.cancelAtPeriodEnd ? 'Assinatura Cancelada' : 'Assinatura Ativa'}
             </Text>
           </View>
 
@@ -480,7 +480,7 @@ export default function SubscriptionScreen() {
             <View style={styles.gracePeriodCard}>
               <Text style={styles.gracePeriodTitle}>⚠️ Plano Cancelado</Text>
               <Text style={styles.gracePeriodText}>
-                Sua assinatura foi cancelada, mas você ainda tem acesso aos recursos Premium até:
+                Você ainda tem acesso ao período do seu plano atual até:
               </Text>
               <Text style={styles.gracePeriodDate}>
                 {formatDate(subscriptionInfo.currentPeriodEnd)}
