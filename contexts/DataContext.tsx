@@ -395,21 +395,77 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const updateMaintenance = useCallback(
     async (maintenanceId: string, updates: Partial<Maintenance>) => {
+      const originalMaintenance = allMaintenances.find(m => m.id === maintenanceId);
+      if (!originalMaintenance) {
+        console.error('[DATA] Manutenção não encontrada:', maintenanceId);
+        return;
+      }
+
       if (isWeb) {
         console.log('[DATA WEB] Atualizando manutenção no Supabase...');
         await db.updateMaintenance(maintenanceId, updates);
       }
 
+      const updatedMaintenance = { ...originalMaintenance, ...updates };
       const updated = allMaintenances.map((m) =>
-        m.id === maintenanceId ? { ...m, ...updates } : m
+        m.id === maintenanceId ? updatedMaintenance : m
       );
       setAllMaintenances(updated);
       await AsyncStorage.setItem(
         STORAGE_KEYS.MAINTENANCES,
         JSON.stringify(updated)
       );
+
+      if (updates.itemRevisions) {
+        console.log('[DATA] Atualizando alertas relacionados à manutenção...');
+        
+        const updatedAlerts = allAlerts.map(alert => {
+          if (alert.maintenanceId !== maintenanceId) return alert;
+
+          const revision = updates.itemRevisions!.find(r => r.item === alert.maintenanceItem);
+          if (!revision) return alert;
+
+          const newNextRevisionHourMeter = updatedMaintenance.hourMeter + revision.nextRevisionHours;
+          const machine = allMachines.find(m => m.id === alert.machineId);
+          
+          if (!machine) return alert;
+
+          const newStatus = calculateAlertStatus(
+            machine.currentHourMeter,
+            newNextRevisionHourMeter
+          );
+
+          return {
+            ...alert,
+            serviceHourMeter: updatedMaintenance.hourMeter,
+            intervalHours: revision.nextRevisionHours,
+            nextRevisionHourMeter: newNextRevisionHourMeter,
+            status: newStatus,
+          };
+        });
+
+        setAllAlerts(updatedAlerts);
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.ALERTS,
+          JSON.stringify(updatedAlerts)
+        );
+
+        if (isWeb) {
+          console.log('[DATA WEB] Atualizando alertas no Supabase...');
+          await Promise.all(
+            updatedAlerts
+              .filter(a => a.maintenanceId === maintenanceId)
+              .map(alert => db.updateAlert(alert.id, {
+                serviceHourMeter: alert.serviceHourMeter,
+                intervalHours: alert.intervalHours,
+                nextRevisionHourMeter: alert.nextRevisionHourMeter,
+                status: alert.status,
+              }))
+          );
+        }
+      }
     },
-    [allMaintenances, isWeb]
+    [allMaintenances, allAlerts, allMachines, isWeb, calculateAlertStatus]
   );
 
   const updateRefueling = useCallback(

@@ -373,13 +373,14 @@ export async function createMaintenance(
 
 export async function updateMaintenance(
   maintenanceId: string,
-  updates: Partial<Omit<Maintenance, 'id' | 'propertyId' | 'machineId' | 'userId' | 'userName' | 'createdAt'>>
+  updates: Partial<Omit<Maintenance, 'id' | 'propertyId' | 'machineId' | 'userId' | 'userName'>>
 ): Promise<void> {
   const updateData: Record<string, any> = {};
   if (updates.hourMeter !== undefined) updateData.hour_meter = updates.hourMeter;
   if (updates.items !== undefined) updateData.items = updates.items;
   if (updates.observation !== undefined) updateData.observation = updates.observation;
   if (updates.itemRevisions !== undefined) updateData.item_revisions = updates.itemRevisions;
+  if (updates.createdAt !== undefined) updateData.created_at = updates.createdAt;
 
   const { error } = await supabase.from('maintenances').update(updateData).eq('id', maintenanceId);
 
@@ -448,13 +449,26 @@ export async function createAlert(alert: Alert): Promise<void> {
 
 export async function updateAlert(
   alertId: string,
-  updates: Partial<Pick<Alert, 'status'>>
+  updates: Partial<Pick<Alert, 'status' | 'serviceHourMeter' | 'intervalHours' | 'nextRevisionHourMeter'>>
 ): Promise<void> {
+  const updateData: any = {};
+  
+  if (updates.status !== undefined) {
+    updateData.status = updates.status;
+  }
+  if (updates.serviceHourMeter !== undefined) {
+    updateData.service_hour_meter = updates.serviceHourMeter;
+  }
+  if (updates.intervalHours !== undefined) {
+    updateData.interval_hours = updates.intervalHours;
+  }
+  if (updates.nextRevisionHourMeter !== undefined) {
+    updateData.next_revision_hour_meter = updates.nextRevisionHourMeter;
+  }
+
   const { error } = await supabase
     .from('alerts')
-    .update({
-      status: updates.status,
-    })
+    .update(updateData)
     .eq('id', alertId);
 
   if (error) {

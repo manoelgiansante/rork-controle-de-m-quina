@@ -475,15 +475,28 @@ export default function ReportsScreen() {
   const handleSaveMaintenance = async () => {
     if (!editingMaintenance) return;
 
+    const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+
     try {
       await updateMaintenance(editingMaintenance.id, {
         hourMeter: editingMaintenance.hourMeter,
         observation: editingMaintenance.observation,
+        itemRevisions: editingMaintenance.itemRevisions,
+        createdAt: editingMaintenance.createdAt,
       });
       setEditingMaintenance(null);
+      if (isWeb) {
+        window.alert('Manutenção atualizada com sucesso!');
+      } else {
+        Alert.alert('Sucesso', 'Manutenção atualizada com sucesso!');
+      }
     } catch (error) {
       console.error('Erro ao atualizar manutenção:', error);
-      Alert.alert('Erro', 'Não foi possível atualizar a manutenção');
+      if (isWeb) {
+        window.alert('Não foi possível atualizar a manutenção');
+      } else {
+        Alert.alert('Erro', 'Não foi possível atualizar a manutenção');
+      }
     }
   };
 
@@ -605,9 +618,31 @@ export default function ReportsScreen() {
             </View>
 
             {editingMaintenance && (
-              <View style={styles.modalBody}>
+              <ScrollView style={styles.modalBody}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Horímetro (h)</Text>
+                  <Text style={styles.inputLabel}>Data da Manutenção</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={new Date(editingMaintenance.createdAt).toLocaleDateString('pt-BR')}
+                    onChangeText={(text) => {
+                      const parts = text.split('/');
+                      if (parts.length === 3) {
+                        const [day, month, year] = parts;
+                        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                        if (!isNaN(date.getTime())) {
+                          setEditingMaintenance({
+                            ...editingMaintenance,
+                            createdAt: date.toISOString(),
+                          });
+                        }
+                      }
+                    }}
+                    placeholder="DD/MM/AAAA"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Horímetro da Manutenção (h)</Text>
                   <TextInput
                     style={styles.input}
                     value={editingMaintenance.hourMeter.toString()}
@@ -637,13 +672,44 @@ export default function ReportsScreen() {
                   />
                 </View>
 
+                <View style={styles.divider} />
+                <Text style={styles.sectionTitle}>Intervalo da Próxima Revisão</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Configure as horas para a próxima revisão de cada serviço
+                </Text>
+
+                {editingMaintenance.itemRevisions.map((revision, idx) => (
+                  <View key={idx} style={styles.revisionItem}>
+                    <Text style={styles.revisionItemLabel}>{revision.item}</Text>
+                    <View style={styles.revisionInputContainer}>
+                      <TextInput
+                        style={styles.revisionInput}
+                        value={revision.nextRevisionHours.toString()}
+                        onChangeText={(text) => {
+                          const newRevisions = [...editingMaintenance.itemRevisions];
+                          newRevisions[idx] = {
+                            ...newRevisions[idx],
+                            nextRevisionHours: parseFloat(text) || 0,
+                          };
+                          setEditingMaintenance({
+                            ...editingMaintenance,
+                            itemRevisions: newRevisions,
+                          });
+                        }}
+                        keyboardType="numeric"
+                      />
+                      <Text style={styles.revisionInputSuffix}>horas</Text>
+                    </View>
+                  </View>
+                ))}
+
                 <TouchableOpacity
                   style={styles.saveButton}
                   onPress={handleSaveMaintenance}
                 >
-                  <Text style={styles.saveButtonText}>Salvar</Text>
+                  <Text style={styles.saveButtonText}>Salvar Alterações</Text>
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
             )}
           </View>
         </View>
@@ -1041,6 +1107,46 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  revisionItem: {
+    marginBottom: 16,
+  },
+  revisionItemLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#333',
+    marginBottom: 8,
+  },
+  revisionInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  revisionInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+  revisionInputSuffix: {
+    fontSize: 14,
+    color: '#999',
+    marginLeft: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#999',
+    marginBottom: 16,
   },
   saveButton: {
     backgroundColor: '#2D5016',
