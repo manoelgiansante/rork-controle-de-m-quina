@@ -104,11 +104,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let currentPeriodEnd = subscription.current_period_end;
     try {
       const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
-      currentPeriodEnd = (stripeSubscription as any).current_period_end 
-        ? new Date((stripeSubscription as any).current_period_end * 1000).toISOString()
-        : currentPeriodEnd;
+      const stripePeriodEnd = (stripeSubscription as any).current_period_end;
+      
+      if (stripePeriodEnd) {
+        // Stripe tem data válida - usa ela
+        currentPeriodEnd = new Date(stripePeriodEnd * 1000).toISOString();
+      } else if (!currentPeriodEnd) {
+        // Fallback: se não tem em lugar nenhum, usa 30 dias
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 30);
+        currentPeriodEnd = futureDate.toISOString();
+        console.log('[CANCEL] ⚠️ Usando fallback de 30 dias:', currentPeriodEnd);
+      }
     } catch (err) {
       console.error('[CANCEL] ⚠️ Erro ao buscar subscription no Stripe:', err);
+      // Se deu erro e não tem currentPeriodEnd, usa fallback de 30 dias
+      if (!currentPeriodEnd) {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 30);
+        currentPeriodEnd = futureDate.toISOString();
+        console.log('[CANCEL] ⚠️ Usando fallback de 30 dias após erro:', currentPeriodEnd);
+      }
     }
 
     // Atualiza status no Supabase - marca cancel_at_period_end mas mantém ativa
