@@ -30,7 +30,6 @@ export default function SubscriptionScreen() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [canceling, setCanceling] = useState<boolean>(false);
-  const [reactivating, setReactivating] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
 
   const handleSelectPlan = async (planType: PlanType, billingCycle: BillingCycle) => {
@@ -286,77 +285,12 @@ export default function SubscriptionScreen() {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
 
-  const handleReactivateSubscription = async () => {
-    try {
-      setReactivating(true);
-      
-      console.log('[REACTIVATE] Iniciando reativação...');
-
-      if (!currentUser) {
-        if (Platform.OS === 'web') {
-          window.alert('Erro: Você precisa estar logado.');
-        } else {
-          Alert.alert('Erro', 'Você precisa estar logado.');
-        }
-        return;
+  const handleReactivateSubscription = () => {
+    if (Platform.OS === 'web') {
+      const element = document.getElementById('plans-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-
-      const response = await fetch(
-        Platform.OS === 'web'
-          ? '/api/stripe/reactivate-subscription'
-          : 'https://controledemaquina.com.br/api/stripe/reactivate-subscription',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao reativar assinatura');
-      }
-
-      console.log('[REACTIVATE] Assinatura reativada com sucesso:', data);
-
-      if (Platform.OS === 'web') {
-        window.alert(
-          'Assinatura Reativada\n\nSua assinatura foi reativada com sucesso! Você continuará tendo acesso aos recursos Premium.'
-        );
-      } else {
-        Alert.alert(
-          'Assinatura Reativada',
-          'Sua assinatura foi reativada com sucesso! Você continuará tendo acesso aos recursos Premium.',
-          [{ text: 'OK' }]
-        );
-      }
-
-      if (currentUser?.id) {
-        await syncWithSupabase(currentUser.id);
-      }
-      await refreshSubscription();
-
-    } catch (error: any) {
-      console.error('[REACTIVATE] Erro ao reativar:', error);
-
-      if (Platform.OS === 'web') {
-        window.alert(
-          'Erro\n\nNão foi possível reativar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.'
-        );
-      } else {
-        Alert.alert(
-          'Erro',
-          'Não foi possível reativar sua assinatura. Por favor, tente novamente ou entre em contato com o suporte.',
-          [{ text: 'OK' }]
-        );
-      }
-    } finally {
-      setReactivating(false);
     }
   };
 
@@ -541,15 +475,10 @@ export default function SubscriptionScreen() {
                 ({calculateDaysRemaining(subscriptionInfo.currentPeriodEnd)} dias restantes)
               </Text>
               <TouchableOpacity
-                style={[styles.reactivateButton, reactivating && styles.reactivateButtonDisabled]}
+                style={styles.reactivateButton}
                 onPress={handleReactivateSubscription}
-                disabled={reactivating}
               >
-                {reactivating ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : (
-                  <Text style={styles.reactivateButtonText}>Reativar Assinatura</Text>
-                )}
+                <Text style={styles.reactivateButtonText}>🔄 Escolher Novo Plano</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -575,7 +504,9 @@ export default function SubscriptionScreen() {
             </View>
           )}
 
-          <Text style={styles.sectionTitle}>Outros Planos</Text>
+          <View nativeID="plans-section">
+            <Text style={styles.sectionTitle}>Outros Planos</Text>
+          </View>
           <View style={styles.plansGrid}>
             {SUBSCRIPTION_PLANS.map((plan) => {
               const isCurrentPlan = plan.planType === subscriptionInfo.planType && 
