@@ -2,7 +2,7 @@
   "expo": {
     "name": "Controle de Máquina",
     "slug": "controledemaquina",
-    "version": "1.0.0",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",

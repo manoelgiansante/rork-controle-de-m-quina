@@ -1,172 +1,182 @@
-# 🔧 CORREÇÕES URGENTES PARA BUILD iOS
-
-## ❌ PROBLEMA CRÍTICO IDENTIFICADO
-
-**React 19.1.0 é INCOMPATÍVEL com React Native 0.81.5 e Expo 54!**
-
-Isso causa crashes no iOS ao abrir o app.
-
----
-
-## 🎯 AÇÕES NECESSÁRIAS
-
-### 1. CORREÇÃO DE DEPENDÊNCIAS (URGENTE!)
-
-Você precisa corrigir manualmente as versões no `package.json`:
-
-```json
-{
-  "dependencies": {
-    "react": "18.3.1",           // MUDOU: 19.1.0 → 18.3.1
-    "react-dom": "18.3.1",       // MUDOU: 19.1.0 → 18.3.1
-    "react-native": "0.76.5",    // MUDOU: 0.81.5 → 0.76.5
-    "react-native-web": "^0.19.12"
-  }
-}
-```
-
-### 2. INSTALAR DEPENDÊNCIAS CORRETAS
-
-Depois de corrigir o package.json, execute:
-
-```bash
-# Limpar cache
-rm -rf node_modules bun.lock .expo
-
-# Reinstalar
-bun install
-
-# Testar localmente ANTES de fazer build
-bunx expo start --ios
-```
-
----
-
-## 📋 VERSÕES CORRETAS PARA EXPO 54
-
-| Dependência | Versão Atual (ERRO) | Versão Correta |
-|-------------|---------------------|----------------|
-| React | 19.1.0 ❌ | 18.3.1 ✅ |
-| React DOM | 19.1.0 ❌ | 18.3.1 ✅ |
-| React Native | 0.81.5 ❌ | 0.76.5 ✅ |
-| React Native Web | 0.21.0 ⚠️ | 0.19.12 ✅ |
-
----
-
-## 🚨 POR QUE O APP CRASHA?
-
-1. **React 19** introduziu mudanças na arquitetura que são incompatíveis com **React Native 0.81.5**
-2. **Expo 54** foi testado e certificado com **React 18.3.1**
-3. **iOS** é mais rigoroso que Android - por isso o Android funciona mas o iOS crasha
-
----
-
-## ✅ PRÓXIMOS PASSOS
-
-### Passo 1: Editar package.json
-- Abra `package.json`
-- Mude as versões de React, React DOM e React Native
-- Salve o arquivo
-
-### Passo 2: Limpar e Reinstalar
-```bash
-rm -rf node_modules bun.lock .expo
-bun install
-```
-
-### Passo 3: Testar Localmente
-```bash
-bunx expo start --ios
-```
-
-### Passo 4: Verificar se funciona
-- Abra o app no simulador iOS
-- Verifique se não crasha
-- Teste login, navegação, todas as funcionalidades
-
-### Passo 5: Fazer Build
-```bash
-bunx eas build --platform ios --profile production
-```
-
----
-
-## 📱 COMPATIBILIDADE POR PLATAFORMA
-
-| Plataforma | Status Atual | Motivo |
-|------------|--------------|--------|
-| Android | ✅ Funciona | Android é mais tolerante |
-| iOS | ❌ Crasha | iOS é rigoroso com versões |
-| Web | ⚠️ Não testado | Pode ter problemas |
-
----
-
-## 🔍 COMO SABER SE CORRIGIU?
-
-Após as correções:
-1. O app deve abrir no iOS sem crashar
-2. Não deve haver erros de "Hermes JavaScript Engine"
-3. Não deve haver erros de "TurboModule"
-4. O login deve funcionar normalmente
-
----
-
-## 📞 SUPORTE
-
-Se mesmo após essas correções o problema persistir:
-1. Verifique os logs do Xcode
-2. Procure por erros de "undefined is not an object"
-3. Adicione error boundaries (veja abaixo)
-
----
-
-## 🛡️ ERROR BOUNDARIES (OPCIONAL)
-
-Adicione proteção extra em `app/_layout.tsx`:
-
-```tsx
-import { ErrorBoundary } from 'react-error-boundary';
-
-function ErrorFallback({error}: {error: Error}) {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Erro: {error.message}</Text>
-    </View>
-  );
-}
-
-export default function RootLayout() {
-  return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      {/* Seu código aqui */}
-    </ErrorBoundary>
-  );
-}
-```
-
----
-
-## ⏱️ TEMPO ESTIMADO
-
-- Correção manual: 5 minutos
-- Reinstalação: 2-3 minutos
-- Teste local: 5 minutos
-- Build iOS: 20-30 minutos
-
-**Total: ~45 minutos**
-
----
-
-## ✨ RESULTADO ESPERADO
-
-Após essas correções:
-- ✅ Build iOS compila sem erros
-- ✅ App abre no iPhone sem crashar
-- ✅ Todas as funcionalidades funcionam
-- ✅ Pronto para upload na App Store
-
----
+# 🚨 CORREÇÕES URGENTES PARA BUILD iOS
 
 **Data:** 7 de novembro de 2025  
-**Prioridade:** 🔴 CRÍTICA  
-**Status:** ⏳ Aguardando correção manual
+**Status:** CRÍTICO - Requer ação imediata
+
+---
+
+## 📋 PROBLEMA IDENTIFICADO
+
+O app **crasha imediatamente ao abrir no iOS** devido a incompatibilidades de versões:
+
+- ❌ React 19.1.0 é **INCOMPATÍVEL** com React Native 0.81.5
+- ❌ Expo SDK 54 **REQUER** React 18.3.1
+- ❌ New Architecture causando crashes de TurboModules
+
+---
+
+## ✅ MUDANÇA 1: Atualizar package.json
+
+### Editar: `package.json`
+
+Altere estas 3 linhas:
+
+```diff
+- "react": "19.1.0",
++ "react": "18.3.1",
+
+- "react-dom": "19.1.0",
++ "react-dom": "18.3.1",
+
+- "react-native": "0.81.5",
++ "react-native": "0.76.5",
+```
+
+### ⚠️ Por que esta mudança é necessária?
+
+- Expo SDK 54 é certificado para React 18.3.1
+- React 19 introduziu breaking changes incompatíveis com RN 0.81.x
+- React Native 0.76.5 é a versão estável recomendada
+
+---
+
+## ✅ MUDANÇA 2: Atualizar app.json
+
+### Editar: `app.json`
+
+Fazer 4 alterações:
+
+#### 2.1 - Atualizar versão do app:
+
+```diff
+- "version": "1.0.9",
++ "version": "1.2.0",
+```
+
+#### 2.2 - Desabilitar New Architecture:
+
+```diff
+- "newArchEnabled": true,
++ "newArchEnabled": false,
+```
+
+#### 2.3 - Corrigir Bundle ID e desabilitar iPad:
+
+```diff
+- "ios": {
+-   "supportsTablet": true,
+-   "bundleIdentifier": "app.rork.controle-de-maquina"
+- },
++ "ios": {
++   "supportsTablet": false,
++   "bundleIdentifier": "com.manoel.controledemaquina",
++   "infoPlist": {
++     "ITSAppUsesNonExemptEncryption": false
++   }
++ },
+```
+
+### ⚠️ Por que esta mudança é necessária?
+
+- `newArchEnabled: false` → Reverte para arquitetura estável (a New Architecture está causando crashes)
+- `bundleIdentifier` → Precisa ser `com.manoel.controledemaquina` para publicar
+- `supportsTablet: false` → iPad desabilitado conforme solicitado
+- `version: 1.2.0` → Para diferenciar este build dos anteriores
+
+---
+
+## ✅ MUDANÇA 3: Código já corrigido ✓
+
+As correções de `try-catch` e `optional chaining` nos arquivos:
+- ✅ `contexts/AuthContext.tsx` 
+- ✅ `contexts/DataContext.tsx`
+
+**Já foram aplicadas** no commit anterior. Não precisa fazer nada aqui.
+
+---
+
+## 🚀 CHECKLIST DE AÇÕES
+
+Após aplicar as mudanças acima:
+
+### 1. Limpar e Reinstalar Dependências
+
+```bash
+# Remover node_modules e cache
+rm -rf node_modules
+rm -rf .expo
+rm -rf ios
+rm -rf android
+
+# Limpar cache do bun
+rm -rf bun.lock
+
+# Reinstalar tudo do zero
+bun install
+
+# Regenerar pastas nativas
+bunx expo prebuild --clean
+```
+
+### 2. Testar no Simulador iOS (OBRIGATÓRIO)
+
+```bash
+# Rodar no simulador
+bunx expo run:ios
+```
+
+**Verificar:**
+- ✅ O app abre sem crashar?
+- ✅ O login funciona?
+- ✅ Os dados carregam?
+- ✅ Navegação entre telas funciona?
+
+### 3. Build para Produção
+
+Se o teste local funcionar:
+
+```bash
+# Fazer build para iOS
+eas build --platform ios
+
+# Ou ambos
+eas build --platform all
+```
+
+---
+
+## 📊 RESULTADO ESPERADO
+
+### Antes (versão 1.0.x):
+- ❌ Build compila mas crasha ao abrir
+- ❌ Hermes JavaScript Engine error
+- ❌ TurboModule error
+- ❌ iOS inutilizável
+
+### Depois (versão 1.2.0):
+- ✅ Build compila
+- ✅ App abre normalmente
+- ✅ Funcionalidades funcionam
+- ✅ iOS e Android funcionais
+
+---
+
+## 🎯 PRIORIDADE
+
+**URGENTE** - Cliente aguardando há mais de 8 horas
+
+---
+
+## 📎 REFERÊNCIAS
+
+- Expo SDK 54 Docs: https://docs.expo.dev/
+- React Native 0.76 Release: https://reactnative.dev/
+- App Store Connect: https://appstoreconnect.apple.com/
+
+---
+
+## ✉️ CONTATO
+
+**Cliente:** Manoel Nascimento  
+**Email:** manoelgiansante2m@gmail.com  
+**Bundle ID:** com.manoel.controledemaquina
