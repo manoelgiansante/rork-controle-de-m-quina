@@ -1,5 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { useProperty } from '@/contexts/PropertyContext';
 import type { MaintenanceItem, MaintenanceItemRevision } from '@/types';
 import { Plus, Settings } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -17,6 +18,7 @@ import {
 export default function MaintenanceScreen() {
   const { machines, addMaintenance, maintenanceItems, addMaintenanceItem } = useData();
   const { currentUser } = useAuth();
+  const { currentPropertyId } = useProperty();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
   const [hourMeter, setHourMeter] = useState<string>('');
@@ -83,7 +85,7 @@ export default function MaintenanceScreen() {
       }
     }
 
-    if (!currentUser) return;
+    if (!currentUser || !currentPropertyId) return;
 
     const revisions: MaintenanceItemRevision[] = selectedItems.map((item) => ({
       item,
@@ -91,6 +93,7 @@ export default function MaintenanceScreen() {
     }));
 
     await addMaintenance({
+      propertyId: currentPropertyId,
       machineId: selectedMachineId,
       hourMeter: parseFloat(hourMeter),
       items: selectedItems,
