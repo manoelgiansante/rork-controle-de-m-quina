@@ -32,7 +32,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       if (isWeb && supabase) {
         console.log('[WEB AUTH] Verificando sessão no Supabase...');
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        let sessionData = null;
+        let sessionError = null;
+        
+        try {
+          const result = await supabase.auth.getSession();
+          sessionData = result?.data || null;
+          sessionError = result?.error || null;
+        } catch (err) {
+          console.error('[WEB AUTH] Exceção ao obter sessão:', err);
+          sessionError = err;
+        }
         
         if (!isMounted) return;
         
@@ -56,7 +67,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           setCurrentUser(webUser);
           
           if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+            try {
+              localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+            } catch (err) {
+              console.error('[WEB AUTH] Erro ao salvar no localStorage:', err);
+            }
           }
         } else {
           console.log('[WEB AUTH] Nenhuma sessão encontrada no Supabase');
@@ -70,10 +85,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       }
       
       console.log('[AUTH MOBILE] Carregando dados locais...');
-      const [usersData, currentUserData] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.USERS),
-        AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER),
-      ]);
+      let usersData = null;
+      let currentUserData = null;
+      
+      try {
+        [usersData, currentUserData] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEYS.USERS),
+          AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER),
+        ]);
+      } catch (err) {
+        console.error('[AUTH MOBILE] Erro ao carregar do AsyncStorage:', err);
+      }
 
       console.log('[AUTH] Dados carregados:', { 
         hasUsersData: !!usersData, 
@@ -82,38 +104,59 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       let loadedUsers: User[] = [];
       if (usersData) {
-        loadedUsers = JSON.parse(usersData);
-        console.log('[AUTH] Usuários carregados:', loadedUsers.length);
+        try {
+          loadedUsers = JSON.parse(usersData);
+          console.log('[AUTH] Usuários carregados:', loadedUsers.length);
+        } catch (err) {
+          console.error('[AUTH] Erro ao fazer parse de usuários:', err);
+          loadedUsers = [];
+        }
       }
 
       const testUserExists = loadedUsers.some(u => u.id === TEST_USER.id);
       if (!testUserExists) {
         console.log('[AUTH] Adicionando usuário de teste...');
         loadedUsers = [TEST_USER, ...loadedUsers];
-        await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(loadedUsers));
+        try {
+          await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(loadedUsers));
+        } catch (err) {
+          console.error('[AUTH] Erro ao salvar usuários:', err);
+        }
       }
 
       setUsers(loadedUsers);
       console.log('[AUTH] Total de usuários após carregar:', loadedUsers.length);
 
       if (currentUserData) {
-        const parsedUser = JSON.parse(currentUserData);
-        console.log('[AUTH] Usuário atual encontrado:', parsedUser.username);
-        setCurrentUser(parsedUser);
+        try {
+          const parsedUser = JSON.parse(currentUserData);
+          console.log('[AUTH] Usuário atual encontrado:', parsedUser?.username || 'unknown');
+          setCurrentUser(parsedUser);
+        } catch (err) {
+          console.error('[AUTH] Erro ao fazer parse do usuário atual:', err);
+          setCurrentUser(null);
+        }
       } else {
         console.log('[AUTH] Nenhum usuário atual encontrado');
       }
     } catch (error) {
-      console.error('[AUTH] Erro ao carregar dados de autenticação:', error);
+      console.error('[AUTH] Erro CRÍTICO ao carregar dados de autenticação:', error);
+      if (isMounted) {
+        setCurrentUser(null);
+      }
     } finally {
-      console.log('[AUTH] Finalizado carregamento (isLoading = false)');
-      setIsLoading(false);
+      if (isMounted) {
+        console.log('[AUTH] Finalizado carregamento (isLoading = false)');
+        setIsLoading(false);
+      }
     }
   }, [isWeb]);
 
   useEffect(() => {
     let cancelled = false;
-    loadData().finally(() => {
+    loadData().catch(err => {
+      console.error('[AUTH] Erro ao executar loadData:', err);
+    }).finally(() => {
       if (!cancelled) {
         console.log('[AUTH] loadData finalizado');
       }
@@ -121,16 +164,30 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     return () => { cancelled = true; };
   }, [loadData]);
 
-  // Função para sincronizar assinatura após login (sem useCallback para evitar erro de hooks)
   const syncSubscriptionAfterLogin = async (userId: string) => {
+    if (!userId) {
+      console.warn('[AUTH] userId inválido para sincronizar assinatura');
+      return;
+    }
+    
     try {
       console.log('[AUTH] Sincronizando assinatura após login para user:', userId);
       
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      let data = null;
+      let error = null;
+      
+      try {
+        const result = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+        data = result?.data || null;
+        error = result?.error || null;
+      } catch (err) {
+        console.error('[AUTH] Exceção ao buscar assinatura:', err);
+        return;
+      }
 
       if (error) {
         console.log('[AUTH] Nenhuma assinatura encontrada no Supabase (normal para novos usuários)');
@@ -152,8 +209,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           trialEndsAt: data.trial_ends_at,
         };
 
-        await AsyncStorage.setItem('@controle_maquina:subscription', JSON.stringify(subscriptionData));
-        console.log('[AUTH] Assinatura sincronizada com sucesso');
+        try {
+          await AsyncStorage.setItem('@controle_maquina:subscription', JSON.stringify(subscriptionData));
+          console.log('[AUTH] Assinatura sincronizada com sucesso');
+        } catch (err) {
+          console.error('[AUTH] Erro ao salvar assinatura no AsyncStorage:', err);
+        }
       }
     } catch (error) {
       console.error('[AUTH] Erro ao sincronizar assinatura:', error);
@@ -167,69 +228,110 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     let isMounted = true;
     console.log('[AUTH] Configurando listener de mudança de estado de autenticação...');
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AUTH] Evento de autenticação:', event);
-      
-      if (!isMounted) return;
-      
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('[AUTH] Evento PASSWORD_RECOVERY detectado, redirecionando para /reset-password');
-        if (typeof window !== 'undefined') {
-          window.location.replace('/reset-password');
-        }
-      }
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('[AUTH] Usuário autenticado:', session.user.email);
+    
+    try {
+      const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+        console.log('[AUTH] Evento de autenticação:', event);
         
-        const acceptedTermsAt = session.user.user_metadata?.acceptedTermsAt;
+        if (!isMounted) return;
         
-        const webUser: User = {
-          id: session.user.id,
-          username: session.user.email || '',
-          password: '',
-          role: 'master',
-          name: session.user.user_metadata?.name || session.user.email || '',
-          acceptedTermsAt: acceptedTermsAt,
-        };
-        setCurrentUser(webUser);
-        setIsLoading(false);
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('[AUTH] Evento PASSWORD_RECOVERY detectado, redirecionando para /reset-password');
+          if (typeof window !== 'undefined') {
+            try {
+              window.location.replace('/reset-password');
+            } catch (err) {
+              console.error('[AUTH] Erro ao redirecionar:', err);
+            }
+          }
         }
-        syncSubscriptionAfterLogin(session.user.id);
-      }
-      
-      if (event === 'SIGNED_OUT') {
-        console.log('[AUTH] Usuário desconectado');
-        setCurrentUser(null);
-        setIsLoading(false);
-        if (typeof localStorage !== 'undefined') {
-          localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('[AUTH] Usuário autenticado:', session.user.email);
+          
+          const acceptedTermsAt = session.user.user_metadata?.acceptedTermsAt;
+          
+          const webUser: User = {
+            id: session.user.id,
+            username: session.user.email || '',
+            password: '',
+            role: 'master',
+            name: session.user.user_metadata?.name || session.user.email || '',
+            acceptedTermsAt: acceptedTermsAt,
+          };
+          setCurrentUser(webUser);
+          setIsLoading(false);
+          if (typeof localStorage !== 'undefined') {
+            try {
+              localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+            } catch (err) {
+              console.error('[AUTH] Erro ao salvar no localStorage:', err);
+            }
+          }
+          syncSubscriptionAfterLogin(session.user.id).catch(err => {
+            console.warn('[AUTH] Erro ao sincronizar assinatura (não crítico):', err);
+          });
         }
-      }
-    });
+        
+        if (event === 'SIGNED_OUT') {
+          console.log('[AUTH] Usuário desconectado');
+          setCurrentUser(null);
+          setIsLoading(false);
+          if (typeof localStorage !== 'undefined') {
+            try {
+              localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+            } catch (err) {
+              console.error('[AUTH] Erro ao remover do localStorage:', err);
+            }
+          }
+        }
+      });
 
-    return () => {
-      isMounted = false;
-      console.log('[AUTH] Removendo listener de autenticação');
-      authListener.subscription.unsubscribe();
-    };
+      return () => {
+        isMounted = false;
+        console.log('[AUTH] Removendo listener de autenticação');
+        try {
+          authListener?.subscription?.unsubscribe();
+        } catch (err) {
+          console.error('[AUTH] Erro ao remover listener:', err);
+        }
+      };
+    } catch (err) {
+      console.error('[AUTH] Erro ao configurar listener de autenticação:', err);
+      return () => {
+        isMounted = false;
+      };
+    }
   }, [isWeb]);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     console.log('[AUTH] Tentando fazer login...', { username, platform: Platform.OS });
     
+    if (!username || !password) {
+      console.error('[AUTH] Username ou password vazios');
+      return false;
+    }
+    
     if (isWeb && supabase) {
       console.log('[WEB AUTH] Usando Supabase para login...');
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: username,
-          password,
-        });
+        let data = null;
+        let error = null;
+        
+        try {
+          const result = await supabase.auth.signInWithPassword({
+            email: username,
+            password,
+          });
+          data = result?.data || null;
+          error = result?.error || null;
+        } catch (err) {
+          console.error('[WEB AUTH] Exceção durante signInWithPassword:', err);
+          return false;
+        }
         
         if (error) {
-          console.error('[WEB AUTH] Erro no login:', error.message);
+          console.error('[WEB AUTH] Erro no login:', error.message || error);
           return false;
         }
         
@@ -250,10 +352,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           setCurrentUser(webUser);
           
           if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+            try {
+              localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+            } catch (err) {
+              console.error('[WEB AUTH] Erro ao salvar no localStorage:', err);
+            }
           }
           
-          await syncSubscriptionAfterLogin(data.user.id);
+          try {
+            await syncSubscriptionAfterLogin(data.user.id);
+          } catch (err) {
+            console.warn('[WEB AUTH] Erro ao sincronizar assinatura (não crítico):', err);
+          }
           
           return true;
         }
@@ -277,8 +387,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setCurrentUser(user);
       
       console.log('[AUTH] Salvando no AsyncStorage...');
-      await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
-      console.log('[AUTH] Login concluído com sucesso');
+      try {
+        await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+        console.log('[AUTH] Login concluído com sucesso');
+      } catch (err) {
+        console.error('[AUTH] Erro ao salvar no AsyncStorage:', err);
+      }
       
       return true;
     }
@@ -293,9 +407,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       if (isWeb && supabase) {
         console.log('[WEB AUTH] Executando signOut do Supabase...');
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          console.error('[WEB AUTH] Erro ao fazer signOut:', error);
+        try {
+          const { error } = await supabase.auth.signOut();
+          if (error) {
+            console.error('[WEB AUTH] Erro ao fazer signOut:', error);
+          }
+        } catch (err) {
+          console.error('[WEB AUTH] Exceção durante signOut:', err);
         }
       }
       
@@ -303,7 +421,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setCurrentUser(null);
       
       console.log('[AUTH] Removendo CURRENT_USER do storage...');
-      await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      try {
+        await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      } catch (err) {
+        console.error('[AUTH] Erro ao remover do AsyncStorage:', err);
+      }
       
       if (isWeb) {
         console.log('[AUTH] Plataforma Web: removendo apenas CURRENT_USER do localStorage');
@@ -317,13 +439,21 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       }
       
       console.log('[AUTH] Chamando appLogout...');
-      await appLogout();
+      try {
+        await appLogout();
+      } catch (err) {
+        console.error('[AUTH] Erro ao executar appLogout:', err);
+      }
       
       console.log('[AUTH] Logout concluído');
     } catch (error) {
       console.error('[AUTH] Erro durante logout:', error);
       if (isWeb) {
-        await appLogout();
+        try {
+          await appLogout();
+        } catch (err) {
+          console.error('[AUTH] Erro ao executar appLogout no fallback:', err);
+        }
       }
     }
   }, [isWeb]);
@@ -335,25 +465,40 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   ): Promise<boolean> => {
     console.log('[AUTH] Tentando registrar...', { username, platform: Platform.OS });
     
+    if (!username || !password || !name) {
+      console.error('[AUTH] Dados de registro incompletos');
+      return false;
+    }
+    
     if (isWeb && supabase) {
       console.log('[WEB AUTH] Usando Supabase para registro...');
       try {
-        const { data, error } = await supabase.auth.signUp({
-          email: username,
-          password,
-          options: {
-            data: {
-              name,
+        let data = null;
+        let error = null;
+        
+        try {
+          const result = await supabase.auth.signUp({
+            email: username,
+            password,
+            options: {
+              data: {
+                name,
+              },
             },
-          },
-        });
+          });
+          data = result?.data || null;
+          error = result?.error || null;
+        } catch (err) {
+          console.error('[WEB AUTH] Exceção durante signUp:', err);
+          return false;
+        }
         
         if (error) {
-          console.error('[WEB AUTH] Erro no registro:', error.message);
-          if (error.message.includes('already registered')) {
+          console.error('[WEB AUTH] Erro no registro:', error.message || error);
+          if (error.message && error.message.includes('already registered')) {
             return false;
           }
-          throw error;
+          return false;
         }
         
         if (data?.user) {
@@ -369,10 +514,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           setCurrentUser(webUser);
           
           if (typeof localStorage !== 'undefined') {
-            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+            try {
+              localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+            } catch (err) {
+              console.error('[WEB AUTH] Erro ao salvar no localStorage:', err);
+            }
           }
           
-          await syncSubscriptionAfterLogin(data.user.id);
+          try {
+            await syncSubscriptionAfterLogin(data.user.id);
+          } catch (err) {
+            console.warn('[WEB AUTH] Erro ao sincronizar assinatura (não crítico):', err);
+          }
           
           return true;
         }
@@ -400,10 +553,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
-    await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    } catch (err) {
+      console.error('[AUTH] Erro ao salvar usuários:', err);
+    }
 
     setCurrentUser(newUser);
-    await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
+    } catch (err) {
+      console.error('[AUTH] Erro ao salvar usuário atual:', err);
+    }
 
     return true;
   }, [isWeb, users]);
@@ -423,7 +584,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
-    await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    } catch (err) {
+      console.error('[AUTH] Erro ao salvar usuários:', err);
+    }
 
     return newUser;
   }, [users]);
@@ -436,27 +601,48 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       u.id === userId ? { ...u, ...updates } : u
     );
     setUsers(updatedUsers);
-    await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    } catch (err) {
+      console.error('[AUTH] Erro ao salvar usuários:', err);
+    }
   }, [users]);
 
   const deleteEmployee = useCallback(async (userId: string): Promise<void> => {
     const updatedUsers = users.filter((u) => u.id !== userId);
     setUsers(updatedUsers);
-    await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    } catch (err) {
+      console.error('[AUTH] Erro ao salvar usuários:', err);
+    }
   }, [users]);
 
   const resetPassword = useCallback(async (email: string): Promise<boolean> => {
     console.log('[AUTH] Solicitando reset de senha...', { email, platform: Platform.OS });
     
+    if (!email) {
+      console.error('[AUTH] Email vazio');
+      return false;
+    }
+    
     if (isWeb && supabase) {
       console.log('[WEB AUTH] Usando Supabase para reset de senha...');
       try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: 'https://controledemaquina.com.br/reset-password',
-        });
+        let error = null;
+        
+        try {
+          const result = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: 'https://controledemaquina.com.br/reset-password',
+          });
+          error = result?.error || null;
+        } catch (err) {
+          console.error('[WEB AUTH] Exceção durante resetPassword:', err);
+          return false;
+        }
         
         if (error) {
-          console.error('[WEB AUTH] Erro ao enviar email de reset:', error.message);
+          console.error('[WEB AUTH] Erro ao enviar email de reset:', error.message || error);
           return false;
         }
         
@@ -473,7 +659,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [isWeb]);
 
   const acceptTerms = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.warn('[AUTH] Tentou aceitar termos sem usuário logado');
+      return;
+    }
 
     const now = new Date().toISOString();
     const updatedUser = { ...currentUser, acceptedTermsAt: now };
@@ -481,11 +670,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     if (isWeb && supabase) {
       console.log('[WEB AUTH] Salvando aceitação de termos no Supabase...');
       try {
-        const { error } = await supabase.auth.updateUser({
-          data: {
-            acceptedTermsAt: now,
-          },
-        });
+        let error = null;
+        
+        try {
+          const result = await supabase.auth.updateUser({
+            data: {
+              acceptedTermsAt: now,
+            },
+          });
+          error = result?.error || null;
+        } catch (err) {
+          console.error('[WEB AUTH] Exceção ao salvar aceitação de termos:', err);
+        }
         
         if (error) {
           console.error('[WEB AUTH] Erro ao salvar aceitação de termos:', error);
@@ -500,11 +696,19 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         u.id === currentUser.id ? updatedUser : u
       );
       setUsers(updatedUsers);
-      await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+      try {
+        await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+      } catch (err) {
+        console.error('[AUTH] Erro ao salvar usuários:', err);
+      }
     }
 
     setCurrentUser(updatedUser);
-    await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+    } catch (err) {
+      console.error('[AUTH] Erro ao salvar usuário atual:', err);
+    }
   }, [currentUser, users, isWeb]);
 
   const hasAcceptedTerms = useMemo(

@@ -1,194 +1,172 @@
-# Correções Realizadas para Build iOS
+# 🔧 CORREÇÕES URGENTES PARA BUILD iOS
 
-## Data: 7 de novembro de 2025
+## ❌ PROBLEMA CRÍTICO IDENTIFICADO
 
-### 📋 Problemas Identificados
+**React 19.1.0 é INCOMPATÍVEL com React Native 0.81.5 e Expo 54!**
 
-1. **Conflitos de Dependências**
-   - React 19.1.0 incompatível com React Native 0.81.5
-   - React Native 0.81.5 é uma versão incorreta para Expo 54
-   - Múltiplas dependências conflitantes
+Isso causa crashes no iOS ao abrir o app.
 
-2. **Crashes no Runtime**
-   - TurboModule errors
-   - Possíveis acessos a objetos undefined
-   - Falta de Error Boundary
+---
 
-### ✅ Correções Aplicadas
+## 🎯 AÇÕES NECESSÁRIAS
 
-#### 1. Configuração de NPM
-- **Arquivo Criado**: `.npmrc`
-- **Conteúdo**:
-  ```
-  legacy-peer-deps=true
-  auto-install-peers=true
-  ```
-- **Objetivo**: Resolver conflitos de peer dependencies
+### 1. CORREÇÃO DE DEPENDÊNCIAS (URGENTE!)
 
-#### 2. Error Boundary Implementado
-- **Arquivo Criado**: `components/ErrorBoundary.tsx`
-- **Funcionalidade**:
-  - Captura erros em runtime
-  - Exibe tela de erro user-friendly
-  - Log detalhado de erros no console
-  - Botão para recarregar o aplicativo
-- **Integração**: Adicionado no `app/_layout.tsx` como wrapper principal
-
-#### 3. Proteções Adicionadas no Código
-
-**AuthContext.tsx**:
-- Verificações explícitas de null/undefined antes de acessar objetos
-- Proteção adicional em sessões do Supabase
-
-**DataContext.tsx**:
-- Verificação de `maintenance.itemRevisions` antes de criar alertas
-- Proteção contra undefined em operações de máquina
-
-### 🔧 Próximos Passos Necessários
-
-#### 1. Atualização de Dependências no package.json
-
-**IMPORTANTE**: Você precisa atualizar manualmente o package.json:
+Você precisa corrigir manualmente as versões no `package.json`:
 
 ```json
 {
   "dependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-native": "0.76.5"
+    "react": "18.3.1",           // MUDOU: 19.1.0 → 18.3.1
+    "react-dom": "18.3.1",       // MUDOU: 19.1.0 → 18.3.1
+    "react-native": "0.76.5",    // MUDOU: 0.81.5 → 0.76.5
+    "react-native-web": "^0.19.12"
   }
 }
 ```
 
-Depois execute:
+### 2. INSTALAR DEPENDÊNCIAS CORRETAS
+
+Depois de corrigir o package.json, execute:
+
 ```bash
-rm -rf node_modules
-rm bun.lock
+# Limpar cache
+rm -rf node_modules bun.lock .expo
+
+# Reinstalar
 bun install
+
+# Testar localmente ANTES de fazer build
+bunx expo start --ios
 ```
-
-#### 2. Configurações no app.json
-
-**IMPORTANTE**: Atualize o app.json com:
-
-```json
-{
-  "expo": {
-    "newArchEnabled": false,
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "app.rork.controle-de-maquina",
-      "jsEngine": "hermes",
-      "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Este aplicativo precisa acessar suas fotos para permitir que você adicione imagens.",
-        "NSCameraUsageDescription": "Este aplicativo precisa acessar sua câmera para tirar fotos.",
-        "NSLocationWhenInUseUsageDescription": "Este aplicativo precisa acessar sua localização para registrar onde as ações foram realizadas."
-      }
-    }
-  }
-}
-```
-
-### 🧪 Testes Recomendados
-
-1. **Teste Local no Simulador**:
-   ```bash
-   npx expo run:ios
-   ```
-
-2. **Verificar Logs**:
-   ```bash
-   npx expo start --ios
-   ```
-   - Verificar se não há crashes
-   - Verificar se o Error Boundary está funcionando
-
-3. **Testar Funcionalidades Principais**:
-   - Login/Logout
-   - Navegação entre telas
-   - Cadastro de máquinas
-   - Cadastro de abastecimentos
-   - Cadastro de manutenções
-   - Alertas
-
-### 📊 Resumo das Mudanças
-
-| Arquivo | Tipo de Mudança | Descrição |
-|---------|----------------|-----------|
-| `.npmrc` | Criado | Configuração para resolver peer dependencies |
-| `components/ErrorBoundary.tsx` | Criado | Componente para capturar erros |
-| `app/_layout.tsx` | Modificado | Adicionado Error Boundary |
-| `contexts/DataContext.tsx` | Modificado | Proteção adicional em manutenções |
-| `contexts/AuthContext.tsx` | ⚠️ Necessário | Proteções adicionais (verificar manual) |
-
-### ⚠️ Atenções Importantes
-
-1. **Não posso modificar**:
-   - `package.json` - você deve fazer manualmente
-   - `app.json` - você deve fazer manualmente
-   - `eas.json` - configurações de build
-
-2. **Versões Corretas para Expo 54**:
-   - React: `18.3.1` (não 19.1.0)
-   - React Native: `0.76.5` (não 0.81.5)
-   - React DOM: `18.3.1` (não 19.1.0)
-
-3. **New Architecture**:
-   - Desabilitar (`newArchEnabled: false`)
-   - A nova arquitetura ainda tem problemas de estabilidade
-
-4. **Hermes Engine**:
-   - Deve estar habilitado (`jsEngine: "hermes"`)
-   - É o engine recomendado para Expo 54
-
-### 🎯 Checklist Final
-
-- [x] Error Boundary implementado
-- [x] .npmrc configurado
-- [x] Proteções em DataContext
-- [ ] **Atualizar package.json** (manual)
-- [ ] **Atualizar app.json** (manual)
-- [ ] Deletar node_modules e bun.lock
-- [ ] Executar `bun install`
-- [ ] Testar no simulador iOS
-- [ ] Verificar logs no console
-- [ ] Fazer build no EAS
-- [ ] Testar no TestFlight
-
-### 📞 Suporte Técnico
-
-Se após fazer essas correções o problema persistir, verifique:
-
-1. **Logs do Crash**: Busque por mensagens como:
-   - "Cannot read property 'X' of undefined"
-   - "Invariant Violation"
-   - "TurboModule"
-
-2. **Versões das Dependências**:
-   ```bash
-   bunx expo-doctor
-   ```
-
-3. **Limpeza Total**:
-   ```bash
-   rm -rf node_modules
-   rm -rf ios
-   rm -rf android
-   rm bun.lock
-   bun install
-   npx expo prebuild --clean
-   ```
-
-### ✨ Benefícios das Correções
-
-1. **Error Boundary**: Previne crashes completos do app
-2. **Null Checks**: Previne acessos a objetos undefined
-3. **Dependências Corretas**: Compatibilidade com Expo 54
-4. **.npmrc**: Instalação mais estável de pacotes
-5. **Logs Detalhados**: Facilita debugging em produção
 
 ---
 
-**Status**: ⚠️ Correções parcialmente aplicadas - requer atualização manual de package.json e app.json
+## 📋 VERSÕES CORRETAS PARA EXPO 54
 
-**Próxima Ação**: Atualizar package.json e app.json conforme instruções acima
+| Dependência | Versão Atual (ERRO) | Versão Correta |
+|-------------|---------------------|----------------|
+| React | 19.1.0 ❌ | 18.3.1 ✅ |
+| React DOM | 19.1.0 ❌ | 18.3.1 ✅ |
+| React Native | 0.81.5 ❌ | 0.76.5 ✅ |
+| React Native Web | 0.21.0 ⚠️ | 0.19.12 ✅ |
+
+---
+
+## 🚨 POR QUE O APP CRASHA?
+
+1. **React 19** introduziu mudanças na arquitetura que são incompatíveis com **React Native 0.81.5**
+2. **Expo 54** foi testado e certificado com **React 18.3.1**
+3. **iOS** é mais rigoroso que Android - por isso o Android funciona mas o iOS crasha
+
+---
+
+## ✅ PRÓXIMOS PASSOS
+
+### Passo 1: Editar package.json
+- Abra `package.json`
+- Mude as versões de React, React DOM e React Native
+- Salve o arquivo
+
+### Passo 2: Limpar e Reinstalar
+```bash
+rm -rf node_modules bun.lock .expo
+bun install
+```
+
+### Passo 3: Testar Localmente
+```bash
+bunx expo start --ios
+```
+
+### Passo 4: Verificar se funciona
+- Abra o app no simulador iOS
+- Verifique se não crasha
+- Teste login, navegação, todas as funcionalidades
+
+### Passo 5: Fazer Build
+```bash
+bunx eas build --platform ios --profile production
+```
+
+---
+
+## 📱 COMPATIBILIDADE POR PLATAFORMA
+
+| Plataforma | Status Atual | Motivo |
+|------------|--------------|--------|
+| Android | ✅ Funciona | Android é mais tolerante |
+| iOS | ❌ Crasha | iOS é rigoroso com versões |
+| Web | ⚠️ Não testado | Pode ter problemas |
+
+---
+
+## 🔍 COMO SABER SE CORRIGIU?
+
+Após as correções:
+1. O app deve abrir no iOS sem crashar
+2. Não deve haver erros de "Hermes JavaScript Engine"
+3. Não deve haver erros de "TurboModule"
+4. O login deve funcionar normalmente
+
+---
+
+## 📞 SUPORTE
+
+Se mesmo após essas correções o problema persistir:
+1. Verifique os logs do Xcode
+2. Procure por erros de "undefined is not an object"
+3. Adicione error boundaries (veja abaixo)
+
+---
+
+## 🛡️ ERROR BOUNDARIES (OPCIONAL)
+
+Adicione proteção extra em `app/_layout.tsx`:
+
+```tsx
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({error}: {error: Error}) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Erro: {error.message}</Text>
+    </View>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      {/* Seu código aqui */}
+    </ErrorBoundary>
+  );
+}
+```
+
+---
+
+## ⏱️ TEMPO ESTIMADO
+
+- Correção manual: 5 minutos
+- Reinstalação: 2-3 minutos
+- Teste local: 5 minutos
+- Build iOS: 20-30 minutos
+
+**Total: ~45 minutos**
+
+---
+
+## ✨ RESULTADO ESPERADO
+
+Após essas correções:
+- ✅ Build iOS compila sem erros
+- ✅ App abre no iPhone sem crashar
+- ✅ Todas as funcionalidades funcionam
+- ✅ Pronto para upload na App Store
+
+---
+
+**Data:** 7 de novembro de 2025  
+**Prioridade:** 🔴 CRÍTICA  
+**Status:** ⏳ Aguardando correção manual

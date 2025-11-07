@@ -91,21 +91,32 @@ export const [DataProvider, useData] = createContextHook(() => {
       
       if (isWeb) {
         console.log('[DATA WEB] Carregando do Supabase...');
-        const [
-          machinesFromDB,
-          refuelingsFromDB,
-          maintenancesFromDB,
-          alertsFromDB,
-          farmTankFromDB,
-          preferencesFromDB,
-        ] = await Promise.all([
-          db.fetchMachines(currentPropertyId),
-          db.fetchRefuelings(currentPropertyId),
-          db.fetchMaintenances(currentPropertyId),
-          db.fetchAlerts(currentPropertyId),
-          db.fetchFarmTank(currentPropertyId),
-          db.fetchUserPreferences(currentUser.id),
-        ]);
+        let machinesFromDB: Machine[] = [];
+        let refuelingsFromDB: Refueling[] = [];
+        let maintenancesFromDB: Maintenance[] = [];
+        let alertsFromDB: Alert[] = [];
+        let farmTankFromDB: FarmTank | null = null;
+        let preferencesFromDB: { serviceTypes: ServiceType[]; maintenanceItems: MaintenanceItem[] } | null = null;
+        
+        try {
+          const results = await Promise.all([
+            db.fetchMachines(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar máquinas:', err); return []; }),
+            db.fetchRefuelings(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar abastecimentos:', err); return []; }),
+            db.fetchMaintenances(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar manutenções:', err); return []; }),
+            db.fetchAlerts(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar alertas:', err); return []; }),
+            db.fetchFarmTank(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar tanque:', err); return null; }),
+            db.fetchUserPreferences(currentUser.id).catch(err => { console.error('[DATA] Erro ao buscar preferências:', err); return null; }),
+          ]);
+          
+          machinesFromDB = results[0] || [];
+          refuelingsFromDB = results[1] || [];
+          maintenancesFromDB = results[2] || [];
+          alertsFromDB = results[3] || [];
+          farmTankFromDB = results[4] || null;
+          preferencesFromDB = results[5] || null;
+        } catch (err) {
+          console.error('[DATA WEB] Exceção ao carregar dados do Supabase:', err);
+        }
 
         console.log('[DATA WEB] Dados carregados do Supabase:', {
           machines: machinesFromDB.length,
