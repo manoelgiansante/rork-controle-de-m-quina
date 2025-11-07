@@ -357,7 +357,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       });
 
       const machine = allMachines.find((m) => m.id === maintenance.machineId);
-      if (machine) {
+      if (machine && maintenance.itemRevisions) {
         const newAlerts: Alert[] = maintenance.itemRevisions.map((revision) => ({
           id: `${newMaintenance.id}-${revision.item}`,
           propertyId: currentPropertyId,

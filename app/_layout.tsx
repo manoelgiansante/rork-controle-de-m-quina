@@ -9,6 +9,7 @@ import { DataProvider } from "@/contexts/DataContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { PropertyProvider } from "@/contexts/PropertyContext";
 import { trpc, trpcClient } from "@/lib/trpc";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -59,20 +60,22 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <PropertyProvider>
-              <DataProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <RootLayoutNav />
-                </GestureHandlerRootView>
-              </DataProvider>
-            </PropertyProvider>
-          </SubscriptionProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <ErrorBoundary>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <PropertyProvider>
+                <DataProvider>
+                  <GestureHandlerRootView style={{ flex: 1 }}>
+                    <RootLayoutNav />
+                  </GestureHandlerRootView>
+                </DataProvider>
+              </PropertyProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
+    </ErrorBoundary>
   );
 }
