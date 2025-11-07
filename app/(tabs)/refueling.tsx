@@ -1,7 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import { parseDecimal, formatLiters } from '@/lib/decimal-utils';
 import type { ServiceType } from '@/types';
-import { Calendar, Droplet, Plus } from 'lucide-react-native';
+import { Calendar, Droplet, Plus, FileText } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -17,8 +18,16 @@ import {
 
 
 export default function RefuelingScreen() {
-  const { machines, addRefueling, serviceTypes, addServiceType, farmTank, consumeFuel } = useData();
+  const { machines, addRefueling, serviceTypes, addServiceType, farmTank, consumeFuel, refuelings } = useData();
   const { currentUser } = useAuth();
+
+  const sortedRefuelings = React.useMemo(() => {
+    return [...refuelings].sort((a, b) => {
+      const dateA = new Date(a.date || a.createdAt);
+      const dateB = new Date(b.date || b.createdAt);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [refuelings]);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
   const [date, setDate] = useState<string>(
@@ -88,7 +97,7 @@ export default function RefuelingScreen() {
       return;
     }
 
-    const litersValue = parseFloat(liters);
+    const litersValue = parseDecimal(liters);
     console.log('🔄 Iniciando salvamento de abastecimento:', {
       selectedMachineId,
       date,
@@ -113,7 +122,7 @@ export default function RefuelingScreen() {
         machineId: selectedMachineId,
         date: date,
         liters: litersValue,
-        hourMeter: parseFloat(hourMeter),
+        hourMeter: parseDecimal(hourMeter),
         serviceType: serviceType || undefined,
         userId: currentUser.id,
         userName: currentUser.name,
@@ -126,7 +135,7 @@ export default function RefuelingScreen() {
 
       resetForm();
       setIsModalOpen(false);
-      Alert.alert('Sucesso', 'Abastecimento registrado com sucesso!');
+      Alert.alert('Sucesso', `Abastecimento de ${formatLiters(litersValue)} registrado com sucesso!`);
     } catch (error) {
       console.error('❌ Erro ao salvar abastecimento:', error);
       Alert.alert('Erro', 'Não foi possível salvar o abastecimento. Tente novamente.');
@@ -152,6 +161,65 @@ export default function RefuelingScreen() {
           <Droplet size={22} color="#FFF" strokeWidth={2} />
           <Text style={styles.addButtonText}>Registrar Abastecimento</Text>
         </TouchableOpacity>
+
+        <View style={styles.historySection}>
+          <View style={styles.historySectionHeader}>
+            <FileText size={22} color="#333" />
+            <Text style={styles.historySectionTitle}>Histórico de Abastecimentos</Text>
+          </View>
+          
+          {sortedRefuelings.length === 0 ? (
+            <View style={styles.emptyHistory}>
+              <Text style={styles.emptyHistoryText}>Nenhum abastecimento registrado</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.historyList}>
+              {sortedRefuelings.map((refueling) => {
+                const machine = machines.find(m => m.id === refueling.machineId);
+                if (!machine) return null;
+                
+                return (
+                  <View key={refueling.id} style={styles.historyCard}>
+                    <View style={styles.historyCardHeader}>
+                      <Droplet size={18} color="#2196F3" />
+                      <Text style={styles.historyCardDate}>
+                        {new Date(refueling.date).toLocaleDateString('pt-BR')}
+                      </Text>
+                    </View>
+                    <Text style={styles.historyCardMachine}>
+                      [{machine.type}] {machine.model}
+                    </Text>
+                    <View style={styles.historyCardRow}>
+                      <Text style={styles.historyCardLabel}>Volume:</Text>
+                      <Text style={styles.historyCardValue}>{formatLiters(refueling.liters)}</Text>
+                    </View>
+                    <View style={styles.historyCardRow}>
+                      <Text style={styles.historyCardLabel}>Horímetro:</Text>
+                      <Text style={styles.historyCardValue}>{refueling.hourMeter.toFixed(1)}h</Text>
+                    </View>
+                    {refueling.averageConsumption && (
+                      <View style={styles.historyCardRow}>
+                        <Text style={styles.historyCardLabel}>Consumo médio:</Text>
+                        <Text style={styles.historyCardValue}>
+                          {refueling.averageConsumption.toFixed(2)} L/h
+                        </Text>
+                      </View>
+                    )}
+                    {refueling.serviceType && (
+                      <View style={styles.historyCardRow}>
+                        <Text style={styles.historyCardLabel}>Serviço:</Text>
+                        <Text style={styles.historyCardValue}>{refueling.serviceType}</Text>
+                      </View>
+                    )}
+                    <Text style={styles.historyCardUser}>
+                      Registrado por: {refueling.userName}
+                    </Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
       </ScrollView>
 
       <Modal
@@ -408,6 +476,85 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600' as const,
     color: '#FFF',
+  },
+  historySection: {
+    marginTop: 24,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  historySectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  historySectionTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#333',
+  },
+  historyList: {
+    maxHeight: 400,
+  },
+  emptyHistory: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyHistoryText: {
+    fontSize: 15,
+    color: '#999',
+    fontStyle: 'italic' as const,
+  },
+  historyCard: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  historyCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  historyCardDate: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#333',
+  },
+  historyCardMachine: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#666',
+    marginBottom: 12,
+  },
+  historyCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  historyCardLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  historyCardValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#333',
+  },
+  historyCardUser: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 8,
+    fontStyle: 'italic' as const,
   },
   modalOverlay: {
     flex: 1,

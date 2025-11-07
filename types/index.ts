@@ -66,9 +66,11 @@ export interface Maintenance {
 }
 
 export type AlertStatus = 'green' | 'yellow' | 'red';
+export type AlertType = 'maintenance' | 'tank';
 
-export interface Alert {
+export interface MaintenanceAlert {
   id: string;
+  type: 'maintenance';
   propertyId: string;
   machineId: string;
   maintenanceId: string;
@@ -79,6 +81,21 @@ export interface Alert {
   status: AlertStatus;
   createdAt: string;
 }
+
+export interface TankAlert {
+  id: string;
+  type: 'tank';
+  propertyId: string;
+  tankCurrentLiters: number;
+  tankCapacityLiters: number;
+  tankAlertLevelLiters: number;
+  percentageFilled: number;
+  status: AlertStatus;
+  message: string;
+  createdAt: string;
+}
+
+export type Alert = MaintenanceAlert | TankAlert;
 
 export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'none';
 export type PlanType = 'basic' | 'premium';
