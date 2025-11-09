@@ -36,15 +36,29 @@ const STORAGE_KEYS = {
   FARM_TANK: '@controle_maquina:farm_tank',
 };
 
+/**
+ * DataContext - Gerenciamento de dados com isolamento por usuário
+ *
+ * SEGURANÇA: Este contexto garante que cada usuário veja APENAS seus próprios dados.
+ * O isolamento é garantido através da seguinte cadeia:
+ * 1. user_id (AuthContext) →
+ * 2. properties (PropertyContext - filtradas por user_id) →
+ * 3. machines/refuelings/maintenances (DataContext - filtradas por property_id)
+ *
+ * Todos os dados são filtrados pelas propriedades do usuário logado,
+ * garantindo que NUNCA sejam acessados dados de outros usuários.
+ */
 export const [DataProvider, useData] = createContextHook(() => {
   const { currentUser } = useAuth();
-  const { currentPropertyId } = useProperty();
+  const { currentPropertyId, properties: userProperties } = useProperty();
   const [isWeb] = useState(() => {
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       return true;
     }
     return Platform.OS === 'web';
   });
+
+  // Estados para armazenar TODOS os dados do usuário (de todas as suas propriedades)
   const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [allRefuelings, setAllRefuelings] = useState<Refueling[]>([]);
   const [allMaintenances, setAllMaintenances] = useState<Maintenance[]>([]);
@@ -54,6 +68,7 @@ export const [DataProvider, useData] = createContextHook(() => {
   const [allFarmTanks, setAllFarmTanks] = useState<FarmTank[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Dados filtrados pela propriedade atualmente selecionada
   const machines = useMemo(
     () => allMachines.filter(m => m.propertyId === currentPropertyId),
     [allMachines, currentPropertyId]
@@ -79,6 +94,12 @@ export const [DataProvider, useData] = createContextHook(() => {
     [allFarmTanks, currentPropertyId]
   );
 
+  /**
+   * Carrega dados do Supabase com filtro por user_id
+   *
+   * IMPORTANTE: Os dados são carregados apenas das propriedades que pertencem ao usuário logado,
+   * garantindo isolamento total. Nunca são buscados dados de outras propriedades.
+   */
   const loadData = useCallback(async () => {
     if (!currentPropertyId || !currentUser) {
       console.log('[DATA] Aguardando property e user...', { currentPropertyId, currentUser: !!currentUser });
@@ -87,51 +108,97 @@ export const [DataProvider, useData] = createContextHook(() => {
     }
 
     try {
-      console.log('[DATA] Carregando dados...', { currentPropertyId, isWeb });
-      
+      console.log('[DATA] 🔒 Carregando dados com filtro por user_id...', {
+        userId: currentUser.id,
+        currentPropertyId,
+        isWeb,
+        userPropertiesCount: userProperties.length
+      });
+
       if (isWeb) {
-        console.log('[DATA WEB] Carregando do Supabase...');
-        let machinesFromDB: Machine[] = [];
-        let refuelingsFromDB: Refueling[] = [];
-        let maintenancesFromDB: Maintenance[] = [];
-        let alertsFromDB: Alert[] = [];
-        let farmTankFromDB: FarmTank | null = null;
+        console.log('[DATA WEB] 🔒 Carregando do Supabase com garantia de isolamento por user_id...');
+
+        // SEGURANÇA: Buscar dados apenas das propriedades do usuário
+        // Isso garante que NUNCA sejam carregados dados de outros usuários
+        const userPropertyIds = userProperties.map(p => p.id);
+        console.log('[DATA WEB] 🔐 Propriedades do usuário:', userPropertyIds);
+
+        let allMachinesFromDB: Machine[] = [];
+        let allRefuelingsFromDB: Refueling[] = [];
+        let allMaintenancesFromDB: Maintenance[] = [];
+        let allAlertsFromDB: Alert[] = [];
+        let allFarmTanksFromDB: FarmTank[] = [];
         let preferencesFromDB: { serviceTypes: ServiceType[]; maintenanceItems: MaintenanceItem[] } | null = null;
-        
+
         try {
-          const results = await Promise.all([
-            db.fetchMachines(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar máquinas:', err); return []; }),
-            db.fetchRefuelings(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar abastecimentos:', err); return []; }),
-            db.fetchMaintenances(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar manutenções:', err); return []; }),
-            db.fetchAlerts(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar alertas:', err); return []; }),
-            db.fetchFarmTank(currentPropertyId).catch(err => { console.error('[DATA] Erro ao buscar tanque:', err); return null; }),
-            db.fetchUserPreferences(currentUser.id).catch(err => { console.error('[DATA] Erro ao buscar preferências:', err); return null; }),
-          ]);
-          
-          machinesFromDB = results[0] || [];
-          refuelingsFromDB = results[1] || [];
-          maintenancesFromDB = results[2] || [];
-          alertsFromDB = results[3] || [];
-          farmTankFromDB = results[4] || null;
-          preferencesFromDB = results[5] || null;
+          // Carregar dados de TODAS as propriedades do usuário
+          console.log('[DATA WEB] 🔄 Buscando dados de todas as propriedades do usuário...');
+
+          const dataPromises = userPropertyIds.map(async (propertyId) => {
+            const [machines, refuelings, maintenances, alerts, farmTank] = await Promise.all([
+              db.fetchMachines(propertyId).catch(err => {
+                console.error(`[DATA] Erro ao buscar máquinas da property ${propertyId}:`, err);
+                return [];
+              }),
+              db.fetchRefuelings(propertyId).catch(err => {
+                console.error(`[DATA] Erro ao buscar abastecimentos da property ${propertyId}:`, err);
+                return [];
+              }),
+              db.fetchMaintenances(propertyId).catch(err => {
+                console.error(`[DATA] Erro ao buscar manutenções da property ${propertyId}:`, err);
+                return [];
+              }),
+              db.fetchAlerts(propertyId).catch(err => {
+                console.error(`[DATA] Erro ao buscar alertas da property ${propertyId}:`, err);
+                return [];
+              }),
+              db.fetchFarmTank(propertyId).catch(err => {
+                console.error(`[DATA] Erro ao buscar tanque da property ${propertyId}:`, err);
+                return null;
+              }),
+            ]);
+
+            return { machines, refuelings, maintenances, alerts, farmTank };
+          });
+
+          const allPropertyData = await Promise.all(dataPromises);
+
+          // Consolidar dados de todas as propriedades
+          allPropertyData.forEach(data => {
+            allMachinesFromDB.push(...data.machines);
+            allRefuelingsFromDB.push(...data.refuelings);
+            allMaintenancesFromDB.push(...data.maintenances);
+            allAlertsFromDB.push(...data.alerts);
+            if (data.farmTank) {
+              allFarmTanksFromDB.push(data.farmTank);
+            }
+          });
+
+          // Buscar preferências do usuário (não vinculadas a propriedades)
+          preferencesFromDB = await db.fetchUserPreferences(currentUser.id).catch(err => {
+            console.error('[DATA] Erro ao buscar preferências:', err);
+            return null;
+          });
+
         } catch (err) {
           console.error('[DATA WEB] Exceção ao carregar dados do Supabase:', err);
         }
 
-        console.log('[DATA WEB] Dados carregados do Supabase:', {
-          machines: machinesFromDB.length,
-          refuelings: refuelingsFromDB.length,
-          maintenances: maintenancesFromDB.length,
-          alerts: alertsFromDB.length,
-          hasTank: !!farmTankFromDB,
+        console.log('[DATA WEB] ✅ Dados carregados do Supabase (isolados por user_id):', {
+          machines: allMachinesFromDB.length,
+          refuelings: allRefuelingsFromDB.length,
+          maintenances: allMaintenancesFromDB.length,
+          alerts: allAlertsFromDB.length,
+          farmTanks: allFarmTanksFromDB.length,
         });
 
-        setAllMachines(machinesFromDB);
-        setAllRefuelings(refuelingsFromDB);
-        setAllMaintenances(maintenancesFromDB);
-        setAllAlerts(alertsFromDB);
-        setAllFarmTanks(farmTankFromDB ? [farmTankFromDB] : []);
-        
+        // Atualizar estados com dados filtrados
+        setAllMachines(allMachinesFromDB);
+        setAllRefuelings(allRefuelingsFromDB);
+        setAllMaintenances(allMaintenancesFromDB);
+        setAllAlerts(allAlertsFromDB);
+        setAllFarmTanks(allFarmTanksFromDB);
+
         if (preferencesFromDB) {
           setServiceTypes(preferencesFromDB.serviceTypes);
           const mergedItems = [...new Set([...DEFAULT_MAINTENANCE_ITEMS, ...preferencesFromDB.maintenanceItems])];
@@ -141,12 +208,13 @@ export const [DataProvider, useData] = createContextHook(() => {
           setMaintenanceItems(DEFAULT_MAINTENANCE_ITEMS);
         }
 
-        await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(machinesFromDB));
-        await AsyncStorage.setItem(STORAGE_KEYS.REFUELINGS, JSON.stringify(refuelingsFromDB));
-        await AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCES, JSON.stringify(maintenancesFromDB));
-        await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(alertsFromDB));
-        if (farmTankFromDB) {
-          await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify([farmTankFromDB]));
+        // Salvar no cache local
+        await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(allMachinesFromDB));
+        await AsyncStorage.setItem(STORAGE_KEYS.REFUELINGS, JSON.stringify(allRefuelingsFromDB));
+        await AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCES, JSON.stringify(allMaintenancesFromDB));
+        await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(allAlertsFromDB));
+        if (allFarmTanksFromDB.length > 0) {
+          await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(allFarmTanksFromDB));
         }
       } else {
         console.log('[DATA MOBILE] Carregando do AsyncStorage...');
@@ -190,11 +258,11 @@ export const [DataProvider, useData] = createContextHook(() => {
         }
       }
     } catch (error) {
-      console.error('[DATA] Erro ao carregar dados:', error);
+      console.error('[DATA] ❌ Erro ao carregar dados:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [currentPropertyId, currentUser, isWeb]);
+  }, [currentPropertyId, currentUser, isWeb, userProperties]);
 
   useEffect(() => {
     if (!currentPropertyId || !currentUser) {
@@ -429,10 +497,10 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       if (updates.hourMeter !== undefined && updates.hourMeter !== originalMaintenance.hourMeter) {
         console.log('[DATA] Horímetro da manutenção foi alterado, verificando se precisa atualizar máquina...');
-        
+
         const machineMaintenances = updated.filter(m => m.machineId === originalMaintenance.machineId);
         const machineRefuelings = allRefuelings.filter(r => r.machineId === originalMaintenance.machineId);
-        
+
         const latestMaintenanceHourMeter = machineMaintenances.reduce(
           (max, m) => Math.max(max, m.hourMeter),
           0
@@ -441,9 +509,9 @@ export const [DataProvider, useData] = createContextHook(() => {
           (max, r) => Math.max(max, r.hourMeter),
           0
         );
-        
+
         const newMachineHourMeter = Math.max(latestMaintenanceHourMeter, latestRefuelingHourMeter);
-        
+
         const machine = allMachines.find(m => m.id === originalMaintenance.machineId);
         if (machine && machine.currentHourMeter !== newMachineHourMeter) {
           console.log('[DATA] Atualizando horímetro da máquina:', {
@@ -451,7 +519,7 @@ export const [DataProvider, useData] = createContextHook(() => {
             oldHourMeter: machine.currentHourMeter,
             newHourMeter: newMachineHourMeter,
           });
-          
+
           await updateMachine(originalMaintenance.machineId, {
             currentHourMeter: newMachineHourMeter,
           });
@@ -460,7 +528,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       if (updates.itemRevisions) {
         console.log('[DATA] Atualizando alertas relacionados à manutenção...');
-        
+
         const updatedAlerts = allAlerts.map(alert => {
           if (alert.maintenanceId !== maintenanceId) return alert;
 
@@ -469,7 +537,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
           const newNextRevisionHourMeter = updatedMaintenance.hourMeter + revision.nextRevisionHours;
           const machine = allMachines.find(m => m.id === alert.machineId);
-          
+
           if (!machine) return alert;
 
           const newStatus = calculateAlertStatus(
@@ -547,7 +615,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
         const machineRefuelings = updated.filter(r => r.machineId === refueling.machineId);
         const machineMaintenances = allMaintenances.filter(m => m.machineId === refueling.machineId);
-        
+
         const latestRefuelingHourMeter = machineRefuelings.reduce(
           (max, r) => Math.max(max, r.hourMeter),
           0
@@ -556,7 +624,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           (max, m) => Math.max(max, m.hourMeter),
           0
         );
-        
+
         const newMachineHourMeter = Math.max(latestRefuelingHourMeter, latestMaintenanceHourMeter);
 
         console.log('[DATA] 🔄 Novo horímetro da máquina calculado:', {
@@ -608,7 +676,7 @@ export const [DataProvider, useData] = createContextHook(() => {
               console.log('[DATA] ✅ Atualizando status do alerta de', alert.status, 'para', newStatus);
 
               if (isWeb) {
-                db.updateAlert(alert.id, { status: newStatus }).catch(err => 
+                db.updateAlert(alert.id, { status: newStatus }).catch(err =>
                   console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
                 );
               }
@@ -667,7 +735,7 @@ export const [DataProvider, useData] = createContextHook(() => {
               await db.upsertFarmTank(updatedTank);
             }
 
-            const updatedTanks = allFarmTanks.map(t => 
+            const updatedTanks = allFarmTanks.map(t =>
               t.propertyId === refueling.propertyId ? updatedTank : t
             );
             setAllFarmTanks(updatedTanks);
@@ -717,7 +785,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       console.log('[DATA] Recalculando horímetro da máquina após exclusão...');
       const machineRefuelings = updated.filter(r => r.machineId === refueling.machineId);
       const machineMaintenances = allMaintenances.filter(m => m.machineId === refueling.machineId);
-      
+
       const machine = allMachines.find(m => m.id === refueling.machineId);
       console.log('[DATA] Estado atual da máquina:', {
         machineId: refueling.machineId,
@@ -725,33 +793,33 @@ export const [DataProvider, useData] = createContextHook(() => {
         abastecimentosRestantes: machineRefuelings.length,
         manutençõesExistentes: machineMaintenances.length,
       });
-      
+
       let newHourMeter = 0;
-      
+
       if (machineRefuelings.length > 0) {
         const latestRefueling = machineRefuelings.reduce((latest, current) => {
           return current.hourMeter > latest.hourMeter ? current : latest;
         });
         newHourMeter = Math.max(newHourMeter, latestRefueling.hourMeter);
-        
+
         console.log('[DATA] Último abastecimento restante:', {
           id: latestRefueling.id,
           hourMeter: latestRefueling.hourMeter,
         });
       }
-      
+
       if (machineMaintenances.length > 0) {
         const latestMaintenance = machineMaintenances.reduce((latest, current) => {
           return current.hourMeter > latest.hourMeter ? current : latest;
         });
         newHourMeter = Math.max(newHourMeter, latestMaintenance.hourMeter);
-        
+
         console.log('[DATA] Última manutenção:', {
           id: latestMaintenance.id,
           hourMeter: latestMaintenance.hourMeter,
         });
       }
-      
+
       if (newHourMeter === 0) {
         console.log('[DATA] ⚠️ Sem dados de horímetro, resetando para 0');
       }
@@ -786,7 +854,7 @@ export const [DataProvider, useData] = createContextHook(() => {
             });
 
             if (isWeb) {
-              db.updateAlert(alert.id, { status: newStatus }).catch(err => 
+              db.updateAlert(alert.id, { status: newStatus }).catch(err =>
                 console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
               );
             }
@@ -834,7 +902,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           await db.upsertFarmTank(updatedTank);
         }
 
-        const updatedTanks = allFarmTanks.map(t => 
+        const updatedTanks = allFarmTanks.map(t =>
           t.propertyId === refueling.propertyId ? updatedTank : t
         );
         setAllFarmTanks(updatedTanks);
@@ -887,7 +955,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       console.log('[DATA] Recalculando horímetro da máquina após exclusão da manutenção...');
       const machineMaintenances = updated.filter(m => m.machineId === maintenance.machineId);
       const machineRefuelings = allRefuelings.filter(r => r.machineId === maintenance.machineId);
-      
+
       const machine = allMachines.find(m => m.id === maintenance.machineId);
       console.log('[DATA] Estado atual da máquina:', {
         machineId: maintenance.machineId,
@@ -895,9 +963,9 @@ export const [DataProvider, useData] = createContextHook(() => {
         manutencoesRestantes: machineMaintenances.length,
         abastecimentos: machineRefuelings.length,
       });
-      
+
       let newHourMeter = 0;
-      
+
       if (machineRefuelings.length > 0) {
         const latestRefueling = machineRefuelings.reduce((latest, current) => {
           return current.hourMeter > latest.hourMeter ? current : latest;
@@ -908,7 +976,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           hourMeter: latestRefueling.hourMeter,
         });
       }
-      
+
       if (machineMaintenances.length > 0) {
         const latestMaintenance = machineMaintenances.reduce((latest, current) => {
           return current.hourMeter > latest.hourMeter ? current : latest;
@@ -919,7 +987,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           hourMeter: latestMaintenance.hourMeter,
         });
       }
-      
+
       if (newHourMeter === 0) {
         console.log('[DATA] ⚠️ Sem dados de horímetro, resetando para 0');
       }
@@ -954,7 +1022,7 @@ export const [DataProvider, useData] = createContextHook(() => {
             });
 
             if (isWeb) {
-              db.updateAlert(alert.id, { status: newStatus }).catch(err => 
+              db.updateAlert(alert.id, { status: newStatus }).catch(err =>
                 console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
               );
             }
@@ -972,7 +1040,7 @@ export const [DataProvider, useData] = createContextHook(() => {
   );
 
   const alertsRef = useRef(allAlerts);
-  
+
   useEffect(() => {
     alertsRef.current = allAlerts;
   }, [allAlerts]);
@@ -999,13 +1067,13 @@ export const [DataProvider, useData] = createContextHook(() => {
       });
 
       const hasChanges = updatedAlerts.some((alert, idx) => alert.status !== currentAlerts[idx]?.status);
-      
+
       if (hasChanges) {
         if (isWeb) {
           updatedAlerts.forEach(alert => {
             const originalAlert = currentAlerts.find(a => a.id === alert.id);
             if (originalAlert && alert.status !== originalAlert.status) {
-              db.updateAlert(alert.id, { status: alert.status }).catch(err => 
+              db.updateAlert(alert.id, { status: alert.status }).catch(err =>
                 console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
               );
             }
@@ -1054,7 +1122,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           STORAGE_KEYS.SERVICE_TYPES,
           JSON.stringify(updated)
         );
-        
+
         if (isWeb && currentUser) {
           console.log('[DATA WEB] Salvando tipo de serviço no Supabase...');
           await db.upsertUserPreferences(currentUser.id, {
@@ -1075,7 +1143,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           STORAGE_KEYS.MAINTENANCE_ITEMS,
           JSON.stringify(updated)
         );
-        
+
         if (isWeb && currentUser) {
           console.log('[DATA WEB] Salvando item de manutenção no Supabase...');
           await db.upsertUserPreferences(currentUser.id, {
@@ -1122,7 +1190,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         await db.upsertFarmTank(updatedTank);
       }
 
-      const updated = allFarmTanks.map(t => 
+      const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
       );
       setAllFarmTanks(updated);
@@ -1147,7 +1215,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         await db.upsertFarmTank(updatedTank);
       }
 
-      const updated = allFarmTanks.map(t => 
+      const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
       );
       setAllFarmTanks(updated);
@@ -1185,7 +1253,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         await db.upsertFarmTank(updatedTank);
       }
 
-      const updated = allFarmTanks.map(t => 
+      const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
       );
       setAllFarmTanks(updated);
@@ -1233,7 +1301,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         await db.upsertFarmTank(updatedTank);
       }
 
-      const updated = allFarmTanks.map(t => 
+      const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
       );
       setAllFarmTanks(updated);
@@ -1274,7 +1342,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         await db.upsertFarmTank(updatedTank);
       }
 
-      const updated = allFarmTanks.map(t => 
+      const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
       );
       setAllFarmTanks(updated);
