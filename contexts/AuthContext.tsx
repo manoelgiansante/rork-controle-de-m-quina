@@ -306,18 +306,19 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     console.log('[AUTH] Tentando fazer login...', { username, platform: Platform.OS });
-    
+
     if (!username || !password) {
       console.error('[AUTH] Username ou password vazios');
       return false;
     }
-    
-    if (isWeb && supabase) {
-      console.log('[WEB AUTH] Usando Supabase para login...');
+
+    // Usar Supabase tanto para WEB quanto MOBILE
+    if (supabase) {
+      console.log('[SUPABASE AUTH] Usando Supabase para login...', { platform: Platform.OS });
       try {
         let data = null;
         let error = null;
-        
+
         try {
           const result = await supabase.auth.signInWithPassword({
             email: username,
@@ -326,21 +327,21 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           data = result?.data || null;
           error = result?.error || null;
         } catch (err) {
-          console.error('[WEB AUTH] Exceção durante signInWithPassword:', err);
+          console.error('[SUPABASE AUTH] Exceção durante signInWithPassword:', err);
           return false;
         }
-        
+
         if (error) {
-          console.error('[WEB AUTH] Erro no login:', error.message || error);
+          console.error('[SUPABASE AUTH] Erro no login:', error.message || error);
           return false;
         }
-        
+
         if (data?.user) {
-          console.log('[WEB AUTH] Login bem-sucedido:', data.user.email);
-          
+          console.log('[SUPABASE AUTH] Login bem-sucedido:', data.user.email);
+
           const acceptedTermsAt = data.user.user_metadata?.acceptedTermsAt;
-          
-          const webUser: User = {
+
+          const authUser: User = {
             id: data.user.id,
             username: data.user.email || '',
             password: '',
@@ -348,34 +349,42 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             name: data.user.user_metadata?.name || data.user.email || '',
             acceptedTermsAt: acceptedTermsAt,
           };
-          
-          setCurrentUser(webUser);
-          
-          if (typeof localStorage !== 'undefined') {
+
+          setCurrentUser(authUser);
+
+          // Salvar no storage apropriado (localStorage para web, AsyncStorage para mobile)
+          if (isWeb && typeof localStorage !== 'undefined') {
             try {
-              localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(webUser));
+              localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(authUser));
             } catch (err) {
-              console.error('[WEB AUTH] Erro ao salvar no localStorage:', err);
+              console.error('[SUPABASE AUTH] Erro ao salvar no localStorage:', err);
+            }
+          } else {
+            try {
+              await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(authUser));
+            } catch (err) {
+              console.error('[SUPABASE AUTH] Erro ao salvar no AsyncStorage:', err);
             }
           }
-          
+
           try {
             await syncSubscriptionAfterLogin(data.user.id);
           } catch (err) {
-            console.warn('[WEB AUTH] Erro ao sincronizar assinatura (não crítico):', err);
+            console.warn('[SUPABASE AUTH] Erro ao sincronizar assinatura (não crítico):', err);
           }
-          
+
           return true;
         }
-        
+
         return false;
       } catch (error) {
-        console.error('[WEB AUTH] Exceção durante login:', error);
+        console.error('[SUPABASE AUTH] Exceção durante login:', error);
         return false;
       }
     }
-    
-    console.log('[AUTH MOBILE] Usando login local...', { usersCount: users.length });
+
+    // Fallback para login local (apenas se Supabase não estiver disponível)
+    console.log('[AUTH MOBILE] Usando login local (fallback)...', { usersCount: users.length });
     const user = users.find(
       (u) => u.username === username && u.password === password
     );

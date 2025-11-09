@@ -1,0 +1,16 @@
+  546  ls -la ~/.local/bin/claude
+  547  echo $PATH
+  548  cat ~/.zshrc | grep "local/bin"
+  549  sudo chmod +x ~/.local/bin/claude\nsudo chown $(whoami) ~/.local/bin/claude
+  550  sudo chmod +x ~/.local/bin/claude\nsudo chown $(whoami) ~/.local/bin/claude
+  551  claude --help
+  552  sudo chmod 755 ~/.local/bin\nsudo chown -R $(whoami) ~/.local/bin
+  553  # Remover instalação com problema\nsudo rm -rf ~/.local/bin/claude\n\n# Reinstalar em /usr/local/bin\nsudo curl -fsSL https://claude.ai/install.sh | sudo bash -s -- --install-dir /usr/local/bin
+  554  cd ~/Documents/controle\ncat package.json | grep -A 2 '"react"'
+  555  # Você já está na pasta certa (~/Documents/controle)\n# Agora execute:\n\nnpm uninstall react react-native react-dom\n\nnpm install react@18.3.1 react-native@0.76.5 react-dom@18.3.1 --save-exact\n\nrm -rf node_modules\nrm -rf ios/Pods\nnpm cache clean --force\n\nnpm install\ncd ios && pod install && cd ..\n\ncat package.json | grep '"react"'
+  556  cd ~/Documents/controle
+  557  cat package.json | grep '"react"'
+  558  cd ios\npod install\ncd ..
+  559  # Volte para a pasta principal\ncd ~/Documents/controle\n\n# Verifique todas as versões do React\ncat package.json | grep -A 2 '"react"'\n\n# Se o react-native ainda estiver errado, force a atualização\nnpm install react-native@0.76.5 --save-exact --force\n\n# Prebuild do Expo (vai criar os arquivos iOS necessários)\nnpx expo prebuild --clear\n\n# Agora sim, instalar os Pods\ncd ios\npod install\ncd ..
+  560  eas build --platform ios --clear-cache
+  561  # Salvar todo o histórico de comandos\nhistory > ~/Documents/controle/historico-claude-$(date +%Y%m%d-%H%M).txt\n\n# Fazer backup dos arquivos modificados\ncd ~/Documents/controle\ngit add .\ngit commit -m "Backup - Build 13 funcionando mas sem dados Supabase"\n\n# Criar lista do que foi feito\necho "=== CORREÇÕES APLICADAS ===" > FIXES-APPLIED.md\necho "1. React atualizado: 19.1.0 -> 18.3.1" >> FIXES-APPLIED.md\necho "2. React Native: 0.81.5 -> 0.76.5" >> FIXES-APPLIED.md\necho "3. Build 13 criado e sem crashes" >> FIXES-APPLIED.md\necho "4. Login funciona mas dados não carregam no mobile" >> FIXES-APPLIED.md\necho "5. Website funciona normalmente" >> FIXES-APPLIED.md

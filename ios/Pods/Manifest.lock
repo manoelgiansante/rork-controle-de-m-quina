@@ -50,10 +50,10 @@ PODS:
   - ExpoHead (6.0.14):
     - ExpoModulesCore
     - RNScreens
-  - ExpoImage (1.12.15):
+  - ExpoImage (3.0.10):
     - ExpoModulesCore
     - libavif/libdav1d
-    - SDWebImage (~> 5.19.1)
+    - SDWebImage (~> 5.21.0)
     - SDWebImageAVIFCoder (~> 0.11.0)
     - SDWebImageSVGCoder (~> 1.7.0)
     - SDWebImageWebPCoder (~> 0.14.6)
@@ -2434,11 +2434,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNSVG (15.12.1):
+  - RNSVG (15.14.0):
     - React-Core
-  - SDWebImage (5.19.7):
-    - SDWebImage/Core (= 5.19.7)
-  - SDWebImage/Core (5.19.7)
+  - SDWebImage (5.21.3):
+    - SDWebImage/Core (= 5.21.3)
+  - SDWebImage/Core (5.21.3)
   - SDWebImageAVIFCoder (0.11.1):
     - libavif/core (>= 0.11.0)
     - SDWebImage (~> 5.10)
@@ -2768,7 +2768,7 @@ SPEC CHECKSUMS:
   ExpoFont: b881d43057dceb7b31ff767b24f612609e80f60f
   ExpoHaptics: b48d913e7e5f23816c6f130e525c9a6501b160b5
   ExpoHead: 19d8e4aacbdcb8da329daeb79d2cc1a737538d21
-  ExpoImage: f77df382153d716f332f974438a803c4527f60b0
+  ExpoImage: 6eb842cd07817402640545c41884dd7f5fbfbca5
   ExpoImagePicker: bd0a5c81d7734548f6908a480609257e85d19ea8
   ExpoKeepAwake: 3f5e3ac53627849174f3603271df8e08f174ed4a
   ExpoLinearGradient: f9e7182e5253d53b2de4134b69d70bbfc2d50588
@@ -2854,8 +2854,8 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 23e56519cc41d3bade3c8d4479f7760cb1c11996
   RNGestureHandler: 4e01eefc427d3af22b877fdb4f7bc826132daab6
   RNScreens: 9ae2656a55e9466dc04da3ba196d7932a6bd8146
-  RNSVG: 3e87821b2215b30e19f90232247007e5c313a06c
-  SDWebImage: 8a6b7b160b4d710e2a22b6900e25301075c34cb3
+  RNSVG: c9dd030d3528c9c9c4d53524f397edf2e0314077
+  SDWebImage: 16309af6d214ba3f77a7c6f6fdda888cb313a50a
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380

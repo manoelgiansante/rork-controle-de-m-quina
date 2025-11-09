@@ -2,7 +2,7 @@
   "expo": {
     "name": "Controle de Máquina",
     "slug": "controledemaquina",
-    "version": "1.3.1",
+    "version": "1.3.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
@@ -17,6 +17,7 @@
       "jsEngine": "hermes",
       "supportsTablet": false,
       "bundleIdentifier": "com.manoel.controledemaquina",
+      "buildNumber": "13",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Usamos a câmera para anexar fotos das máquinas e abastecimentos.",
@@ -30,6 +31,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.manoel.controledemaquina",
+      "versionCode": 11,
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
