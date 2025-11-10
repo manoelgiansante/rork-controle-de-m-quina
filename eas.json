@@ -45,13 +45,14 @@
     },
     "production": {
       "ios": {
-        "resourceClass": "large",
+        "resourceClass": "m-large",
         "cache": {
           "disabled": false
         }
       },
       "android": {
         "resourceClass": "large",
+        "withoutCredentials": false,
         "cache": {
           "disabled": false
         }

@@ -25,12 +25,12 @@ export const PRODUCT_IDS = {
     FREE_TRIAL: 'com.2m.controledemaquina.teste.7dias',
   },
   android: {
-    // TODO: Configurar produtos no Google Play Console
-    BASIC_MONTHLY: 'com.manoel.controledemaquina.basic.monthly',
-    BASIC_YEARLY: 'com.manoel.controledemaquina.basic.yearly',
-    PREMIUM_MONTHLY: 'com.manoel.controledemaquina.premium.monthly',
-    PREMIUM_YEARLY: 'com.manoel.controledemaquina.premium.yearly',
-    FREE_TRIAL: 'com.manoel.controledemaquina.trial.7days',
+    // IDs iguais ao iOS para consistência entre plataformas
+    BASIC_MONTHLY: 'com.2m.controledemaquina.basico.mensal19',
+    BASIC_YEARLY: 'com.2m.controledemaquina.basico.anual',
+    PREMIUM_MONTHLY: 'com.2m.controledemaquina.premium.mensal',
+    PREMIUM_YEARLY: 'com.2m.controledemaquina.premium.anual',
+    FREE_TRIAL: 'com.2m.controledemaquina.teste.7dias',
   },
 } as const;
 
