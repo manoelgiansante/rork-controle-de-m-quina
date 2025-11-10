@@ -5,25 +5,13 @@
  * Sincroniza com o backend para validar recibos e atualizar status de assinatura.
  *
  * IMPORTANTE:
- * - iOS usa expo-in-app-purchases
- * - Android usa react-native-iap
+ * - Usa expo-in-app-purchases para iOS e Android
  * - Todos os recibos são validados no backend antes de conceder acesso
+ * - Funciona em ambas plataformas sem configuração nativa adicional
  */
 
 import { Platform } from 'react-native';
 import * as InAppPurchases from 'expo-in-app-purchases';
-import {
-  initConnection as initConnectionAndroid,
-  endConnection as endConnectionAndroid,
-  getProducts as getProductsAndroid,
-  requestPurchase as requestPurchaseAndroid,
-  finishTransaction as finishTransactionAndroid,
-  purchaseUpdatedListener as purchaseUpdatedListenerAndroid,
-  purchaseErrorListener as purchaseErrorListenerAndroid,
-  type Product as AndroidProduct,
-  type Purchase as AndroidPurchase,
-  type PurchaseError as AndroidPurchaseError,
-} from 'react-native-iap';
 
 /**
  * Product IDs configurados no Apple App Store Connect e Google Play Console
@@ -147,8 +135,6 @@ export interface IAPPurchase {
 
 class SubscriptionServiceClass {
   private isConnected = false;
-  private purchaseUpdateSubscription: any = null;
-  private purchaseErrorSubscription: any = null;
 
   /**
    * Inicializa a conexão com a loja (Apple ou Google)
@@ -160,30 +146,9 @@ class SubscriptionServiceClass {
     }
 
     try {
-      if (Platform.OS === 'ios') {
-        console.log('[IAP iOS] Conectando ao App Store...');
-        await InAppPurchases.connectAsync();
-        console.log('[IAP iOS] ✅ Conectado ao App Store');
-      } else if (Platform.OS === 'android') {
-        console.log('[IAP Android] Conectando ao Google Play...');
-        await initConnectionAndroid();
-        console.log('[IAP Android] ✅ Conectado ao Google Play');
-
-        // Setup purchase listeners para Android
-        this.purchaseUpdateSubscription = purchaseUpdatedListenerAndroid(
-          async (purchase: AndroidPurchase) => {
-            console.log('[IAP Android] Purchase update:', purchase);
-            await this.handlePurchaseUpdate(purchase);
-          }
-        );
-
-        this.purchaseErrorSubscription = purchaseErrorListenerAndroid(
-          (error: AndroidPurchaseError) => {
-            console.error('[IAP Android] Purchase error:', error);
-          }
-        );
-      }
-
+      console.log(`[IAP ${Platform.OS}] Conectando...`);
+      await InAppPurchases.connectAsync();
+      console.log(`[IAP ${Platform.OS}] ✅ Conectado`);
       this.isConnected = true;
       return true;
     } catch (error) {
@@ -199,13 +164,7 @@ class SubscriptionServiceClass {
     if (!this.isConnected) return;
 
     try {
-      if (Platform.OS === 'ios') {
-        await InAppPurchases.disconnectAsync();
-      } else if (Platform.OS === 'android') {
-        this.purchaseUpdateSubscription?.remove();
-        this.purchaseErrorSubscription?.remove();
-        await endConnectionAndroid();
-      }
+      await InAppPurchases.disconnectAsync();
       this.isConnected = false;
       console.log('[IAP] Desconectado');
     } catch (error) {
@@ -224,35 +183,18 @@ class SubscriptionServiceClass {
 
       console.log('[IAP] Buscando produtos:', productIds);
 
-      if (Platform.OS === 'ios') {
-        const { results } = await InAppPurchases.getProductsAsync(productIds);
-        console.log('[IAP iOS] Produtos encontrados:', results.length);
+      const { results } = await InAppPurchases.getProductsAsync(productIds);
+      console.log(`[IAP ${Platform.OS}] Produtos encontrados:`, results.length);
 
-        return results.map((product: any) => ({
-          productId: product.productId,
-          title: product.title,
-          description: product.description,
-          price: product.price,
-          priceValue: parseFloat(product.price.replace(/[^\d.,]/g, '').replace(',', '.')),
-          currency: product.currencyCode || 'BRL',
-          platform: 'ios' as const,
-        }));
-      } else if (Platform.OS === 'android') {
-        const products = await getProductsAndroid({ skus: productIds });
-        console.log('[IAP Android] Produtos encontrados:', products.length);
-
-        return products.map((product: AndroidProduct) => ({
-          productId: product.productId,
-          title: product.title,
-          description: product.description,
-          price: product.localizedPrice,
-          priceValue: parseFloat(product.price),
-          currency: product.currency || 'BRL',
-          platform: 'android' as const,
-        }));
-      }
-
-      return [];
+      return results.map((product: any) => ({
+        productId: product.productId,
+        title: product.title,
+        description: product.description,
+        price: product.price,
+        priceValue: parseFloat(product.price.replace(/[^\d.,]/g, '').replace(',', '.')),
+        currency: product.currencyCode || 'BRL',
+        platform: Platform.OS as 'ios' | 'android',
+      }));
     } catch (error) {
       console.error('[IAP] Erro ao buscar produtos:', error);
       return [];
@@ -266,36 +208,26 @@ class SubscriptionServiceClass {
     try {
       console.log('[IAP] Iniciando compra:', productId);
 
-      if (Platform.OS === 'ios') {
-        await InAppPurchases.purchaseItemAsync(productId);
+      await InAppPurchases.purchaseItemAsync(productId);
 
-        // Aguardar atualização de compra
-        const history = await InAppPurchases.getPurchaseHistoryAsync();
-        const purchase = history.results.find(p => p.productId === productId);
+      // Aguardar atualização de compra
+      const history = await InAppPurchases.getPurchaseHistoryAsync();
+      const purchase = history.results.find(p => p.productId === productId);
 
-        if (!purchase) {
-          console.error('[IAP iOS] Compra não encontrada no histórico');
-          return null;
-        }
-
-        console.log('[IAP iOS] Compra concluída:', purchase.transactionId);
-
-        return {
-          transactionId: purchase.transactionId || '',
-          productId: purchase.productId,
-          purchaseTime: purchase.purchaseTime || Date.now(),
-          receipt: purchase.transactionReceipt || '',
-          platform: 'ios',
-        };
-      } else if (Platform.OS === 'android') {
-        await requestPurchaseAndroid({ skus: [productId] });
-
-        // O resultado virá através do listener purchaseUpdatedListener
-        // Por enquanto retornamos null e tratamos no listener
+      if (!purchase) {
+        console.error(`[IAP ${Platform.OS}] Compra não encontrada no histórico`);
         return null;
       }
 
-      return null;
+      console.log(`[IAP ${Platform.OS}] Compra concluída:`, purchase.transactionId);
+
+      return {
+        transactionId: purchase.transactionId || '',
+        productId: purchase.productId,
+        purchaseTime: purchase.purchaseTime || Date.now(),
+        receipt: purchase.transactionReceipt || '',
+        platform: Platform.OS as 'ios' | 'android',
+      };
     } catch (error) {
       console.error('[IAP] Erro ao comprar produto:', error);
       throw error;
@@ -354,16 +286,7 @@ class SubscriptionServiceClass {
   async finishTransaction(purchase: IAPPurchase): Promise<void> {
     try {
       console.log('[IAP] Finalizando transação:', purchase.transactionId);
-
-      if (Platform.OS === 'ios') {
-        await InAppPurchases.finishTransactionAsync(purchase as any, true);
-      } else if (Platform.OS === 'android') {
-        await finishTransactionAndroid({
-          purchase: purchase as any,
-          isConsumable: false, // Subscriptions são não-consumíveis
-        });
-      }
-
+      await InAppPurchases.finishTransactionAsync(purchase as any, true);
       console.log('[IAP] ✅ Transação finalizada');
     } catch (error) {
       console.error('[IAP] Erro ao finalizar transação:', error);
@@ -377,57 +300,26 @@ class SubscriptionServiceClass {
     try {
       console.log('[IAP] Restaurando compras...');
 
-      if (Platform.OS === 'ios') {
-        const history = await InAppPurchases.getPurchaseHistoryAsync();
-        console.log('[IAP iOS] Compras encontradas:', history.results.length);
+      const history = await InAppPurchases.getPurchaseHistoryAsync();
+      console.log(`[IAP ${Platform.OS}] Compras encontradas:`, history.results.length);
 
-        const purchases: IAPPurchase[] = history.results.map(purchase => ({
-          transactionId: purchase.transactionId || '',
-          productId: purchase.productId,
-          purchaseTime: purchase.purchaseTime || Date.now(),
-          receipt: purchase.transactionReceipt || '',
-          platform: 'ios',
-        }));
+      const purchases: IAPPurchase[] = history.results.map(purchase => ({
+        transactionId: purchase.transactionId || '',
+        productId: purchase.productId,
+        purchaseTime: purchase.purchaseTime || Date.now(),
+        receipt: purchase.transactionReceipt || '',
+        platform: Platform.OS as 'ios' | 'android',
+      }));
 
-        // Validar todas as compras no backend
-        for (const purchase of purchases) {
-          await this.validatePurchase(purchase, userId);
-        }
-
-        return purchases;
-      } else if (Platform.OS === 'android') {
-        // Android restoration logic
-        // TODO: Implement when Google Play Console is configured
-        console.log('[IAP Android] Restauração de compras ainda não implementada');
-        return [];
+      // Validar todas as compras no backend
+      for (const purchase of purchases) {
+        await this.validatePurchase(purchase, userId);
       }
 
-      return [];
+      return purchases;
     } catch (error) {
       console.error('[IAP] Erro ao restaurar compras:', error);
       return [];
-    }
-  }
-
-  /**
-   * Handler para atualizações de compra no Android
-   */
-  private async handlePurchaseUpdate(purchase: AndroidPurchase): Promise<void> {
-    try {
-      console.log('[IAP Android] Processando atualização de compra:', purchase.transactionId);
-
-      const iapPurchase: IAPPurchase = {
-        transactionId: purchase.transactionId,
-        productId: purchase.productId,
-        purchaseTime: purchase.transactionDate,
-        receipt: purchase.transactionReceipt,
-        platform: 'android',
-      };
-
-      // TODO: Validar compra com userId
-      // await this.validatePurchase(iapPurchase, userId);
-    } catch (error) {
-      console.error('[IAP Android] Erro ao processar compra:', error);
     }
   }
 
