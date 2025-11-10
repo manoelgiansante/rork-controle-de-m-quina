@@ -15,7 +15,20 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import CancelSubscriptionModal from '@/components/CancelSubscriptionModal';
-import { SubscriptionService, PRODUCT_IDS, type IAPProduct } from '@/lib/SubscriptionService';
+
+// Import IAP apenas para mobile (não existe no web)
+let SubscriptionService: any = null;
+let PRODUCT_IDS: any = null;
+let IAPProduct: any = null;
+
+if (Platform.OS !== 'web') {
+  const iapModule = require('@/lib/SubscriptionService');
+  SubscriptionService = iapModule.SubscriptionService;
+  PRODUCT_IDS = iapModule.PRODUCT_IDS;
+  IAPProduct = iapModule.IAPProduct;
+}
+
+type IAPProduct = any;
 
 export default function SubscriptionScreen() {
   const {
