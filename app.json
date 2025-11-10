@@ -17,7 +17,7 @@
       "jsEngine": "hermes",
       "supportsTablet": false,
       "bundleIdentifier": "com.manoel.controledemaquina",
-      "buildNumber": "14",
+      "buildNumber": "15",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Usamos a câmera para anexar fotos das máquinas e abastecimentos.",
@@ -31,7 +31,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.manoel.controledemaquina",
-      "versionCode": 11,
+      "versionCode": 12,
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
