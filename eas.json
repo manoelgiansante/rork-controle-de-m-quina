@@ -45,7 +45,7 @@
     },
     "production": {
       "ios": {
-        "resourceClass": "m-large",
+        "resourceClass": "large",
         "cache": {
           "disabled": false
         }
