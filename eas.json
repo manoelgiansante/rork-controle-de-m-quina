@@ -45,10 +45,16 @@
     },
     "production": {
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-large",
+        "cache": {
+          "disabled": false
+        }
       },
       "android": {
-        "resourceClass": "medium"
+        "resourceClass": "large",
+        "cache": {
+          "disabled": false
+        }
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://byfgflxlmcdciupjpoaz.supabase.co",
