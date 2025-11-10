@@ -1,7 +1,7 @@
 import { SUBSCRIPTION_PLANS, useSubscription } from '@/contexts/SubscriptionContext';
 import type { BillingCycle, PlanType } from '@/types';
 import { Check, CreditCard, Trash2 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import CancelSubscriptionModal from '@/components/CancelSubscriptionModal';
+import { SubscriptionService, PRODUCT_IDS, type IAPProduct } from '@/lib/SubscriptionService';
 
 export default function SubscriptionScreen() {
   const {
@@ -30,7 +31,40 @@ export default function SubscriptionScreen() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [canceling, setCanceling] = useState<boolean>(false);
+  const [iapProducts, setIapProducts] = useState<IAPProduct[]>([]);
+  const [iapConnected, setIapConnected] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
+
+  // Conectar ao IAP quando o componente montar (somente mobile)
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      const connectIAP = async () => {
+        try {
+          console.log('[IAP] Conectando ao serviço IAP...');
+          const connected = await SubscriptionService.connect();
+          setIapConnected(connected);
+
+          if (connected) {
+            console.log('[IAP] ✅ Conectado! Buscando produtos...');
+            const products = await SubscriptionService.getProducts();
+            console.log('[IAP] Produtos encontrados:', products.length);
+            setIapProducts(products);
+          }
+        } catch (error) {
+          console.error('[IAP] Erro ao conectar:', error);
+        }
+      };
+
+      connectIAP();
+
+      // Cleanup: desconectar quando o componente desmontar
+      return () => {
+        if (Platform.OS !== 'web') {
+          SubscriptionService.disconnect();
+        }
+      };
+    }
+  }, []);
 
   const handleSelectPlan = async (planType: PlanType, billingCycle: BillingCycle) => {
     setIsProcessing(true);
@@ -46,7 +80,7 @@ export default function SubscriptionScreen() {
 
       if (Platform.OS === 'web') {
         console.log('[SUBSCRIPTION] Iniciando checkout Stripe...');
-        
+
         if (!currentUser) {
           Alert.alert('Erro', 'Você precisa estar logado para assinar um plano.');
           return;
@@ -94,17 +128,88 @@ export default function SubscriptionScreen() {
         const result = await response.json();
 
         console.log('[SUBSCRIPTION] Sessão criada, redirecionando para:', result.url);
-        
+
         if (typeof window !== 'undefined' && result.url) {
           window.location.href = result.url;
         }
       } else {
-        const success = await activateSubscription(planType, billingCycle);
-        if (success) {
-          Alert.alert(
-            'Assinatura Ativada!',
-            `Sua assinatura ${plan.name} foi ativada com sucesso.`
-          );
+        // Mobile: Usar IAP (Apple ou Google)
+        console.log('[IAP] Iniciando compra IAP...');
+
+        if (!currentUser) {
+          Alert.alert('Erro', 'Você precisa estar logado para assinar um plano.');
+          return;
+        }
+
+        if (!iapConnected) {
+          Alert.alert('Erro', 'Não foi possível conectar à loja. Tente novamente.');
+          return;
+        }
+
+        // Mapear planType + billingCycle para productId
+        let productId = '';
+        const productIds = Platform.OS === 'ios' ? PRODUCT_IDS.ios : PRODUCT_IDS.android;
+
+        if (planType === 'basic' && billingCycle === 'monthly') {
+          productId = productIds.BASIC_MONTHLY;
+        } else if (planType === 'basic' && billingCycle === 'annual') {
+          productId = productIds.BASIC_YEARLY;
+        } else if (planType === 'premium' && billingCycle === 'monthly') {
+          productId = productIds.PREMIUM_MONTHLY;
+        } else if (planType === 'premium' && billingCycle === 'annual') {
+          productId = productIds.PREMIUM_YEARLY;
+        }
+
+        if (!productId) {
+          Alert.alert('Erro', 'Produto não encontrado. Entre em contato com o suporte.');
+          console.error('[IAP] Product ID não encontrado:', { planType, billingCycle });
+          return;
+        }
+
+        console.log('[IAP] Comprando produto:', productId);
+
+        try {
+          // Iniciar compra
+          const purchase = await SubscriptionService.purchaseProduct(productId);
+
+          if (!purchase) {
+            throw new Error('Compra cancelada ou não concluída');
+          }
+
+          console.log('[IAP] Compra concluída, validando no backend...');
+
+          // Validar compra no backend
+          const validated = await SubscriptionService.validatePurchase(purchase, currentUser.id);
+
+          if (validated) {
+            // Sincronizar com Supabase para atualizar o contexto local
+            await syncWithSupabase(currentUser.id);
+            await refreshSubscription();
+
+            Alert.alert(
+              'Assinatura Ativada!',
+              `Sua assinatura ${plan.name} foi ativada com sucesso.`
+            );
+          } else {
+            throw new Error('Erro ao validar compra');
+          }
+        } catch (error: any) {
+          console.error('[IAP] Erro na compra:', error);
+
+          // Mensagens de erro amigáveis
+          if (error.message?.includes('cancelada')) {
+            Alert.alert('Compra Cancelada', 'Você cancelou a compra.');
+          } else if (error.message?.includes('validar')) {
+            Alert.alert(
+              'Erro na Validação',
+              'A compra foi realizada, mas houve um erro ao validar. Entre em contato com o suporte.'
+            );
+          } else {
+            Alert.alert(
+              'Erro na Compra',
+              'Não foi possível concluir a compra. Tente novamente.'
+            );
+          }
         }
       }
     } catch (error) {
@@ -118,11 +223,59 @@ export default function SubscriptionScreen() {
   const handleStartTrial = async () => {
     setIsProcessing(true);
     try {
-      await startTrial();
-      Alert.alert(
-        'Teste Gratuito Ativado!',
-        'Você tem 7 dias para testar todas as funcionalidades com máquinas ilimitadas.'
-      );
+      if (Platform.OS === 'web') {
+        // Web: usar método antigo (simula trial)
+        await startTrial();
+        Alert.alert(
+          'Teste Gratuito Ativado!',
+          'Você tem 7 dias para testar todas as funcionalidades com máquinas ilimitadas.'
+        );
+      } else {
+        // Mobile: usar IAP
+        if (!currentUser) {
+          Alert.alert('Erro', 'Você precisa estar logado para iniciar o teste.');
+          return;
+        }
+
+        if (!iapConnected) {
+          Alert.alert('Erro', 'Não foi possível conectar à loja. Tente novamente.');
+          return;
+        }
+
+        const productIds = Platform.OS === 'ios' ? PRODUCT_IDS.ios : PRODUCT_IDS.android;
+        const productId = productIds.FREE_TRIAL;
+
+        console.log('[IAP] Iniciando teste gratuito:', productId);
+
+        try {
+          const purchase = await SubscriptionService.purchaseProduct(productId);
+
+          if (!purchase) {
+            throw new Error('Teste cancelado');
+          }
+
+          const validated = await SubscriptionService.validatePurchase(purchase, currentUser.id);
+
+          if (validated) {
+            await syncWithSupabase(currentUser.id);
+            await refreshSubscription();
+
+            Alert.alert(
+              'Teste Gratuito Ativado!',
+              'Você tem 7 dias para testar todas as funcionalidades com máquinas ilimitadas.'
+            );
+          } else {
+            throw new Error('Erro ao validar teste');
+          }
+        } catch (error: any) {
+          console.error('[IAP] Erro ao iniciar teste:', error);
+          if (error.message?.includes('cancelado')) {
+            Alert.alert('Teste Cancelado', 'Você cancelou o teste gratuito.');
+          } else {
+            Alert.alert('Erro', 'Não foi possível iniciar o teste gratuito. Tente novamente.');
+          }
+        }
+      }
     } catch (error) {
       console.error('Error starting trial:', error);
       Alert.alert('Erro', 'Não foi possível iniciar o teste gratuito.');
