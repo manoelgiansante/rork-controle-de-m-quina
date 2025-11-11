@@ -17,7 +17,7 @@
       "jsEngine": "hermes",
       "supportsTablet": false,
       "bundleIdentifier": "com.manoel.controledemaquina",
-      "buildNumber": "23",
+      "buildNumber": "25",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Usamos a câmera para anexar fotos das máquinas e abastecimentos.",
@@ -31,7 +31,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "app.rork.controle_de_maquina",
-      "versionCode": 19,
+      "versionCode": 20,
       "permissions": [
         "CAMERA",
         "ACCESS_FINE_LOCATION",
