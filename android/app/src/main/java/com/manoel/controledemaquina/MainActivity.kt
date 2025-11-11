@@ -1,4 +1,4 @@
-package com.rork.controledemaquina
+package com.manoel.controledemaquina
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

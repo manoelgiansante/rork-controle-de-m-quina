@@ -1,4 +1,4 @@
-package com.rork.controledemaquina
+package com.manoel.controledemaquina
 
 import android.app.Application
 import android.content.res.Configuration
