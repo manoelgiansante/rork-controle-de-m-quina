@@ -6,10 +6,12 @@ import { useRouter } from 'expo-router';
 import { AlertTriangle, Edit2, Plus, Tractor as TractorIcon, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  Keyboard,
   Alert,
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -221,89 +223,99 @@ export default function MachinesScreen() {
         transparent
         onRequestClose={() => setIsModalOpen(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editingMachine ? 'Editar Máquina' : 'Cadastrar Nova Máquina'}
-            </Text>
-
-            <Text style={styles.label}>Tipo do Maquinário</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalOverlay}>
             <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.typeScroll}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+              keyboardShouldPersistTaps="handled"
             >
-              {MACHINE_TYPES.map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.typeButton,
-                    selectedType === type && styles.typeButtonSelected,
-                  ]}
-                  onPress={() => setSelectedType(type)}
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>
+                  {editingMachine ? 'Editar Máquina' : 'Cadastrar Nova Máquina'}
+                </Text>
+
+                <Text style={styles.label}>Tipo do Maquinário</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.typeScroll}
                 >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      selectedType === type && styles.typeButtonTextSelected,
-                    ]}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  {MACHINE_TYPES.map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.typeButton,
+                        selectedType === type && styles.typeButtonSelected,
+                      ]}
+                      onPress={() => setSelectedType(type)}
+                    >
+                      <Text
+                        style={[
+                          styles.typeButtonText,
+                          selectedType === type && styles.typeButtonTextSelected,
+                        ]}
+                      >
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
 
-            <Text style={styles.label}>Modelo do Maquinário</Text>
-            <TextInput
-              style={styles.input}
-              value={model}
-              onChangeText={setModel}
-              placeholder="Ex: Massey Ferguson 6713"
-              placeholderTextColor="#999"
-            />
-
-            {!editingMachine && (
-              <>
-                <Text style={styles.label}>Horímetro Inicial (Opcional)</Text>
+                <Text style={styles.label}>Modelo do Maquinário</Text>
                 <TextInput
                   style={styles.input}
-                  value={initialHourMeter}
-                  onChangeText={setInitialHourMeter}
-                  placeholder="Ex: 1500"
+                  value={model}
+                  onChangeText={setModel}
+                  placeholder="Ex: Massey Ferguson 6713"
                   placeholderTextColor="#999"
-                  keyboardType="number-pad"
-                  returnKeyType="done"
-                  blurOnSubmit={true}
-                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
-              </>
-            )}
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalButtonCancel}
-                onPress={() => {
-                  setIsModalOpen(false);
-                  setModel('');
-                  setInitialHourMeter('');
-                  setSelectedType('Trator');
-                  setEditingMachine(null);
-                }}
-              >
-                <Text style={styles.modalButtonCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalButtonSave}
-                onPress={handleAddMachine}
-              >
-                <Text style={styles.modalButtonSaveText}>
-                  {editingMachine ? 'Salvar' : 'Cadastrar'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                {!editingMachine && (
+                  <>
+                    <Text style={styles.label}>Horímetro Inicial (Opcional)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={initialHourMeter}
+                      onChangeText={setInitialHourMeter}
+                      placeholder="Ex: 1500"
+                      placeholderTextColor="#999"
+                      keyboardType="number-pad"
+                      returnKeyType="done"
+                      blurOnSubmit={true}
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                    />
+                  </>
+                )}
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButtonCancel}
+                    onPress={() => {
+                      setIsModalOpen(false);
+                      setModel('');
+                      setInitialHourMeter('');
+                      setSelectedType('Trator');
+                      setEditingMachine(null);
+                    }}
+                  >
+                    <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalButtonSave}
+                    onPress={handleAddMachine}
+                  >
+                    <Text style={styles.modalButtonSaveText}>
+                      {editingMachine ? 'Salvar' : 'Cadastrar'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
