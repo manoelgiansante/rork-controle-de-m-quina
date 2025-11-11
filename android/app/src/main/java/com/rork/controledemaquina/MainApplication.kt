@@ -1,4 +1,4 @@
-package com.manoel.controledemaquina
+package com.rork.controledemaquina
 
 import android.app.Application
 import android.content.res.Configuration
@@ -15,7 +15,6 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
-import app.rork.controle_de_maquina.BuildConfig
 
 class MainApplication : Application(), ReactApplication {
 

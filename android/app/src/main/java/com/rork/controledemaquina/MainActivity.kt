@@ -1,4 +1,4 @@
-package com.manoel.controledemaquina
+package com.rork.controledemaquina
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
@@ -10,7 +10,6 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnable
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 import expo.modules.ReactActivityDelegateWrapper
-import app.rork.controle_de_maquina.BuildConfig
 
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
