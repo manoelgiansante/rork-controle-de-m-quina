@@ -99,6 +99,9 @@ export const [DataProvider, useData] = createContextHook(() => {
    *
    * IMPORTANTE: Os dados são carregados apenas das propriedades que pertencem ao usuário logado,
    * garantindo isolamento total. Nunca são buscados dados de outras propriedades.
+   *
+   * CORREÇÃO: Agora busca do Supabase tanto em WEB quanto em MOBILE!
+   * AsyncStorage é usado apenas como cache/fallback offline.
    */
   const loadData = useCallback(async () => {
     if (!currentPropertyId || !currentUser) {
@@ -115,76 +118,68 @@ export const [DataProvider, useData] = createContextHook(() => {
         userPropertiesCount: userProperties.length
       });
 
-      if (isWeb) {
-        console.log('[DATA WEB] 🔒 Carregando do Supabase com garantia de isolamento por user_id...');
+      // SEGURANÇA: Buscar dados apenas das propriedades do usuário
+      // Isso garante que NUNCA sejam carregados dados de outros usuários
+      const userPropertyIds = userProperties.map(p => p.id);
+      console.log('[DATA] 🔐 Propriedades do usuário:', userPropertyIds);
+      console.log('[DATA] 🔄 Buscando dados do Supabase (WEB e MOBILE)...');
 
-        // SEGURANÇA: Buscar dados apenas das propriedades do usuário
-        // Isso garante que NUNCA sejam carregados dados de outros usuários
-        const userPropertyIds = userProperties.map(p => p.id);
-        console.log('[DATA WEB] 🔐 Propriedades do usuário:', userPropertyIds);
+      let allMachinesFromDB: Machine[] = [];
+      let allRefuelingsFromDB: Refueling[] = [];
+      let allMaintenancesFromDB: Maintenance[] = [];
+      let allAlertsFromDB: Alert[] = [];
+      let allFarmTanksFromDB: FarmTank[] = [];
+      let preferencesFromDB: { serviceTypes: ServiceType[]; maintenanceItems: MaintenanceItem[] } | null = null;
 
-        let allMachinesFromDB: Machine[] = [];
-        let allRefuelingsFromDB: Refueling[] = [];
-        let allMaintenancesFromDB: Maintenance[] = [];
-        let allAlertsFromDB: Alert[] = [];
-        let allFarmTanksFromDB: FarmTank[] = [];
-        let preferencesFromDB: { serviceTypes: ServiceType[]; maintenanceItems: MaintenanceItem[] } | null = null;
+      try {
+        // Carregar dados de TODAS as propriedades do usuário
+        const dataPromises = userPropertyIds.map(async (propertyId) => {
+          const [machines, refuelings, maintenances, alerts, farmTank] = await Promise.all([
+            db.fetchMachines(propertyId).catch(err => {
+              console.error(`[DATA] Erro ao buscar máquinas da property ${propertyId}:`, err);
+              return [];
+            }),
+            db.fetchRefuelings(propertyId).catch(err => {
+              console.error(`[DATA] Erro ao buscar abastecimentos da property ${propertyId}:`, err);
+              return [];
+            }),
+            db.fetchMaintenances(propertyId).catch(err => {
+              console.error(`[DATA] Erro ao buscar manutenções da property ${propertyId}:`, err);
+              return [];
+            }),
+            db.fetchAlerts(propertyId).catch(err => {
+              console.error(`[DATA] Erro ao buscar alertas da property ${propertyId}:`, err);
+              return [];
+            }),
+            db.fetchFarmTank(propertyId).catch(err => {
+              console.error(`[DATA] Erro ao buscar tanque da property ${propertyId}:`, err);
+              return null;
+            }),
+          ]);
 
-        try {
-          // Carregar dados de TODAS as propriedades do usuário
-          console.log('[DATA WEB] 🔄 Buscando dados de todas as propriedades do usuário...');
+          return { machines, refuelings, maintenances, alerts, farmTank };
+        });
 
-          const dataPromises = userPropertyIds.map(async (propertyId) => {
-            const [machines, refuelings, maintenances, alerts, farmTank] = await Promise.all([
-              db.fetchMachines(propertyId).catch(err => {
-                console.error(`[DATA] Erro ao buscar máquinas da property ${propertyId}:`, err);
-                return [];
-              }),
-              db.fetchRefuelings(propertyId).catch(err => {
-                console.error(`[DATA] Erro ao buscar abastecimentos da property ${propertyId}:`, err);
-                return [];
-              }),
-              db.fetchMaintenances(propertyId).catch(err => {
-                console.error(`[DATA] Erro ao buscar manutenções da property ${propertyId}:`, err);
-                return [];
-              }),
-              db.fetchAlerts(propertyId).catch(err => {
-                console.error(`[DATA] Erro ao buscar alertas da property ${propertyId}:`, err);
-                return [];
-              }),
-              db.fetchFarmTank(propertyId).catch(err => {
-                console.error(`[DATA] Erro ao buscar tanque da property ${propertyId}:`, err);
-                return null;
-              }),
-            ]);
+        const allPropertyData = await Promise.all(dataPromises);
 
-            return { machines, refuelings, maintenances, alerts, farmTank };
-          });
+        // Consolidar dados de todas as propriedades
+        allPropertyData.forEach(data => {
+          allMachinesFromDB.push(...data.machines);
+          allRefuelingsFromDB.push(...data.refuelings);
+          allMaintenancesFromDB.push(...data.maintenances);
+          allAlertsFromDB.push(...data.alerts);
+          if (data.farmTank) {
+            allFarmTanksFromDB.push(data.farmTank);
+          }
+        });
 
-          const allPropertyData = await Promise.all(dataPromises);
+        // Buscar preferências do usuário (não vinculadas a propriedades)
+        preferencesFromDB = await db.fetchUserPreferences(currentUser.id).catch(err => {
+          console.error('[DATA] Erro ao buscar preferências:', err);
+          return null;
+        });
 
-          // Consolidar dados de todas as propriedades
-          allPropertyData.forEach(data => {
-            allMachinesFromDB.push(...data.machines);
-            allRefuelingsFromDB.push(...data.refuelings);
-            allMaintenancesFromDB.push(...data.maintenances);
-            allAlertsFromDB.push(...data.alerts);
-            if (data.farmTank) {
-              allFarmTanksFromDB.push(data.farmTank);
-            }
-          });
-
-          // Buscar preferências do usuário (não vinculadas a propriedades)
-          preferencesFromDB = await db.fetchUserPreferences(currentUser.id).catch(err => {
-            console.error('[DATA] Erro ao buscar preferências:', err);
-            return null;
-          });
-
-        } catch (err) {
-          console.error('[DATA WEB] Exceção ao carregar dados do Supabase:', err);
-        }
-
-        console.log('[DATA WEB] ✅ Dados carregados do Supabase (isolados por user_id):', {
+        console.log('[DATA] ✅ Dados carregados do Supabase (isolados por user_id):', {
           machines: allMachinesFromDB.length,
           refuelings: allRefuelingsFromDB.length,
           maintenances: allMaintenancesFromDB.length,
@@ -192,32 +187,11 @@ export const [DataProvider, useData] = createContextHook(() => {
           farmTanks: allFarmTanksFromDB.length,
         });
 
-        // Atualizar estados com dados filtrados
-        setAllMachines(allMachinesFromDB);
-        setAllRefuelings(allRefuelingsFromDB);
-        setAllMaintenances(allMaintenancesFromDB);
-        setAllAlerts(allAlertsFromDB);
-        setAllFarmTanks(allFarmTanksFromDB);
+      } catch (err) {
+        console.error('[DATA] ❌ Exceção ao carregar dados do Supabase:', err);
 
-        if (preferencesFromDB) {
-          setServiceTypes(preferencesFromDB.serviceTypes);
-          const mergedItems = [...new Set([...DEFAULT_MAINTENANCE_ITEMS, ...preferencesFromDB.maintenanceItems])];
-          setMaintenanceItems(mergedItems);
-        } else {
-          setServiceTypes([]);
-          setMaintenanceItems(DEFAULT_MAINTENANCE_ITEMS);
-        }
-
-        // Salvar no cache local
-        await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(allMachinesFromDB));
-        await AsyncStorage.setItem(STORAGE_KEYS.REFUELINGS, JSON.stringify(allRefuelingsFromDB));
-        await AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCES, JSON.stringify(allMaintenancesFromDB));
-        await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(allAlertsFromDB));
-        if (allFarmTanksFromDB.length > 0) {
-          await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(allFarmTanksFromDB));
-        }
-      } else {
-        console.log('[DATA MOBILE] Carregando do AsyncStorage...');
+        // FALLBACK: Se falhar ao buscar do Supabase (sem internet), tenta carregar do cache
+        console.log('[DATA] 📱 Tentando carregar do cache (modo offline)...');
         const [
           machinesData,
           refuelingsData,
@@ -236,29 +210,62 @@ export const [DataProvider, useData] = createContextHook(() => {
           AsyncStorage.getItem(STORAGE_KEYS.FARM_TANK),
         ]);
 
-        if (machinesData) setAllMachines(JSON.parse(machinesData));
-        if (refuelingsData) setAllRefuelings(JSON.parse(refuelingsData));
-        if (maintenancesData) setAllMaintenances(JSON.parse(maintenancesData));
-        if (alertsData) setAllAlerts(JSON.parse(alertsData));
-        if (serviceTypesData) setServiceTypes(JSON.parse(serviceTypesData));
-        if (maintenanceItemsData) {
-          const savedItems = JSON.parse(maintenanceItemsData);
-          const mergedItems = [...new Set([...DEFAULT_MAINTENANCE_ITEMS, ...savedItems])];
-          setMaintenanceItems(mergedItems);
-        } else {
-          setMaintenanceItems(DEFAULT_MAINTENANCE_ITEMS);
-        }
+        if (machinesData) allMachinesFromDB = JSON.parse(machinesData);
+        if (refuelingsData) allRefuelingsFromDB = JSON.parse(refuelingsData);
+        if (maintenancesData) allMaintenancesFromDB = JSON.parse(maintenancesData);
+        if (alertsData) allAlertsFromDB = JSON.parse(alertsData);
         if (farmTanksData) {
           const tanks = JSON.parse(farmTanksData);
-          if (Array.isArray(tanks)) {
-            setAllFarmTanks(tanks);
-          } else {
-            setAllFarmTanks([tanks]);
-          }
+          allFarmTanksFromDB = Array.isArray(tanks) ? tanks : [tanks];
         }
+        if (serviceTypesData && maintenanceItemsData) {
+          preferencesFromDB = {
+            serviceTypes: JSON.parse(serviceTypesData),
+            maintenanceItems: JSON.parse(maintenanceItemsData),
+          };
+        }
+
+        console.log('[DATA] 📦 Dados carregados do cache:', {
+          machines: allMachinesFromDB.length,
+          refuelings: allRefuelingsFromDB.length,
+          maintenances: allMaintenancesFromDB.length,
+          alerts: allAlertsFromDB.length,
+          farmTanks: allFarmTanksFromDB.length,
+        });
       }
+
+      // Atualizar estados com dados carregados
+      setAllMachines(allMachinesFromDB);
+      setAllRefuelings(allRefuelingsFromDB);
+      setAllMaintenances(allMaintenancesFromDB);
+      setAllAlerts(allAlertsFromDB);
+      setAllFarmTanks(allFarmTanksFromDB);
+
+      if (preferencesFromDB) {
+        setServiceTypes(preferencesFromDB.serviceTypes);
+        const mergedItems = [...new Set([...DEFAULT_MAINTENANCE_ITEMS, ...preferencesFromDB.maintenanceItems])];
+        setMaintenanceItems(mergedItems);
+      } else {
+        setServiceTypes([]);
+        setMaintenanceItems(DEFAULT_MAINTENANCE_ITEMS);
+      }
+
+      // Salvar no cache local (para uso offline)
+      console.log('[DATA] 💾 Salvando no cache local...');
+      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(allMachinesFromDB));
+      await AsyncStorage.setItem(STORAGE_KEYS.REFUELINGS, JSON.stringify(allRefuelingsFromDB));
+      await AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCES, JSON.stringify(allMaintenancesFromDB));
+      await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(allAlertsFromDB));
+      if (allFarmTanksFromDB.length > 0) {
+        await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(allFarmTanksFromDB));
+      }
+      if (preferencesFromDB) {
+        await AsyncStorage.setItem(STORAGE_KEYS.SERVICE_TYPES, JSON.stringify(preferencesFromDB.serviceTypes));
+        await AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCE_ITEMS, JSON.stringify(preferencesFromDB.maintenanceItems));
+      }
+
     } catch (error) {
-      console.error('[DATA] ❌ Erro ao carregar dados:', error);
+      console.error('[DATA] ❌ Erro CRÍTICO ao carregar dados:', error);
     } finally {
       setIsLoading(false);
     }
