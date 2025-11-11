@@ -269,7 +269,7 @@ export const [DataProvider, useData] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPropertyId, currentUser, isWeb, userProperties]);
+  }, [currentPropertyId, currentUser, userProperties]);
 
   useEffect(() => {
     if (!currentPropertyId || !currentUser) {
@@ -287,38 +287,24 @@ export const [DataProvider, useData] = createContextHook(() => {
         throw new Error('No property selected');
       }
 
-      let newMachine: Machine;
-
-      if (isWeb) {
-        console.log('[DATA WEB] Criando máquina no Supabase...');
-        newMachine = await db.createMachine({
-          ...machine,
-          propertyId: currentPropertyId,
-        });
-      } else {
-        newMachine = {
-          ...machine,
-          propertyId: currentPropertyId,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      }
+      console.log('[DATA] Criando máquina no Supabase (WEB e MOBILE)...');
+      const newMachine = await db.createMachine({
+        ...machine,
+        propertyId: currentPropertyId,
+      });
 
       const updated = [...allMachines, newMachine];
       setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
       return newMachine;
     },
-    [allMachines, currentPropertyId, isWeb]
+    [allMachines, currentPropertyId]
   );
 
   const updateMachine = useCallback(
     async (machineId: string, updates: Partial<Machine>) => {
-      if (isWeb) {
-        console.log('[DATA WEB] Atualizando máquina no Supabase...');
-        await db.updateMachine(machineId, updates);
-      }
+      console.log('[DATA] Atualizando máquina no Supabase (WEB e MOBILE)...');
+      await db.updateMachine(machineId, updates);
 
       const updated = allMachines.map((m) =>
         m.id === machineId
@@ -328,21 +314,19 @@ export const [DataProvider, useData] = createContextHook(() => {
       setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
     },
-    [allMachines, isWeb]
+    [allMachines]
   );
 
   const deleteMachine = useCallback(
     async (machineId: string) => {
-      if (isWeb) {
-        console.log('[DATA WEB] Deletando máquina no Supabase...');
-        await db.deleteMachine(machineId);
-      }
+      console.log('[DATA] Deletando máquina do Supabase (WEB e MOBILE)...');
+      await db.deleteMachine(machineId);
 
       const updated = allMachines.filter((m) => m.id !== machineId);
       setAllMachines(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
     },
-    [allMachines, isWeb]
+    [allMachines]
   );
 
   const addRefueling = useCallback(
@@ -366,24 +350,12 @@ export const [DataProvider, useData] = createContextHook(() => {
         }
       }
 
-      let newRefueling: Refueling;
-
-      if (isWeb) {
-        console.log('[DATA WEB] Criando abastecimento no Supabase...');
-        newRefueling = await db.createRefueling({
-          ...refueling,
-          propertyId: currentPropertyId,
-          averageConsumption,
-        });
-      } else {
-        newRefueling = {
-          ...refueling,
-          propertyId: currentPropertyId,
-          id: Date.now().toString(),
-          averageConsumption,
-          createdAt: new Date().toISOString(),
-        };
-      }
+      console.log('[DATA] Criando abastecimento no Supabase (WEB e MOBILE)...');
+      const newRefueling = await db.createRefueling({
+        ...refueling,
+        propertyId: currentPropertyId,
+        averageConsumption,
+      });
 
       const updated = [...allRefuelings, newRefueling];
       setAllRefuelings(updated);
@@ -395,7 +367,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       return newRefueling;
     },
-    [allRefuelings, updateMachine, currentPropertyId, isWeb]
+    [allRefuelings, updateMachine, currentPropertyId]
   );
 
   const calculateAlertStatus = useCallback(
@@ -414,22 +386,11 @@ export const [DataProvider, useData] = createContextHook(() => {
         throw new Error('No property selected');
       }
 
-      let newMaintenance: Maintenance;
-
-      if (isWeb) {
-        console.log('[DATA WEB] Criando manutenção no Supabase...');
-        newMaintenance = await db.createMaintenance({
-          ...maintenance,
-          propertyId: currentPropertyId,
-        });
-      } else {
-        newMaintenance = {
-          ...maintenance,
-          propertyId: currentPropertyId,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-        };
-      }
+      console.log('[DATA] Criando manutenção no Supabase (WEB e MOBILE)...');
+      const newMaintenance = await db.createMaintenance({
+        ...maintenance,
+        propertyId: currentPropertyId,
+      });
 
       const updated = [...allMaintenances, newMaintenance];
       setAllMaintenances(updated);
@@ -461,10 +422,8 @@ export const [DataProvider, useData] = createContextHook(() => {
           createdAt: new Date().toISOString(),
         }));
 
-        if (isWeb) {
-          console.log('[DATA WEB] Criando alertas no Supabase...');
-          await Promise.all(newAlerts.map(alert => db.createAlert(alert)));
-        }
+        console.log('[DATA] Criando alertas no Supabase (WEB e MOBILE)...');
+        await Promise.all(newAlerts.map(alert => db.createAlert(alert)));
 
         const updatedAlerts = [...allAlerts, ...newAlerts];
         setAllAlerts(updatedAlerts);
@@ -476,7 +435,7 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       return newMaintenance;
     },
-    [allMaintenances, allAlerts, allMachines, updateMachine, calculateAlertStatus, currentPropertyId, isWeb]
+    [allMaintenances, allAlerts, allMachines, updateMachine, calculateAlertStatus, currentPropertyId]
   );
 
   const updateMaintenance = useCallback(
@@ -487,10 +446,8 @@ export const [DataProvider, useData] = createContextHook(() => {
         return;
       }
 
-      if (isWeb) {
-        console.log('[DATA WEB] Atualizando manutenção no Supabase...');
-        await db.updateMaintenance(maintenanceId, updates);
-      }
+      console.log('[DATA] Atualizando manutenção no Supabase (WEB e MOBILE)...');
+      await db.updateMaintenance(maintenanceId, updates);
 
       const updatedMaintenance = { ...originalMaintenance, ...updates };
       const updated = allMaintenances.map((m) =>
@@ -567,22 +524,20 @@ export const [DataProvider, useData] = createContextHook(() => {
           JSON.stringify(updatedAlerts)
         );
 
-        if (isWeb) {
-          console.log('[DATA WEB] Atualizando alertas no Supabase...');
-          await Promise.all(
-            updatedAlerts
-              .filter(a => a.maintenanceId === maintenanceId)
-              .map(alert => db.updateAlert(alert.id, {
-                serviceHourMeter: alert.serviceHourMeter,
-                intervalHours: alert.intervalHours,
-                nextRevisionHourMeter: alert.nextRevisionHourMeter,
-                status: alert.status,
-              }))
-          );
-        }
+        console.log('[DATA] Atualizando alertas no Supabase (WEB e MOBILE)...');
+        await Promise.all(
+          updatedAlerts
+            .filter(a => a.maintenanceId === maintenanceId)
+            .map(alert => db.updateAlert(alert.id, {
+              serviceHourMeter: alert.serviceHourMeter,
+              intervalHours: alert.intervalHours,
+              nextRevisionHourMeter: alert.nextRevisionHourMeter,
+              status: alert.status,
+            }))
+        );
       }
     },
-    [allMaintenances, allAlerts, allMachines, allRefuelings, isWeb, calculateAlertStatus, updateMachine]
+    [allMaintenances, allAlerts, allMachines, allRefuelings, calculateAlertStatus, updateMachine]
   );
 
   const updateRefueling = useCallback(
@@ -603,10 +558,8 @@ export const [DataProvider, useData] = createContextHook(() => {
         newLiters: updates.liters,
       });
 
-      if (isWeb) {
-        console.log('[DATA WEB] Atualizando abastecimento no Supabase...');
-        await db.updateRefueling(refuelingId, updates);
-      }
+      console.log('[DATA] Atualizando abastecimento no Supabase (WEB e MOBILE)...');
+      await db.updateRefueling(refuelingId, updates);
 
       const updated = allRefuelings.map((r) =>
         r.id === refuelingId ? { ...r, ...updates } : r
@@ -649,12 +602,10 @@ export const [DataProvider, useData] = createContextHook(() => {
         setAllMachines(updatedMachines);
         await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updatedMachines));
 
-        if (isWeb) {
-          console.log('[DATA WEB] Atualizando máquina no Supabase...');
-          await db.updateMachine(refueling.machineId, {
-            currentHourMeter: newMachineHourMeter,
-          });
-        }
+        console.log('[DATA] Atualizando máquina no Supabase (WEB e MOBILE)...');
+        await db.updateMachine(refueling.machineId, {
+          currentHourMeter: newMachineHourMeter,
+        });
 
         console.log('[DATA] 📊 Recalculando status dos alertas com novo horímetro...');
         const machineAlerts = allAlerts.filter(a => a.machineId === refueling.machineId);
@@ -682,11 +633,9 @@ export const [DataProvider, useData] = createContextHook(() => {
             if (newStatus !== alert.status) {
               console.log('[DATA] ✅ Atualizando status do alerta de', alert.status, 'para', newStatus);
 
-              if (isWeb) {
-                db.updateAlert(alert.id, { status: newStatus }).catch(err =>
-                  console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
-                );
-              }
+              db.updateAlert(alert.id, { status: newStatus }).catch(err =>
+                console.error('[DATA] Erro ao atualizar status do alerta:', err)
+              );
 
               return { ...alert, status: newStatus };
             }
@@ -722,9 +671,7 @@ export const [DataProvider, useData] = createContextHook(() => {
               alertLevelLiters: 0,
             };
 
-            if (isWeb) {
-              await db.upsertFarmTank(virtualTank);
-            }
+            await db.upsertFarmTank(virtualTank);
 
             const updatedTanks = [...allFarmTanks, virtualTank];
             setAllFarmTanks(updatedTanks);
@@ -737,10 +684,8 @@ export const [DataProvider, useData] = createContextHook(() => {
               currentLiters: newCurrentLiters,
             };
 
-            if (isWeb) {
-              console.log('[DATA WEB] Atualizando tanque no Supabase...');
-              await db.upsertFarmTank(updatedTank);
-            }
+            console.log('[DATA] Atualizando tanque no Supabase (WEB e MOBILE)...');
+            await db.upsertFarmTank(updatedTank);
 
             const updatedTanks = allFarmTanks.map(t =>
               t.propertyId === refueling.propertyId ? updatedTank : t
@@ -758,7 +703,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         }
       }
     },
-    [allRefuelings, allMaintenances, allAlerts, allMachines, farmTank, allFarmTanks, isWeb, calculateAlertStatus]
+    [allRefuelings, allMaintenances, allAlerts, allMachines, farmTank, allFarmTanks, calculateAlertStatus]
   );
 
   const deleteRefueling = useCallback(
@@ -777,10 +722,8 @@ export const [DataProvider, useData] = createContextHook(() => {
         liters: refueling.liters,
       });
 
-      if (isWeb) {
-        console.log('[DATA WEB] Deletando abastecimento no Supabase...');
-        await db.deleteRefueling(refuelingId);
-      }
+      console.log('[DATA] Deletando abastecimento do Supabase (WEB e MOBILE)...');
+      await db.deleteRefueling(refuelingId);
 
       const updated = allRefuelings.filter((r) => r.id !== refuelingId);
       setAllRefuelings(updated);
@@ -860,11 +803,9 @@ export const [DataProvider, useData] = createContextHook(() => {
               newStatus,
             });
 
-            if (isWeb) {
-              db.updateAlert(alert.id, { status: newStatus }).catch(err =>
-                console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
-              );
-            }
+            db.updateAlert(alert.id, { status: newStatus }).catch(err =>
+              console.error('[DATA] Erro ao atualizar status do alerta:', err)
+            );
 
             return { ...alert, status: newStatus };
           }
@@ -889,9 +830,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           alertLevelLiters: 0,
         };
 
-        if (isWeb) {
-          await db.upsertFarmTank(virtualTank);
-        }
+        await db.upsertFarmTank(virtualTank);
 
         const updatedTanks = [...allFarmTanks, virtualTank];
         setAllFarmTanks(updatedTanks);
@@ -904,10 +843,8 @@ export const [DataProvider, useData] = createContextHook(() => {
           currentLiters: newCurrentLiters,
         };
 
-        if (isWeb) {
-          console.log('[DATA WEB] Atualizando tanque no Supabase...');
-          await db.upsertFarmTank(updatedTank);
-        }
+        console.log('[DATA] Atualizando tanque no Supabase (WEB e MOBILE)...');
+        await db.upsertFarmTank(updatedTank);
 
         const updatedTanks = allFarmTanks.map(t =>
           t.propertyId === refueling.propertyId ? updatedTank : t
@@ -922,7 +859,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         });
       }
     },
-    [allRefuelings, allMaintenances, allAlerts, allMachines, farmTank, allFarmTanks, isWeb, updateMachine, calculateAlertStatus]
+    [allRefuelings, allMaintenances, allAlerts, allMachines, farmTank, allFarmTanks, updateMachine, calculateAlertStatus]
   );
 
   const deleteMaintenance = useCallback(
@@ -940,11 +877,9 @@ export const [DataProvider, useData] = createContextHook(() => {
         hourMeter: maintenance.hourMeter,
       });
 
-      if (isWeb) {
-        console.log('[DATA WEB] Deletando manutenção no Supabase...');
-        await db.deleteMaintenance(maintenanceId);
-        await db.deleteAlertsByMaintenanceId(maintenanceId);
-      }
+      console.log('[DATA] Deletando manutenção do Supabase (WEB e MOBILE)...');
+      await db.deleteMaintenance(maintenanceId);
+      await db.deleteAlertsByMaintenanceId(maintenanceId);
 
       const updated = allMaintenances.filter((m) => m.id !== maintenanceId);
       setAllMaintenances(updated);
@@ -1028,11 +963,9 @@ export const [DataProvider, useData] = createContextHook(() => {
               newStatus,
             });
 
-            if (isWeb) {
-              db.updateAlert(alert.id, { status: newStatus }).catch(err =>
-                console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
-              );
-            }
+            db.updateAlert(alert.id, { status: newStatus }).catch(err =>
+              console.error('[DATA] Erro ao atualizar status do alerta:', err)
+            );
 
             return { ...alert, status: newStatus };
           }
@@ -1043,7 +976,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(finalAlerts));
       }
     },
-    [allMaintenances, allAlerts, allRefuelings, allMachines, isWeb, updateMachine, calculateAlertStatus]
+    [allMaintenances, allAlerts, allRefuelings, allMachines, updateMachine, calculateAlertStatus]
   );
 
   const alertsRef = useRef(allAlerts);
@@ -1076,21 +1009,19 @@ export const [DataProvider, useData] = createContextHook(() => {
       const hasChanges = updatedAlerts.some((alert, idx) => alert.status !== currentAlerts[idx]?.status);
 
       if (hasChanges) {
-        if (isWeb) {
-          updatedAlerts.forEach(alert => {
-            const originalAlert = currentAlerts.find(a => a.id === alert.id);
-            if (originalAlert && alert.status !== originalAlert.status) {
-              db.updateAlert(alert.id, { status: alert.status }).catch(err =>
-                console.error('[DATA WEB] Erro ao atualizar status do alerta:', err)
-              );
-            }
-          });
-        }
+        updatedAlerts.forEach(alert => {
+          const originalAlert = currentAlerts.find(a => a.id === alert.id);
+          if (originalAlert && alert.status !== originalAlert.status) {
+            db.updateAlert(alert.id, { status: alert.status }).catch(err =>
+              console.error('[DATA] Erro ao atualizar status do alerta:', err)
+            );
+          }
+        });
         setAllAlerts(updatedAlerts);
         AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts));
       }
     }
-  }, [allMachines, isLoading, calculateAlertStatus, isWeb]);
+  }, [allMachines, isLoading, calculateAlertStatus]);
 
   const getAlertsForMachine = useCallback(
     (machineId: string) => {
@@ -1130,15 +1061,15 @@ export const [DataProvider, useData] = createContextHook(() => {
           JSON.stringify(updated)
         );
 
-        if (isWeb && currentUser) {
-          console.log('[DATA WEB] Salvando tipo de serviço no Supabase...');
+        if (currentUser) {
+          console.log('[DATA] Salvando tipo de serviço no Supabase (WEB e MOBILE)...');
           await db.upsertUserPreferences(currentUser.id, {
             serviceTypes: updated,
           });
         }
       }
     },
-    [serviceTypes, isWeb, currentUser]
+    [serviceTypes, currentUser]
   );
 
   const addMaintenanceItem = useCallback(
@@ -1151,15 +1082,15 @@ export const [DataProvider, useData] = createContextHook(() => {
           JSON.stringify(updated)
         );
 
-        if (isWeb && currentUser) {
-          console.log('[DATA WEB] Salvando item de manutenção no Supabase...');
+        if (currentUser) {
+          console.log('[DATA] Salvando item de manutenção no Supabase (WEB e MOBILE)...');
           await db.upsertUserPreferences(currentUser.id, {
             maintenanceItems: updated,
           });
         }
       }
     },
-    [maintenanceItems, isWeb, currentUser]
+    [maintenanceItems, currentUser]
   );
 
   const updateTankInitialData = useCallback(async (data: Omit<FarmTank, 'propertyId'>) => {
@@ -1172,16 +1103,14 @@ export const [DataProvider, useData] = createContextHook(() => {
       propertyId: currentPropertyId,
     };
 
-    if (isWeb) {
-      console.log('[DATA WEB] Salvando tanque no Supabase...');
-      await db.upsertFarmTank(tankData);
-    }
+    console.log('[DATA] Salvando tanque no Supabase (WEB e MOBILE)...');
+    await db.upsertFarmTank(tankData);
 
     const updated = allFarmTanks.filter(t => t.propertyId !== currentPropertyId);
     updated.push(tankData);
     setAllFarmTanks(updated);
     await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
-  }, [allFarmTanks, currentPropertyId, isWeb]);
+  }, [allFarmTanks, currentPropertyId]);
 
   const updateTankCapacity = useCallback(
     async (newCapacity: number) => {
@@ -1192,10 +1121,8 @@ export const [DataProvider, useData] = createContextHook(() => {
         capacityLiters: newCapacity,
       };
 
-      if (isWeb) {
-        console.log('[DATA WEB] Atualizando tanque no Supabase...');
-        await db.upsertFarmTank(updatedTank);
-      }
+      console.log('[DATA] Atualizando tanque no Supabase (WEB e MOBILE)...');
+      await db.upsertFarmTank(updatedTank);
 
       const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
@@ -1203,7 +1130,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
     },
-    [farmTank, allFarmTanks, currentPropertyId, isWeb]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   const registerUnloggedConsumption = useCallback(
@@ -1217,10 +1144,8 @@ export const [DataProvider, useData] = createContextHook(() => {
         currentLiters: newCurrentLiters,
       };
 
-      if (isWeb) {
-        console.log('[DATA WEB] Atualizando tanque no Supabase...');
-        await db.upsertFarmTank(updatedTank);
-      }
+      console.log('[DATA] Atualizando tanque no Supabase (WEB e MOBILE)...');
+      await db.upsertFarmTank(updatedTank);
 
       const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
@@ -1234,7 +1159,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         );
       }
     },
-    [farmTank, allFarmTanks, currentPropertyId, isWeb]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   const addFuel = useCallback(
@@ -1255,10 +1180,8 @@ export const [DataProvider, useData] = createContextHook(() => {
         currentLiters: newCurrentLiters,
       };
 
-      if (isWeb) {
-        console.log('[DATA WEB] Atualizando tanque no Supabase...');
-        await db.upsertFarmTank(updatedTank);
-      }
+      console.log('[DATA] Atualizando tanque no Supabase (WEB e MOBILE)...');
+      await db.upsertFarmTank(updatedTank);
 
       const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
@@ -1267,7 +1190,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
       return { success: true, overflow: 0 };
     },
-    [farmTank, allFarmTanks, currentPropertyId, isWeb]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   const consumeFuel = useCallback(
@@ -1283,10 +1206,8 @@ export const [DataProvider, useData] = createContextHook(() => {
           alertLevelLiters: 0,
         };
 
-        if (isWeb) {
-          console.log('[DATA WEB] Criando tanque virtual no Supabase...');
-          await db.upsertFarmTank(virtualTank);
-        }
+        console.log('[DATA] Criando tanque virtual no Supabase (WEB e MOBILE)...');
+        await db.upsertFarmTank(virtualTank);
 
         const updated = [...allFarmTanks, virtualTank];
         setAllFarmTanks(updated);
@@ -1303,10 +1224,8 @@ export const [DataProvider, useData] = createContextHook(() => {
         currentLiters: newCurrentLiters,
       };
 
-      if (isWeb) {
-        console.log('[DATA WEB] Atualizando tanque no Supabase...');
-        await db.upsertFarmTank(updatedTank);
-      }
+      console.log('[DATA] Atualizando tanque no Supabase (WEB e MOBILE)...');
+      await db.upsertFarmTank(updatedTank);
 
       const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
@@ -1320,7 +1239,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         );
       }
     },
-    [farmTank, allFarmTanks, currentPropertyId, isWeb]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   const adjustTankFuel = useCallback(
@@ -1339,15 +1258,13 @@ export const [DataProvider, useData] = createContextHook(() => {
         currentLiters: newCurrentLiters,
       };
 
-      if (isWeb) {
-        console.log('[DATA WEB] Ajustando tanque no Supabase...', {
-          adjustment,
-          reason,
-          oldValue: farmTank.currentLiters,
-          newValue: newCurrentLiters,
-        });
-        await db.upsertFarmTank(updatedTank);
-      }
+      console.log('[DATA] Ajustando tanque no Supabase (WEB e MOBILE)...', {
+        adjustment,
+        reason,
+        oldValue: farmTank.currentLiters,
+        newValue: newCurrentLiters,
+      });
+      await db.upsertFarmTank(updatedTank);
 
       const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
@@ -1362,7 +1279,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         to: newCurrentLiters.toFixed(0),
       });
     },
-    [farmTank, allFarmTanks, currentPropertyId, isWeb]
+    [farmTank, allFarmTanks, currentPropertyId]
   );
 
   const deletePropertyData = useCallback(

@@ -37,23 +37,24 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
     let cancelled = false;
     
     try {
-      console.log('[PROPERTY] Carregando propriedades...', { userId: currentUser.id, isWeb });
-      
+      console.log('[PROPERTY] Carregando propriedades...', { userId: currentUser.id });
+
       let loadedProperties: Property[] = [];
-      
-      if (isWeb) {
-        console.log('[PROPERTY WEB] Carregando do Supabase...');
+
+      try {
+        console.log('[PROPERTY] Carregando do Supabase (WEB e MOBILE)...');
         loadedProperties = await db.fetchProperties(currentUser.id);
-        console.log('[PROPERTY WEB] Propriedades carregadas:', loadedProperties.length);
-        
+        console.log('[PROPERTY] Propriedades carregadas do Supabase:', loadedProperties.length);
+
         if (!cancelled) {
           await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(loadedProperties));
         }
-      } else {
-        console.log('[PROPERTY MOBILE] Carregando do AsyncStorage...');
+      } catch (err) {
+        console.error('[PROPERTY] Erro ao carregar do Supabase, tentando cache:', err);
         const propertiesData = await AsyncStorage.getItem(STORAGE_KEYS.PROPERTIES);
         if (propertiesData) {
           loadedProperties = JSON.parse(propertiesData);
+          console.log('[PROPERTY] Propriedades carregadas do cache:', loadedProperties.length);
         }
       }
 
@@ -63,20 +64,8 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
       
       if (userProperties.length === 0) {
         console.log('[PROPERTY] Criando propriedade padrão...');
-        let defaultProperty: Property;
-        
-        if (isWeb) {
-          defaultProperty = await db.createProperty(currentUser.id, 'Minha Propriedade');
-        } else {
-          defaultProperty = {
-            id: Date.now().toString(),
-            name: 'Minha Propriedade',
-            userId: currentUser.id,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        
+        const defaultProperty = await db.createProperty(currentUser.id, 'Minha Propriedade');
+
         if (!cancelled) {
           loadedProperties = [...loadedProperties, defaultProperty];
           await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(loadedProperties));
@@ -107,7 +96,7 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
     }
     
     return () => { cancelled = true; };
-  }, [currentUser, isWeb, authLoading]);
+  }, [currentUser, authLoading]);
 
   useEffect(() => {
     if (authLoading) {
@@ -121,32 +110,20 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
 
   const addProperty = useCallback(
     async (name: string) => {
-      console.log('[PROPERTY] addProperty chamado', { name, currentUser: !!currentUser, isWeb });
+      console.log('[PROPERTY] addProperty chamado', { name, currentUser: !!currentUser });
       if (!currentUser) {
         console.log('[PROPERTY] addProperty: sem currentUser');
         return;
       }
 
+      console.log('[PROPERTY] Criando propriedade no Supabase (WEB e MOBILE)...');
       let newProperty: Property;
-
-      if (isWeb) {
-        console.log('[PROPERTY WEB] Criando propriedade no Supabase...');
-        try {
-          newProperty = await db.createProperty(currentUser.id, name);
-          console.log('[PROPERTY WEB] Propriedade criada no Supabase:', newProperty);
-        } catch (error) {
-          console.error('[PROPERTY WEB] Erro ao criar no Supabase:', error);
-          throw error;
-        }
-      } else {
-        newProperty = {
-          id: Date.now().toString(),
-          name,
-          userId: currentUser.id,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        console.log('[PROPERTY MOBILE] Propriedade criada localmente:', newProperty);
+      try {
+        newProperty = await db.createProperty(currentUser.id, name);
+        console.log('[PROPERTY] Propriedade criada no Supabase:', newProperty);
+      } catch (error) {
+        console.error('[PROPERTY] Erro ao criar no Supabase:', error);
+        throw error;
       }
 
       const updated = [...properties, newProperty];
@@ -160,30 +137,21 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
 
       return newProperty;
     },
-    [properties, currentUser, isWeb]
+    [properties, currentUser]
   );
 
   const updateProperty = useCallback(
     async (propertyId: string, updates: Partial<Property>) => {
-      console.log('[PROPERTY] updateProperty chamado', { propertyId, updates, isWeb });
-      
+      console.log('[PROPERTY] updateProperty chamado', { propertyId, updates });
+
+      console.log('[PROPERTY] Atualizando propriedade no Supabase (WEB e MOBILE)...');
       let updatedProperty: Property;
-      
-      if (isWeb) {
-        console.log('[PROPERTY WEB] Atualizando propriedade no Supabase...');
-        try {
-          updatedProperty = await db.updateProperty(propertyId, updates);
-          console.log('[PROPERTY WEB] Propriedade atualizada no Supabase:', updatedProperty);
-        } catch (error) {
-          console.error('[PROPERTY WEB] Erro ao atualizar no Supabase:', error);
-          throw error;
-        }
-      } else {
-        updatedProperty = {
-          ...(properties.find(p => p.id === propertyId) as Property),
-          ...updates,
-          updatedAt: new Date().toISOString(),
-        };
+      try {
+        updatedProperty = await db.updateProperty(propertyId, updates);
+        console.log('[PROPERTY] Propriedade atualizada no Supabase:', updatedProperty);
+      } catch (error) {
+        console.error('[PROPERTY] Erro ao atualizar no Supabase:', error);
+        throw error;
       }
 
       const updated = properties.map((p) =>
@@ -194,17 +162,15 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
       await AsyncStorage.setItem(STORAGE_KEYS.PROPERTIES, JSON.stringify(updated));
       console.log('[PROPERTY] updateProperty: finalizado com sucesso');
     },
-    [properties, isWeb]
+    [properties]
   );
 
   const deleteProperty = useCallback(
     async (propertyId: string) => {
       if (!currentUser) return;
 
-      if (isWeb) {
-        console.log('[PROPERTY WEB] Deletando propriedade no Supabase...');
-        await db.deleteProperty(propertyId);
-      }
+      console.log('[PROPERTY] Deletando propriedade do Supabase (WEB e MOBILE)...');
+      await db.deleteProperty(propertyId);
 
       const updated = properties.filter((p) => p.id !== propertyId);
       setProperties(updated);
@@ -221,7 +187,7 @@ export const [PropertyProvider, useProperty] = createContextHook(() => {
         }
       }
     },
-    [properties, currentPropertyId, currentUser, isWeb]
+    [properties, currentPropertyId, currentUser]
   );
 
   const switchProperty = useCallback(
