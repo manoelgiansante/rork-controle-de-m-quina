@@ -30,7 +30,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.manoel.controledemaquina",
+      "package": "app.rork.controle_de_maquina",
       "versionCode": 18,
       "permissions": [
         "CAMERA",
