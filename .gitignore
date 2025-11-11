@@ -56,3 +56,8 @@ yarn-error.*
 
 expo-env.d.ts
 # @end expo-cli
+
+# Build artifacts
+*.aab
+*.apk
+*.ipa
