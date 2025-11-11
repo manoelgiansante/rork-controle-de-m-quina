@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { AlertTriangle, Edit2, Plus, Tractor as TractorIcon, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
+  Keyboard,
   Alert,
   FlatList,
   Modal,
@@ -271,7 +272,10 @@ export default function MachinesScreen() {
                   onChangeText={setInitialHourMeter}
                   placeholder="Ex: 1500"
                   placeholderTextColor="#999"
-                  keyboardType="numeric"
+                  keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </>
             )}

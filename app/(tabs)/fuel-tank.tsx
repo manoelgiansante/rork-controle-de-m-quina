@@ -3,6 +3,7 @@ import type { FuelType } from '@/types';
 import { AlertTriangle, Droplets, Fuel, Plus, Settings } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
+  Keyboard,
   Alert,
   Modal,
   Platform,
@@ -276,7 +277,10 @@ export default function FuelTankScreen() {
                   onChangeText={setCapacityLiters}
                   placeholder="Ex: 5000"
                   placeholderTextColor="#999"
-                  keyboardType="numeric"
+                  keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
 
                 <Text style={styles.label}>Tipo de diesel</Text>
@@ -309,7 +313,10 @@ export default function FuelTankScreen() {
                   onChangeText={setCurrentLiters}
                   placeholder="Ex: 3000"
                   placeholderTextColor="#999"
-                  keyboardType="numeric"
+                  keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
 
                 <Text style={styles.label}>Nível mínimo de alerta (litros)</Text>
@@ -319,7 +326,10 @@ export default function FuelTankScreen() {
                   onChangeText={setAlertLevelLiters}
                   placeholder="Ex: 500"
                   placeholderTextColor="#999"
-                  keyboardType="numeric"
+                  keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
 
                 <View style={styles.modalButtons}>
@@ -456,7 +466,10 @@ export default function FuelTankScreen() {
               onChangeText={setLitersToAdd}
               placeholder="Ex: 1000"
               placeholderTextColor="#999"
-              keyboardType="numeric"
+              keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
             />
 
             <Text style={styles.hint}>
@@ -499,7 +512,10 @@ export default function FuelTankScreen() {
                 onChangeText={setEditCapacityLiters}
                 placeholder="Ex: 5000"
                 placeholderTextColor="#999"
-                keyboardType="numeric"
+                keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
               />
 
               <Text style={styles.label}>Tipo de diesel</Text>
@@ -532,7 +548,10 @@ export default function FuelTankScreen() {
                 onChangeText={setEditAlertLevelLiters}
                 placeholder="Ex: 500"
                 placeholderTextColor="#999"
-                keyboardType="numeric"
+                keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
               />
 
               <Text style={styles.hint}>
@@ -650,7 +669,10 @@ export default function FuelTankScreen() {
               onChangeText={setConsumptionAdjustment}
               placeholder="Ex: 500"
               placeholderTextColor="#999"
-              keyboardType="numeric"
+              keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
             />
 
             <Text style={styles.hint}>
@@ -755,7 +777,10 @@ export default function FuelTankScreen() {
               onChangeText={setAdjustmentValue}
               placeholder="Ex: 100"
               placeholderTextColor="#999"
-              keyboardType="numeric"
+              keyboardType="number-pad"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
+                  onSubmitEditing={() => Keyboard.dismiss()}
             />
 
             <Text style={styles.label}>Motivo do ajuste</Text>

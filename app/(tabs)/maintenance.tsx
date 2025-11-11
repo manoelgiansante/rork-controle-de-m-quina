@@ -6,6 +6,7 @@ import { Plus, Settings } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   Modal,
   ScrollView,
   StyleSheet,
@@ -201,7 +202,10 @@ export default function MaintenanceScreen() {
                 onChangeText={setHourMeter}
                 placeholder="Ex: 2025"
                 placeholderTextColor="#999"
-                keyboardType="numeric"
+                keyboardType="number-pad"
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    onSubmitEditing={() => Keyboard.dismiss()}
               />
 
               <Text style={styles.label}>
@@ -279,7 +283,10 @@ export default function MaintenanceScreen() {
                             }}
                             placeholder="250"
                             placeholderTextColor="#999"
-                            keyboardType="numeric"
+                            keyboardType="number-pad"
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                           />
                           <Text style={styles.revisionInputSuffix}>horas</Text>
                         </View>

@@ -15,6 +15,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Keyboard,
   Modal,
   ScrollView,
   StyleSheet,
@@ -652,7 +653,10 @@ export default function ReportsScreen() {
                         hourMeter: parseFloat(text) || 0,
                       })
                     }
-                    keyboardType="numeric"
+                    keyboardType="number-pad"
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                   />
                 </View>
 
@@ -696,7 +700,10 @@ export default function ReportsScreen() {
                             itemRevisions: newRevisions,
                           });
                         }}
-                        keyboardType="numeric"
+                        keyboardType="number-pad"
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                       />
                       <Text style={styles.revisionInputSuffix}>horas</Text>
                     </View>
@@ -743,7 +750,10 @@ export default function ReportsScreen() {
                         liters: parseFloat(text) || 0,
                       })
                     }
-                    keyboardType="numeric"
+                    keyboardType="number-pad"
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                   />
                 </View>
 
@@ -758,7 +768,10 @@ export default function ReportsScreen() {
                         hourMeter: parseFloat(text) || 0,
                       })
                     }
-                    keyboardType="numeric"
+                    keyboardType="number-pad"
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    onSubmitEditing={() => Keyboard.dismiss()}
                   />
                 </View>
 

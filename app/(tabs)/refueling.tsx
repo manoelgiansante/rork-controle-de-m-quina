@@ -5,6 +5,7 @@ import type { ServiceType } from '@/types';
 import { Calendar, Droplet, Plus, FileText } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
+  Keyboard,
   Alert,
   Modal,
   ScrollView,
@@ -297,7 +298,11 @@ export default function RefuelingScreen() {
                 onChangeText={setLiters}
                 placeholder="Ex: 100"
                 placeholderTextColor="#999"
-                keyboardType="numeric"
+                keyboardType="number-pad"
+                keyboardType="number-pad"
+                returnKeyType="done"
+                blurOnSubmit={true}
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
 
               <Text style={styles.label}>
@@ -309,7 +314,11 @@ export default function RefuelingScreen() {
                 onChangeText={setHourMeter}
                 placeholder="Ex: 2025"
                 placeholderTextColor="#999"
-                keyboardType="numeric"
+                keyboardType="number-pad"
+                keyboardType="number-pad"
+                returnKeyType="done"
+                blurOnSubmit={true}
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
 
               <Text style={styles.label}>Serviço Atual (opcional)</Text>
