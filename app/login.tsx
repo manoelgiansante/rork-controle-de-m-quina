@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -146,10 +147,20 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.container}
+      keyboardVerticalOffset={0}
     >
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View style={styles.content}>
         <View style={styles.header}>
           <Tractor size={56} color="#2D5016" strokeWidth={1.5} />
           <Text style={styles.title}>Controle de Máquina</Text>
@@ -290,6 +301,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -299,10 +311,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  content: {
+    width: '100%',
   },
   header: {
     alignItems: 'center',
