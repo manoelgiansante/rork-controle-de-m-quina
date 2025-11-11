@@ -15,6 +15,7 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
+import app.rork.controle_de_maquina.BuildConfig
 
 class MainApplication : Application(), ReactApplication {
 
