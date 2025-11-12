@@ -78,11 +78,43 @@ export default function ReportsScreen() {
   };
 
   const renderAlert = ({ item }: { item: typeof alertsData[0] }) => {
-    const machine = machines.find((m) => m.id === item.machineId);
-    if (!machine) return null;
-
     const Icon = getAlertIcon(item.status);
     const color = getAlertColor(item.status);
+
+    // Alerta de tanque
+    if (item.type === 'tank') {
+      return (
+        <View style={[styles.alertCard, { borderLeftColor: color }]}>
+          <View style={styles.alertHeader}>
+            <Icon size={24} color={color} />
+            <View style={styles.alertInfo}>
+              <Text style={styles.alertMachine}>Tanque de Combustível</Text>
+              <Text style={styles.alertItem}>Nível: {item.tankCurrentLiters.toFixed(0)}L ({item.percentageFilled.toFixed(0)}%)</Text>
+            </View>
+          </View>
+          <View style={styles.alertDetails}>
+            <View style={styles.alertRow}>
+              <Text style={styles.alertLabel}>Status:</Text>
+              <Text style={[styles.alertValue, { color }]}>
+                {item.message}
+              </Text>
+            </View>
+            <View style={styles.alertRow}>
+              <Text style={styles.alertLabel}>Nível de alerta:</Text>
+              <Text style={styles.alertValue}>{item.tankAlertLevelLiters.toFixed(0)}L</Text>
+            </View>
+            <View style={styles.alertRow}>
+              <Text style={styles.alertLabel}>Capacidade:</Text>
+              <Text style={styles.alertValue}>{item.tankCapacityLiters.toFixed(0)}L</Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // Alerta de manutenção
+    const machine = machines.find((m) => m.id === item.machineId);
+    if (!machine) return null;
 
     const remaining = item.nextRevisionHourMeter - machine.currentHourMeter;
     const isOverdue = remaining < 0;

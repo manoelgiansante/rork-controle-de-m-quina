@@ -123,7 +123,18 @@ export default function SettingsScreen() {
       setIsSaving(false);
       Alert.alert(
         'Sucesso!',
-        `Email salvo e email de teste enviado para ${userEmail}!\n\nVerifique sua caixa de entrada (ou spam).`
+        `Email salvo e email de teste enviado para ${userEmail}!\n\nVerifique sua caixa de entrada (ou spam).`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Recarregar página para atualizar contexto com novo email
+              if (Platform.OS === 'web') {
+                window.location.reload();
+              }
+            }
+          }
+        ]
       );
     } catch (error) {
       console.error('[SAVE EMAIL] Erro:', error);
@@ -385,39 +396,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Email Settings */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Mail size={22} color="#333" />
-            <Text style={styles.sectionTitle}>Email para Alertas</Text>
-          </View>
-
-          <Text style={styles.sectionDescription}>
-            Configure seu email para receber notificações de alertas críticos
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            value={userEmail}
-            onChangeText={setUserEmail}
-            placeholder="seu@email.com"
-            placeholderTextColor="#999"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <TouchableOpacity
-            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-            onPress={handleSaveEmail}
-            disabled={isSaving}
-          >
-            <Text style={styles.saveButtonText}>
-              {isSaving ? 'Salvando...' : 'Salvar Email'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Notifications Settings */}
+        {/* Notifications Settings - Unified */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             {notificationsEnabled ? (
@@ -425,38 +404,72 @@ export default function SettingsScreen() {
             ) : (
               <BellOff size={22} color="#999" />
             )}
-            <Text style={styles.sectionTitle}>Notificações Push</Text>
+            <Text style={styles.sectionTitle}>Notificações de Alertas</Text>
           </View>
 
+          <Text style={styles.sectionDescription}>
+            Receba notificações por email e push quando houver alertas críticos
+          </Text>
+
+          {/* Email Configuration */}
+          <View style={styles.emailContainer}>
+            <Text style={styles.emailLabel}>Email para Notificações</Text>
+            <TextInput
+              style={styles.input}
+              value={userEmail}
+              onChangeText={setUserEmail}
+              placeholder="seu@email.com"
+              placeholderTextColor="#999"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <TouchableOpacity
+              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+              onPress={handleSaveEmail}
+              disabled={isSaving}
+            >
+              <Text style={styles.saveButtonText}>
+                {isSaving ? 'Salvando...' : 'Salvar Email'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Push Notifications (Mobile Only) */}
+          {Platform.OS !== 'web' && (
+            <>
+              <View style={styles.divider} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Notificações Push</Text>
+                  <Text style={styles.settingDescription}>
+                    Receba notificações no celular (iOS/Android)
+                  </Text>
+                </View>
+                <Switch
+                  value={notificationsEnabled}
+                  onValueChange={toggleNotifications}
+                  trackColor={{ false: '#DDD', true: '#4CAF50' }}
+                  thumbColor={notificationsEnabled ? '#2D5016' : '#f4f3f4'}
+                />
+              </View>
+
+              {expoPushToken && (
+                <View style={styles.tokenInfo}>
+                  <Text style={styles.tokenLabel}>Status:</Text>
+                  <Text style={styles.tokenValue}>
+                    {notificationsEnabled ? '✅ Ativo' : '⏸️ Pausado'}
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+
+          {/* Web Warning */}
           {Platform.OS === 'web' && (
             <View style={styles.webNotificationWarning}>
               <Text style={styles.webNotificationWarningText}>
-                📱 Para receber notificações no seu celular, baixe o app iOS ou Android
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Alertas de Manutenção</Text>
-              <Text style={styles.settingDescription}>
-                Receba notificações quando manutenções ficarem urgentes (vermelho)
-              </Text>
-            </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={toggleNotifications}
-              trackColor={{ false: '#DDD', true: '#4CAF50' }}
-              thumbColor={notificationsEnabled ? '#2D5016' : '#f4f3f4'}
-              disabled={Platform.OS === 'web'}
-            />
-          </View>
-
-          {expoPushToken && (
-            <View style={styles.tokenInfo}>
-              <Text style={styles.tokenLabel}>Status:</Text>
-              <Text style={styles.tokenValue}>
-                {notificationsEnabled ? '✅ Ativo' : '⏸️ Pausado'}
+                📱 Para receber notificações push, baixe o app iOS ou Android
               </Text>
             </View>
           )}
@@ -623,6 +636,20 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 16,
     lineHeight: 20,
+  },
+  emailContainer: {
+    marginBottom: 16,
+  },
+  emailLabel: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#333',
+    marginBottom: 8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginVertical: 20,
   },
   webNotificationWarning: {
     backgroundColor: '#E3F2FD',

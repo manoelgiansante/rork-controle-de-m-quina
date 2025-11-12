@@ -265,6 +265,54 @@ export const [DataProvider, useData] = createContextHook(() => {
         await AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCE_ITEMS, JSON.stringify(preferencesFromDB.maintenanceItems));
       }
 
+      // Gerar alerta de tanque se não existir
+      if (currentPropertyId && allFarmTanksFromDB.length > 0) {
+        const tank = allFarmTanksFromDB.find(t => t.propertyId === currentPropertyId);
+        if (tank && tank.capacityLiters > 0) {
+          const hasTankAlert = allAlertsFromDB.some(
+            a => a.type === 'tank' && a.propertyId === currentPropertyId
+          );
+
+          if (!hasTankAlert) {
+            console.log('[DATA] Gerando alerta de tanque inicial...');
+            const status = calculateTankAlertStatus(
+              tank.currentLiters,
+              tank.alertLevelLiters,
+              tank.capacityLiters
+            );
+
+            const percentageFilled = (tank.currentLiters / tank.capacityLiters) * 100;
+
+            let message = '';
+            if (status === 'red') {
+              message = `URGENTE: Tanque está com apenas ${tank.currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%). Reabasteça imediatamente!`;
+            } else if (status === 'yellow') {
+              message = `ATENÇÃO: Tanque está com ${tank.currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%). Considere reabastecer em breve.`;
+            } else {
+              message = `Tanque OK: ${tank.currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%)`;
+            }
+
+            const tankAlert: TankAlert = {
+              id: `tank-${tank.propertyId}`,
+              type: 'tank',
+              propertyId: tank.propertyId,
+              tankCurrentLiters: tank.currentLiters,
+              tankCapacityLiters: tank.capacityLiters,
+              tankAlertLevelLiters: tank.alertLevelLiters,
+              percentageFilled,
+              status,
+              message,
+              createdAt: new Date().toISOString(),
+            };
+
+            allAlertsFromDB.push(tankAlert);
+            setAllAlerts(allAlertsFromDB);
+            await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(allAlertsFromDB));
+            console.log('[DATA] ✅ Alerta de tanque criado:', { status, message });
+          }
+        }
+      }
+
     } catch (error) {
       console.error('[DATA] ❌ Erro CRÍTICO ao carregar dados:', error);
     } finally {
