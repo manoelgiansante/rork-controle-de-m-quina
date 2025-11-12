@@ -72,7 +72,7 @@ async function markAsNotified(alertId: string): Promise<void> {
 export async function monitorRedAlerts(
   alerts: Alert[],
   machines: Machine[],
-  userEmail?: string,
+  userEmails?: string | string[],
   userName?: string,
   notificationsEnabled: boolean = true
 ): Promise<void> {
@@ -81,12 +81,20 @@ export async function monitorRedAlerts(
     return;
   }
 
+  // Converter emails para array se necessário
+  const emailsArray = userEmails
+    ? Array.isArray(userEmails)
+      ? userEmails
+      : [userEmails]
+    : [];
+
   // Filtrar alertas vermelhos E amarelos (manutenção e tanque)
   const criticalAlerts = alerts.filter(
     (alert) => alert.status === 'red' || alert.status === 'yellow'
   );
 
   console.log(`🔍 Verificando ${criticalAlerts.length} alertas críticos (vermelho/amarelo)...`);
+  console.log(`📧 Emails configurados: ${emailsArray.length}`);
 
   for (const alert of criticalAlerts) {
     // Verificar se já foi notificado recentemente
@@ -111,9 +119,9 @@ export async function monitorRedAlerts(
       );
 
       // Enviar email se as informações estiverem disponíveis
-      if (userEmail && userName) {
+      if (emailsArray.length > 0 && userName) {
         await sendTankAlertEmail(
-          userEmail,
+          emailsArray,
           userName,
           alert.tankCurrentLiters,
           alert.tankCapacityLiters,
@@ -161,9 +169,9 @@ export async function monitorRedAlerts(
     );
 
     // Enviar email se as informações estiverem disponíveis
-    if (userEmail && userName) {
+    if (emailsArray.length > 0 && userName) {
       await sendRedAlertEmail(
-        userEmail,
+        emailsArray,
         userName,
         machineName,
         alert.maintenanceItem,

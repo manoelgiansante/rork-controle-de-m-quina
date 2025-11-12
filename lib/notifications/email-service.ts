@@ -172,10 +172,10 @@ export function generateAlertEmailHTML(
 }
 
 /**
- * Envia email de alerta vermelho
+ * Envia email de alerta vermelho para um ou mais destinatários
  */
 export async function sendRedAlertEmail(
-  userEmail: string,
+  userEmails: string | string[],
   userName: string,
   machineName: string,
   maintenanceItem: string,
@@ -190,11 +190,24 @@ export async function sendRedAlertEmail(
     nextRevisionHourMeter
   );
 
-  return sendEmail({
-    to: userEmail,
-    subject: `🚨 Alerta Urgente: Manutenção ${maintenanceItem} - ${machineName}`,
-    html,
-  });
+  const subject = `🚨 Alerta Urgente: Manutenção ${maintenanceItem} - ${machineName}`;
+
+  // Converter para array se for string única
+  const emails = Array.isArray(userEmails) ? userEmails : [userEmails];
+
+  // Enviar para todos os emails
+  const results = await Promise.all(
+    emails.map(email =>
+      sendEmail({
+        to: email,
+        subject,
+        html,
+      })
+    )
+  );
+
+  // Retorna true se pelo menos um email foi enviado com sucesso
+  return results.some(result => result === true);
 }
 
 /**
@@ -319,10 +332,10 @@ export function generateTankAlertEmailHTML(
 }
 
 /**
- * Envia email de alerta de tanque
+ * Envia email de alerta de tanque para um ou mais destinatários
  */
 export async function sendTankAlertEmail(
-  userEmail: string,
+  userEmails: string | string[],
   userName: string,
   currentLiters: number,
   capacityLiters: number,
@@ -342,9 +355,20 @@ export async function sendTankAlertEmail(
     ? `🚨 URGENTE: Tanque Baixo - ${currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%)`
     : `⚠️ Atenção: Tanque de Combustível - ${currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%)`;
 
-  return sendEmail({
-    to: userEmail,
-    subject,
-    html,
-  });
+  // Converter para array se for string única
+  const emails = Array.isArray(userEmails) ? userEmails : [userEmails];
+
+  // Enviar para todos os emails
+  const results = await Promise.all(
+    emails.map(email =>
+      sendEmail({
+        to: email,
+        subject,
+        html,
+      })
+    )
+  );
+
+  // Retorna true se pelo menos um email foi enviado com sucesso
+  return results.some(result => result === true);
 }

@@ -5,6 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { registerForPushNotifications } from '@/lib/notifications/push-notifications';
 import { monitorRedAlerts } from '@/lib/notifications/alert-monitor';
+import AsyncStorage from '@/lib/storage';
+
+const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
 
 /**
  * Hook para gerenciar notificações de alertas vermelhos
@@ -14,10 +17,29 @@ export function useNotifications() {
   const { alerts, machines } = useData();
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationEmails, setNotificationEmails] = useState<string[]>([]);
   const notificationListener = useRef<Notifications.Subscription>();
   const responseListener = useRef<Notifications.Subscription>();
   const appState = useRef(AppState.currentState);
   const lastCheckRef = useRef<Date>(new Date());
+
+  // Carregar emails de notificação
+  useEffect(() => {
+    loadNotificationEmails();
+  }, []);
+
+  const loadNotificationEmails = async () => {
+    try {
+      const emailsJson = await AsyncStorage.getItem(NOTIFICATION_EMAILS_KEY);
+      if (emailsJson) {
+        const emails: string[] = JSON.parse(emailsJson);
+        setNotificationEmails(emails);
+        console.log('[NOTIFICATIONS] Emails carregados:', emails);
+      }
+    } catch (error) {
+      console.error('[NOTIFICATIONS] Erro ao carregar emails:', error);
+    }
+  };
 
   // Registrar para receber notificações quando o componente montar
   useEffect(() => {
@@ -90,7 +112,7 @@ export function useNotifications() {
       subscription.remove();
       clearInterval(interval);
     };
-  }, [alerts, machines, currentUser, notificationsEnabled]);
+  }, [alerts, machines, currentUser, notificationsEnabled, notificationEmails]);
 
   /**
    * Verifica e envia notificações para alertas vermelhos
@@ -111,14 +133,14 @@ export function useNotifications() {
     lastCheckRef.current = now;
 
     console.log('🔍 Verificando alertas vermelhos...');
-    console.log('📧 Email do usuário:', currentUser.email);
+    console.log('📧 Emails de notificação:', notificationEmails);
     console.log('👤 Nome do usuário:', currentUser.name);
     console.log('🚨 Total de alertas:', alerts.length);
 
     await monitorRedAlerts(
       alerts,
       machines,
-      currentUser.email,
+      notificationEmails,
       currentUser.name,
       notificationsEnabled
     );

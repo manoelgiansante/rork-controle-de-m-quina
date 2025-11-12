@@ -1,8 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useProperty } from '@/contexts/PropertyContext';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Bell, BellOff, Mail, RefreshCcw, Settings as SettingsIcon, User, Trash2 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { Bell, BellOff, Mail, RefreshCcw, Settings as SettingsIcon, User, Trash2, Edit2, X } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   ScrollView,
@@ -19,6 +19,9 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@/lib/storage';
 import { supabase } from '@/lib/supabase/client';
 
+const MAX_EMAILS = 3;
+const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
+
 export default function SettingsScreen() {
   const { currentUser, logout } = useAuth();
   const { currentPropertyName } = useProperty();
@@ -26,62 +29,85 @@ export default function SettingsScreen() {
     useNotifications();
   const router = useRouter();
 
-  const [userEmail, setUserEmail] = useState(currentUser?.email || '');
+  const [newEmail, setNewEmail] = useState('');
+  const [savedEmails, setSavedEmails] = useState<string[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingEmail, setEditingEmail] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleSaveEmail = async () => {
-    if (!userEmail.trim()) {
-      Alert.alert('Erro', 'Digite um email válido');
+  // Carregar emails salvos ao montar o componente
+  useEffect(() => {
+    loadSavedEmails();
+  }, []);
+
+  const loadSavedEmails = async () => {
+    try {
+      const emailsJson = await AsyncStorage.getItem(NOTIFICATION_EMAILS_KEY);
+      if (emailsJson) {
+        const emails: string[] = JSON.parse(emailsJson);
+        setSavedEmails(emails);
+        console.log('[SETTINGS] Emails carregados:', emails);
+      }
+    } catch (error) {
+      console.error('[SETTINGS] Erro ao carregar emails:', error);
+    }
+  };
+
+  const handleAddEmail = async () => {
+    const emailToAdd = newEmail.trim();
+
+    if (!emailToAdd) {
+      if (Platform.OS === 'web') {
+        window.alert('Digite um email válido');
+      } else {
+        Alert.alert('Erro', 'Digite um email válido');
+      }
       return;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(userEmail)) {
-      Alert.alert('Erro', 'Digite um email válido');
+    if (!emailRegex.test(emailToAdd)) {
+      if (Platform.OS === 'web') {
+        window.alert('Digite um email válido');
+      } else {
+        Alert.alert('Erro', 'Digite um email válido');
+      }
+      return;
+    }
+
+    // Check if email already exists
+    if (savedEmails.includes(emailToAdd)) {
+      if (Platform.OS === 'web') {
+        window.alert('Este email já está cadastrado');
+      } else {
+        Alert.alert('Erro', 'Este email já está cadastrado');
+      }
+      return;
+    }
+
+    // Check max emails
+    if (savedEmails.length >= MAX_EMAILS) {
+      if (Platform.OS === 'web') {
+        window.alert(`Você pode cadastrar no máximo ${MAX_EMAILS} emails`);
+      } else {
+        Alert.alert('Limite atingido', `Você pode cadastrar no máximo ${MAX_EMAILS} emails`);
+      }
       return;
     }
 
     setIsSaving(true);
 
     try {
-      // 1. Salvar email no usuário (AsyncStorage/localStorage)
-      if (!currentUser) {
-        throw new Error('Usuário não autenticado');
-      }
+      console.log('[ADD EMAIL] Adicionando email:', emailToAdd);
 
-      console.log('[SAVE EMAIL] Salvando email no usuário:', userEmail);
-
-      // Atualizar usuário com email
-      const updatedUser = { ...currentUser, email: userEmail.trim() };
-
-      // Carregar todos os usuários
-      const usersJson = await AsyncStorage.getItem('@controle_maquina:users');
-      const allUsers: any[] = usersJson ? JSON.parse(usersJson) : [];
-
-      // Atualizar o usuário atual na lista
-      const userIndex = allUsers.findIndex((u) => u.id === currentUser.id);
-      if (userIndex >= 0) {
-        allUsers[userIndex] = updatedUser;
-      } else {
-        allUsers.push(updatedUser);
-      }
-
-      // Salvar de volta
-      await AsyncStorage.setItem('@controle_maquina:users', JSON.stringify(allUsers));
-      await AsyncStorage.setItem('@controle_maquina:current_user', JSON.stringify(updatedUser));
-
-      console.log('[SAVE EMAIL] ✅ Email salvo no AsyncStorage');
-
-      // 2. Enviar email de teste automaticamente
-      console.log('[SAVE EMAIL] Enviando email de teste para:', userEmail);
-
+      // Enviar email de teste
       const { error } = await supabase.functions.invoke('send-email', {
         body: {
-          to: userEmail,
+          to: emailToAdd,
           subject: '✅ Email Configurado com Sucesso - Controle de Máquina',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -89,12 +115,13 @@ export default function SettingsScreen() {
 
               <p>Olá, <strong>${currentUser?.name}</strong>!</p>
 
-              <p>Seu email foi configurado com sucesso no sistema <strong>Controle de Máquina</strong>.</p>
+              <p>Este email foi configurado com sucesso no sistema <strong>Controle de Máquina</strong>.</p>
 
               <div style="background-color: #E8F5E9; border-left: 4px solid #2D5016; padding: 16px; margin: 20px 0;">
                 <h3 style="margin-top: 0; color: #2D5016;">📧 O que você vai receber:</h3>
                 <ul style="margin-bottom: 0;">
-                  <li>Alertas quando manutenções ficarem urgentes (vermelho)</li>
+                  <li>Alertas quando manutenções ficarem urgentes (vermelho ou amarelo)</li>
+                  <li>Alertas quando o tanque de combustível estiver baixo</li>
                   <li>Notificações automáticas a cada 24 horas por alerta</li>
                   <li>Verificações automáticas a cada 30 minutos</li>
                 </ul>
@@ -115,34 +142,146 @@ export default function SettingsScreen() {
       });
 
       if (error) {
-        console.error('[SAVE EMAIL] Erro ao enviar email de teste:', error);
+        console.error('[ADD EMAIL] Erro ao enviar email de teste:', error);
         throw error;
       }
 
-      console.log('[SAVE EMAIL] ✅ Email de teste enviado com sucesso!');
+      // Adicionar email à lista
+      const updatedEmails = [...savedEmails, emailToAdd];
+      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
+      setSavedEmails(updatedEmails);
+      setNewEmail('');
       setIsSaving(false);
-      Alert.alert(
-        'Sucesso!',
-        `Email salvo e email de teste enviado para ${userEmail}!\n\nVerifique sua caixa de entrada (ou spam).`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Recarregar página para atualizar contexto com novo email
-              if (Platform.OS === 'web') {
-                window.location.reload();
-              }
-            }
-          }
-        ]
-      );
+
+      console.log('[ADD EMAIL] ✅ Email adicionado com sucesso');
+
+      if (Platform.OS === 'web') {
+        window.alert(`Email adicionado com sucesso!\n\nUm email de teste foi enviado para ${emailToAdd}.\nVerifique sua caixa de entrada (ou spam).`);
+      } else {
+        Alert.alert(
+          'Sucesso!',
+          `Email adicionado e email de teste enviado para ${emailToAdd}!\n\nVerifique sua caixa de entrada (ou spam).`
+        );
+      }
     } catch (error) {
-      console.error('[SAVE EMAIL] Erro:', error);
+      console.error('[ADD EMAIL] Erro:', error);
       setIsSaving(false);
-      Alert.alert(
-        'Erro',
-        'Não foi possível salvar o email. Verifique sua conexão e tente novamente.'
-      );
+      if (Platform.OS === 'web') {
+        window.alert('Não foi possível adicionar o email. Verifique sua conexão e tente novamente.');
+      } else {
+        Alert.alert(
+          'Erro',
+          'Não foi possível adicionar o email. Verifique sua conexão e tente novamente.'
+        );
+      }
+    }
+  };
+
+  const handleEditEmail = (index: number) => {
+    setEditingIndex(index);
+    setEditingEmail(savedEmails[index]);
+  };
+
+  const handleSaveEditedEmail = async (index: number) => {
+    const emailToSave = editingEmail.trim();
+
+    if (!emailToSave) {
+      if (Platform.OS === 'web') {
+        window.alert('Digite um email válido');
+      } else {
+        Alert.alert('Erro', 'Digite um email válido');
+      }
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailToSave)) {
+      if (Platform.OS === 'web') {
+        window.alert('Digite um email válido');
+      } else {
+        Alert.alert('Erro', 'Digite um email válido');
+      }
+      return;
+    }
+
+    // Check if email already exists (excluding current index)
+    if (savedEmails.some((email, i) => i !== index && email === emailToSave)) {
+      if (Platform.OS === 'web') {
+        window.alert('Este email já está cadastrado');
+      } else {
+        Alert.alert('Erro', 'Este email já está cadastrado');
+      }
+      return;
+    }
+
+    try {
+      const updatedEmails = [...savedEmails];
+      updatedEmails[index] = emailToSave;
+      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
+      setSavedEmails(updatedEmails);
+      setEditingIndex(null);
+      setEditingEmail('');
+
+      console.log('[EDIT EMAIL] ✅ Email atualizado com sucesso');
+
+      if (Platform.OS === 'web') {
+        window.alert('Email atualizado com sucesso!');
+      } else {
+        Alert.alert('Sucesso!', 'Email atualizado com sucesso!');
+      }
+    } catch (error) {
+      console.error('[EDIT EMAIL] Erro:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Não foi possível atualizar o email. Tente novamente.');
+      } else {
+        Alert.alert('Erro', 'Não foi possível atualizar o email. Tente novamente.');
+      }
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingIndex(null);
+    setEditingEmail('');
+  };
+
+  const handleDeleteEmail = async (index: number) => {
+    const emailToDelete = savedEmails[index];
+
+    const confirmDelete = Platform.OS === 'web'
+      ? window.confirm(`Deseja remover o email ${emailToDelete}?`)
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Remover Email',
+            `Deseja remover o email ${emailToDelete}?`,
+            [
+              { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Remover', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmDelete) return;
+
+    try {
+      const updatedEmails = savedEmails.filter((_, i) => i !== index);
+      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
+      setSavedEmails(updatedEmails);
+
+      console.log('[DELETE EMAIL] ✅ Email removido com sucesso');
+
+      if (Platform.OS === 'web') {
+        window.alert('Email removido com sucesso!');
+      } else {
+        Alert.alert('Sucesso!', 'Email removido com sucesso!');
+      }
+    } catch (error) {
+      console.error('[DELETE EMAIL] Erro:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Não foi possível remover o email. Tente novamente.');
+      } else {
+        Alert.alert('Erro', 'Não foi possível remover o email. Tente novamente.');
+      }
     }
   };
 
@@ -426,29 +565,96 @@ export default function SettingsScreen() {
             Receba notificações por email e push quando houver alertas críticos
           </Text>
 
-          {/* Email Configuration */}
+          {/* Add New Email */}
           <View style={styles.emailContainer}>
-            <Text style={styles.emailLabel}>Email para Notificações</Text>
+            <Text style={styles.emailLabel}>
+              Adicionar Email para Notificações ({savedEmails.length}/{MAX_EMAILS})
+            </Text>
             <TextInput
               style={styles.input}
-              value={userEmail}
-              onChangeText={setUserEmail}
+              value={newEmail}
+              onChangeText={setNewEmail}
               placeholder="seu@email.com"
               placeholderTextColor="#999"
               keyboardType="email-address"
               autoCapitalize="none"
+              editable={savedEmails.length < MAX_EMAILS}
             />
 
             <TouchableOpacity
-              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-              onPress={handleSaveEmail}
-              disabled={isSaving}
+              style={[
+                styles.saveButton,
+                (isSaving || savedEmails.length >= MAX_EMAILS) && styles.saveButtonDisabled,
+              ]}
+              onPress={handleAddEmail}
+              disabled={isSaving || savedEmails.length >= MAX_EMAILS}
             >
               <Text style={styles.saveButtonText}>
-                {isSaving ? 'Salvando...' : 'Salvar Email'}
+                {isSaving ? 'Salvando...' : 'Adicionar Email'}
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Saved Emails List */}
+          {savedEmails.length > 0 && (
+            <View style={styles.savedEmailsContainer}>
+              <Text style={styles.savedEmailsTitle}>Emails Cadastrados:</Text>
+              {savedEmails.map((email, index) => (
+                <View key={index} style={styles.emailItem}>
+                  {editingIndex === index ? (
+                    // Edit mode
+                    <View style={styles.emailEditContainer}>
+                      <TextInput
+                        style={styles.emailEditInput}
+                        value={editingEmail}
+                        onChangeText={setEditingEmail}
+                        placeholder="email@exemplo.com"
+                        placeholderTextColor="#999"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                      <View style={styles.emailEditButtons}>
+                        <TouchableOpacity
+                          style={styles.emailSaveButton}
+                          onPress={() => handleSaveEditedEmail(index)}
+                        >
+                          <Text style={styles.emailSaveButtonText}>Salvar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.emailCancelButton}
+                          onPress={handleCancelEdit}
+                        >
+                          <X size={18} color="#666" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    // Display mode
+                    <>
+                      <View style={styles.emailTextContainer}>
+                        <Mail size={18} color="#2D5016" />
+                        <Text style={styles.emailText}>{email}</Text>
+                      </View>
+                      <View style={styles.emailActions}>
+                        <TouchableOpacity
+                          style={styles.emailEditButton}
+                          onPress={() => handleEditEmail(index)}
+                        >
+                          <Edit2 size={18} color="#2D5016" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.emailDeleteButton}
+                          onPress={() => handleDeleteEmail(index)}
+                        >
+                          <Trash2 size={18} color="#D32F2F" />
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Push Notifications (Mobile Only) */}
           {Platform.OS !== 'web' && (
@@ -937,5 +1143,93 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFF',
+  },
+  savedEmailsContainer: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  savedEmailsTitle: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#333',
+    marginBottom: 12,
+  },
+  emailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  emailTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  emailText: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500' as const,
+  },
+  emailActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emailEditButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#E8F5E9',
+  },
+  emailDeleteButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#FFEBEE',
+  },
+  emailEditContainer: {
+    flex: 1,
+    gap: 8,
+  },
+  emailEditInput: {
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#2D5016',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#333',
+  },
+  emailEditButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  emailSaveButton: {
+    flex: 1,
+    backgroundColor: '#2D5016',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  emailSaveButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FFF',
+  },
+  emailCancelButton: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
