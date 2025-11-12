@@ -154,12 +154,20 @@ export default function SettingsScreen() {
 
       console.log('[ADD EMAIL] ✅ Email adicionado com sucesso');
 
+      // Se for o primeiro email e tiver alertas, enviar notificação imediata
+      const isFirstEmail = savedEmails.length === 0;
+      let alertMessage = '';
+
+      if (isFirstEmail) {
+        alertMessage = '\n\n✅ A partir de agora você receberá:\n• Notificações diárias às 21h (se houver alertas críticos)\n• Máximo de 1 email por dia por alerta';
+      }
+
       if (Platform.OS === 'web') {
-        window.alert(`Email adicionado com sucesso!\n\nUm email de teste foi enviado para ${emailToAdd}.\nVerifique sua caixa de entrada (ou spam).`);
+        window.alert(`Email adicionado com sucesso!\n\nUm email de teste foi enviado para ${emailToAdd}.${alertMessage}\n\nVerifique sua caixa de entrada (ou spam).`);
       } else {
         Alert.alert(
           'Sucesso!',
-          `Email adicionado e email de teste enviado para ${emailToAdd}!\n\nVerifique sua caixa de entrada (ou spam).`
+          `Email adicionado e email de teste enviado para ${emailToAdd}!${alertMessage}\n\nVerifique sua caixa de entrada (ou spam).`
         );
       }
     } catch (error) {
@@ -666,18 +674,31 @@ export default function SettingsScreen() {
         {/* Info Section */}
         <View style={styles.infoSection}>
           <Text style={styles.infoSectionTitle}>Como Funcionam as Notificações?</Text>
-          <Text style={styles.infoSectionText}>
-            • Você receberá notificações push no celular quando alguma manutenção ficar com status vermelho (urgente)
-          </Text>
-          <Text style={styles.infoSectionText}>
-            • Emails serão enviados para o endereço cadastrado acima
-          </Text>
-          <Text style={styles.infoSectionText}>
-            • As notificações são enviadas no máximo 1 vez a cada 24 horas por alerta
-          </Text>
-          <Text style={styles.infoSectionText}>
-            • O app verifica alertas automaticamente a cada 30 minutos
-          </Text>
+
+          <View style={styles.scheduleBox}>
+            <Text style={styles.scheduleIcon}>⏰</Text>
+            <View style={styles.scheduleTextContainer}>
+              <Text style={styles.scheduleTitle}>Horário de Envio</Text>
+              <Text style={styles.scheduleText}>
+                Notificações por email são enviadas diariamente às 21:00 (horário de Brasília), caso existam alertas críticos (vermelho ou amarelo).
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.infoList}>
+            <Text style={styles.infoSectionText}>
+              • Você receberá notificações push no celular quando alguma manutenção ficar urgente (vermelho/amarelo)
+            </Text>
+            <Text style={styles.infoSectionText}>
+              • Emails serão enviados para todos os endereços cadastrados
+            </Text>
+            <Text style={styles.infoSectionText}>
+              • Máximo de 1 email por dia por alerta (enviado às 21h)
+            </Text>
+            <Text style={styles.infoSectionText}>
+              • Alertas de tanque de combustível também são notificados
+            </Text>
+          </View>
         </View>
 
         {/* Logout Button */}
@@ -939,6 +960,37 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#2D5016',
     marginBottom: 12,
+  },
+  scheduleBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+    alignItems: 'flex-start',
+  },
+  scheduleIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  scheduleTextContainer: {
+    flex: 1,
+  },
+  scheduleTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#2D5016',
+    marginBottom: 4,
+  },
+  scheduleText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  infoList: {
+    gap: 4,
   },
   infoSectionText: {
     fontSize: 13,

@@ -11,9 +11,10 @@ interface NotifiedAlert {
 }
 
 /**
- * Verifica se um alerta já foi notificado recentemente (últimas 24h)
+ * Verifica se um alerta já foi notificado hoje (após 21h)
+ * Sistema: 1 notificação por dia às 21h
  */
-async function wasRecentlyNotified(alertId: string): Promise<boolean> {
+async function wasNotifiedToday(alertId: string): Promise<boolean> {
   try {
     const historyJson = await AsyncStorage.getItem(ALERT_HISTORY_KEY);
     if (!historyJson) return false;
@@ -23,13 +24,23 @@ async function wasRecentlyNotified(alertId: string): Promise<boolean> {
 
     if (!alertHistory) return false;
 
-    // Verificar se foi notificado nas últimas 24 horas
     const lastNotified = new Date(alertHistory.lastNotifiedAt);
     const now = new Date();
-    const hoursSinceNotification =
-      (now.getTime() - lastNotified.getTime()) / (1000 * 60 * 60);
 
-    return hoursSinceNotification < 24;
+    // Verifica se foi notificado no mesmo dia (considerando dia atual após 21h)
+    const lastNotifiedDate = new Date(lastNotified);
+    lastNotifiedDate.setHours(0, 0, 0, 0);
+
+    const todayDate = new Date(now);
+    todayDate.setHours(0, 0, 0, 0);
+
+    // Se foi notificado hoje, não enviar novamente
+    if (lastNotifiedDate.getTime() === todayDate.getTime()) {
+      console.log(`⏭️ Alerta ${alertId} já foi notificado hoje`);
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error('Erro ao verificar histórico de alertas:', error);
     return false;
@@ -96,10 +107,19 @@ export async function monitorRedAlerts(
   console.log(`🔍 Verificando ${criticalAlerts.length} alertas críticos (vermelho/amarelo)...`);
   console.log(`📧 Emails configurados: ${emailsArray.length}`);
 
+  // Verificar se está no horário de envio (21h - horário de Brasília)
+  const now = new Date();
+  const currentHour = now.getHours();
+  const isScheduledTime = currentHour === 21; // 21h
+
+  console.log(`🕐 Hora atual: ${currentHour}h | Horário de envio: ${isScheduledTime ? 'SIM' : 'NÃO (apenas às 21h)'}`);
+
+  // Se não for horário de envio, apenas enviar notificações push (não email)
+  const shouldSendEmails = isScheduledTime;
+
   for (const alert of criticalAlerts) {
-    // Verificar se já foi notificado recentemente
-    if (await wasRecentlyNotified(alert.id)) {
-      console.log(`⏭️ Alerta ${alert.id} já foi notificado nas últimas 24h`);
+    // Verificar se já foi notificado hoje
+    if (await wasNotifiedToday(alert.id)) {
       continue;
     }
 
@@ -118,8 +138,9 @@ export async function monitorRedAlerts(
         }
       );
 
-      // Enviar email se as informações estiverem disponíveis
-      if (emailsArray.length > 0 && userName) {
+      // Enviar email se as informações estiverem disponíveis E for horário de envio
+      if (shouldSendEmails && emailsArray.length > 0 && userName) {
+        console.log(`📧 Enviando email de tanque para ${emailsArray.length} destinatário(s)...`);
         await sendTankAlertEmail(
           emailsArray,
           userName,
@@ -128,6 +149,8 @@ export async function monitorRedAlerts(
           alert.tankAlertLevelLiters,
           alert.status
         );
+      } else if (!shouldSendEmails) {
+        console.log(`⏰ Email de tanque não enviado (aguardando horário das 21h)`);
       }
 
       // Marcar como notificado
@@ -168,8 +191,9 @@ export async function monitorRedAlerts(
       }
     );
 
-    // Enviar email se as informações estiverem disponíveis
-    if (emailsArray.length > 0 && userName) {
+    // Enviar email se as informações estiverem disponíveis E for horário de envio
+    if (shouldSendEmails && emailsArray.length > 0 && userName) {
+      console.log(`📧 Enviando email de manutenção para ${emailsArray.length} destinatário(s)...`);
       await sendRedAlertEmail(
         emailsArray,
         userName,
@@ -178,6 +202,8 @@ export async function monitorRedAlerts(
         machine.currentHourMeter,
         alert.nextRevisionHourMeter
       );
+    } else if (!shouldSendEmails) {
+      console.log(`⏰ Email de manutenção não enviado (aguardando horário das 21h)`);
     }
 
     // Marcar como notificado

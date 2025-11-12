@@ -101,12 +101,12 @@ export function useNotifications() {
       appState.current = nextAppState;
     });
 
-    // Verificar a cada 30 minutos se o app estiver ativo
+    // Verificar a cada hora se o app estiver ativo (especialmente às 21h)
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') {
         checkForRedAlerts();
       }
-    }, 30 * 60 * 1000); // 30 minutos
+    }, 60 * 60 * 1000); // 1 hora
 
     return () => {
       subscription.remove();
