@@ -320,6 +320,14 @@ export default function SettingsScreen() {
             <Text style={styles.sectionTitle}>Notificações Push</Text>
           </View>
 
+          {Platform.OS === 'web' && (
+            <View style={styles.webNotificationWarning}>
+              <Text style={styles.webNotificationWarningText}>
+                📱 Para receber notificações no seu celular, baixe o app iOS ou Android
+              </Text>
+            </View>
+          )}
+
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Alertas de Manutenção</Text>
@@ -332,6 +340,7 @@ export default function SettingsScreen() {
               onValueChange={toggleNotifications}
               trackColor={{ false: '#DDD', true: '#4CAF50' }}
               thumbColor={notificationsEnabled ? '#2D5016' : '#f4f3f4'}
+              disabled={Platform.OS === 'web'}
             />
           </View>
 
@@ -511,6 +520,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 16,
+    lineHeight: 20,
+  },
+  webNotificationWarning: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2196F3',
+  },
+  webNotificationWarningText: {
+    fontSize: 14,
+    color: '#1565C0',
+    textAlign: 'center' as const,
     lineHeight: 20,
   },
   infoCard: {
