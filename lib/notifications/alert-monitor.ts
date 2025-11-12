@@ -1,6 +1,6 @@
 import type { Alert, Machine, MaintenanceAlert } from '@/types';
 import { sendLocalNotification } from './push-notifications';
-import { sendRedAlertEmail, sendTankAlertEmail } from './email-service';
+import { sendRedAlertEmail, sendTankAlertEmail, sendConsolidatedAlertsEmail } from './email-service';
 import AsyncStorage from '@/lib/storage';
 
 const ALERT_HISTORY_KEY = '@controle_maquina:notified_alerts';
@@ -110,8 +110,11 @@ export async function monitorRedAlerts(
 
   // Verificar se está no horário de envio (21h - horário de Brasília)
   const now = new Date();
-  const currentHour = now.getHours();
-  const isScheduledTime = currentHour === 21; // 21h
+
+  // Converter para horário de Brasília (UTC-3)
+  const brazilTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+  const currentHour = brazilTime.getHours();
+  const isScheduledTime = currentHour === 21; // 21h Brasília
 
   // Se forceEmailSend for true, simula que está às 21h (para testes)
   const shouldSendEmails = forceEmailSend || isScheduledTime;
@@ -119,12 +122,23 @@ export async function monitorRedAlerts(
   if (forceEmailSend) {
     console.log(`🧪 MODO TESTE: Forçando envio de emails (simulando 21h)`);
   } else {
-    console.log(`🕐 Hora atual: ${currentHour}h | Horário de envio: ${isScheduledTime ? 'SIM' : 'NÃO (apenas às 21h)'}`);
+    console.log(`🕐 Hora atual (Brasília): ${currentHour}h | Horário de envio: ${isScheduledTime ? 'SIM' : 'NÃO (apenas às 21h)'}`);
+    console.log(`   Data/Hora completa (Brasília): ${brazilTime.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`);
   }
+
+  // Arrays para coletar alertas por tipo
+  const tankAlertsToEmail: any[] = [];
+  const maintenanceAlertsToEmail: any[] = [];
 
   for (const alert of criticalAlerts) {
     console.log(`\n📋 Processando alerta: ${alert.id}`);
     console.log(`   Tipo: ${alert.type} | Status: ${alert.status}`);
+
+    // Log detalhado do alerta
+    if (alert.type === 'maintenance') {
+      console.log(`   Máquina ID: ${alert.machineId}`);
+      console.log(`   Item: ${alert.maintenanceItem}`);
+    }
 
     // Verificar se já foi notificado hoje
     const alreadyNotified = await wasNotifiedToday(alert.id);
@@ -150,36 +164,19 @@ export async function monitorRedAlerts(
         }
       );
 
-      // Enviar email se as informações estiverem disponíveis E for horário de envio
-      console.log(`   📧 Preparando envio de email...`);
-      console.log(`      shouldSendEmails: ${shouldSendEmails}`);
-      console.log(`      emailsArray.length: ${emailsArray.length}`);
-      console.log(`      userName: ${userName}`);
-
-      if (shouldSendEmails && emailsArray.length > 0 && userName) {
-        console.log(`   ✉️ ENVIANDO email de tanque para ${emailsArray.length} destinatário(s): ${emailsArray.join(', ')}`);
-        try {
-          await sendTankAlertEmail(
-            emailsArray,
-            userName,
-            alert.tankCurrentLiters,
-            alert.tankCapacityLiters,
-            alert.tankAlertLevelLiters,
-            alert.status
-          );
-          console.log(`   ✅ Email de tanque enviado com sucesso!`);
-        } catch (error) {
-          console.error(`   ❌ Erro ao enviar email de tanque:`, error);
-        }
-      } else if (!shouldSendEmails) {
-        console.log(`   ⏰ Email de tanque não enviado (aguardando horário das 21h)`);
-      } else {
-        console.log(`   ⚠️ Email de tanque não enviado (falta informações: emails=${emailsArray.length}, user=${userName})`);
-      }
+      // Coletar dados para email consolidado (não enviar ainda)
+      console.log(`   📧 Coletando alerta de tanque para email consolidado...`);
+      tankAlertsToEmail.push({
+        type: 'tank' as const,
+        status: alert.status,
+        tankCurrentLiters: alert.tankCurrentLiters,
+        tankCapacityLiters: alert.tankCapacityLiters,
+        tankAlertLevelLiters: alert.tankAlertLevelLiters,
+      });
 
       // Marcar como notificado
       await markAsNotified(alert.id);
-      console.log(`✅ Notificações de tanque enviadas para alerta: ${alert.id}`);
+      console.log(`✅ Notificação push de tanque enviada para alerta: ${alert.id}`);
       continue;
     }
 
@@ -215,38 +212,79 @@ export async function monitorRedAlerts(
       }
     );
 
-    // Enviar email se as informações estiverem disponíveis E for horário de envio
-    console.log(`   📧 Preparando envio de email...`);
-    console.log(`      shouldSendEmails: ${shouldSendEmails}`);
-    console.log(`      emailsArray.length: ${emailsArray.length}`);
-    console.log(`      userName: ${userName}`);
-
-    if (shouldSendEmails && emailsArray.length > 0 && userName) {
-      console.log(`   ✉️ ENVIANDO email de manutenção para ${emailsArray.length} destinatário(s): ${emailsArray.join(', ')}`);
-      try {
-        await sendRedAlertEmail(
-          emailsArray,
-          userName,
-          machineName,
-          alert.maintenanceItem,
-          machine.currentHourMeter,
-          alert.nextRevisionHourMeter
-        );
-        console.log(`   ✅ Email de manutenção enviado com sucesso!`);
-      } catch (error) {
-        console.error(`   ❌ Erro ao enviar email de manutenção:`, error);
-      }
-    } else if (!shouldSendEmails) {
-      console.log(`   ⏰ Email de manutenção não enviado (aguardando horário das 21h)`);
-    } else {
-      console.log(`   ⚠️ Email de manutenção não enviado (falta informações: emails=${emailsArray.length}, user=${userName})`);
-    }
+    // Coletar dados para email consolidado (não enviar ainda)
+    console.log(`   📧 Coletando alerta de manutenção para email consolidado...`);
+    const alertDataToCollect = {
+      type: 'maintenance' as const,
+      status: maintenanceAlert.status,
+      machineName,
+      maintenanceItem: maintenanceAlert.maintenanceItem,
+      currentHourMeter: machine.currentHourMeter,
+      nextRevisionHourMeter: maintenanceAlert.nextRevisionHourMeter,
+    };
+    maintenanceAlertsToEmail.push(alertDataToCollect);
+    console.log(`   ✅ Alerta coletado! Total de manutenções coletadas: ${maintenanceAlertsToEmail.length}`);
+    console.log(`   Dados coletados:`, JSON.stringify(alertDataToCollect, null, 2));
 
     // Marcar como notificado
     await markAsNotified(alert.id);
 
-    console.log(`✅ Notificações enviadas para alerta: ${alert.id}`);
+    console.log(`✅ Notificação push de manutenção enviada para alerta: ${alert.id}`);
   }
+
+  // Após processar todos os alertas, enviar emails consolidados
+  console.log(`\n📊 ============================================`);
+  console.log(`📊 RESUMO DE ALERTAS COLETADOS:`);
+  console.log(`   Tanque: ${tankAlertsToEmail.length} alerta(s)`);
+  console.log(`   Manutenção: ${maintenanceAlertsToEmail.length} alerta(s)`);
+  console.log(`   TOTAL: ${tankAlertsToEmail.length + maintenanceAlertsToEmail.length} alerta(s)`);
+  console.log(`📊 ============================================\n`);
+
+  // Log detalhado de todos os alertas de manutenção coletados
+  if (maintenanceAlertsToEmail.length > 0) {
+    console.log(`📋 Detalhes dos alertas de manutenção coletados:`);
+    maintenanceAlertsToEmail.forEach((alert, index) => {
+      console.log(`   ${index + 1}. ${alert.machineName} - ${alert.maintenanceItem} (${alert.status})`);
+    });
+  }
+
+  if (shouldSendEmails && emailsArray.length > 0 && userName) {
+    // Enviar email de tanque (se houver)
+    if (tankAlertsToEmail.length > 0) {
+      console.log(`\n📧 Enviando email de tanque para ${emailsArray.length} destinatário(s)...`);
+      try {
+        const tankAlert = tankAlertsToEmail[0]; // Usar o primeiro (deveria haver apenas 1 tanque)
+        await sendTankAlertEmail(
+          emailsArray,
+          userName,
+          tankAlert.tankCurrentLiters,
+          tankAlert.tankCapacityLiters,
+          tankAlert.tankAlertLevelLiters,
+          tankAlert.status
+        );
+        console.log(`✅ Email de tanque enviado com sucesso!`);
+      } catch (error) {
+        console.error(`❌ Erro ao enviar email de tanque:`, error);
+      }
+    }
+
+    // Enviar email consolidado de manutenções (se houver)
+    if (maintenanceAlertsToEmail.length > 0) {
+      console.log(`\n📧 Enviando email consolidado com ${maintenanceAlertsToEmail.length} manutenção(ões) para ${emailsArray.length} destinatário(s)...`);
+      try {
+        await sendConsolidatedAlertsEmail(emailsArray, userName, maintenanceAlertsToEmail);
+        console.log(`✅ Email consolidado de manutenções enviado com sucesso!`);
+      } catch (error) {
+        console.error(`❌ Erro ao enviar email consolidado de manutenções:`, error);
+      }
+    }
+  } else if (!shouldSendEmails) {
+    console.log(`\n⏰ Emails não enviados (aguardando horário das 21h)`);
+  } else {
+    console.log(`\n⚠️ Emails não enviados (falta informações: emails=${emailsArray.length}, user=${userName})`);
+  }
+
+  console.log(`\n✅ Processamento de alertas concluído!`);
 }
 
 /**

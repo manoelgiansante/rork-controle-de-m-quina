@@ -335,6 +335,140 @@ export function generateTankAlertEmailHTML(
 }
 
 /**
+ * Envia email consolidado com TODOS os alertas críticos
+ */
+export async function sendConsolidatedAlertsEmail(
+  userEmails: string | string[],
+  userName: string,
+  alertsData: Array<{
+    type: 'tank' | 'maintenance';
+    status: 'red' | 'yellow';
+    // Tank data
+    tankCurrentLiters?: number;
+    tankCapacityLiters?: number;
+    tankAlertLevelLiters?: number;
+    // Maintenance data
+    machineName?: string;
+    maintenanceItem?: string;
+    currentHourMeter?: number;
+    nextRevisionHourMeter?: number;
+  }>
+): Promise<boolean> {
+  // Converter para array se for string única
+  const emails = Array.isArray(userEmails) ? userEmails : [userEmails];
+
+  // Contar alertas por tipo
+  const redCount = alertsData.filter(a => a.status === 'red').length;
+  const yellowCount = alertsData.filter(a => a.status === 'yellow').length;
+
+  // Gerar HTML para cada alerta
+  let alertsHtml = '';
+
+  alertsData.forEach((alertData, index) => {
+    const bgColor = alertData.status === 'red' ? '#FFEBEE' : '#FFF9C4';
+    const borderColor = alertData.status === 'red' ? '#F44336' : '#FF9800';
+    const emoji = alertData.status === 'red' ? '🚨' : '⚠️';
+    const statusText = alertData.status === 'red' ? 'URGENTE' : 'ATENÇÃO';
+
+    if (alertData.type === 'tank') {
+      const percentageFilled = ((alertData.tankCurrentLiters || 0) / (alertData.tankCapacityLiters || 1)) * 100;
+      alertsHtml += `
+        <div style="background-color: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 16px; margin: 12px 0; border-radius: 4px;">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 24px; margin-right: 8px;">${emoji}</span>
+            <strong style="color: ${borderColor}; font-size: 16px;">${statusText}: Tanque de Combustível</strong>
+          </div>
+          <div style="margin-left: 32px;">
+            <p style="margin: 4px 0;"><strong>Nível Atual:</strong> ${alertData.tankCurrentLiters?.toFixed(0)}L (${percentageFilled.toFixed(0)}%)</p>
+            <p style="margin: 4px 0;"><strong>Capacidade Total:</strong> ${alertData.tankCapacityLiters?.toFixed(0)}L</p>
+            <p style="margin: 4px 0;"><strong>Nível de Alerta:</strong> ${alertData.tankAlertLevelLiters?.toFixed(0)}L</p>
+            <p style="margin: 4px 0; color: ${borderColor};"><strong>Status:</strong> ${alertData.status === 'red' ? 'Reabasteça imediatamente!' : 'Considere reabastecer em breve'}</p>
+          </div>
+        </div>
+      `;
+    } else {
+      const hoursOverdue = Math.abs((alertData.nextRevisionHourMeter || 0) - (alertData.currentHourMeter || 0));
+      const isOverdue = (alertData.currentHourMeter || 0) >= (alertData.nextRevisionHourMeter || 0);
+
+      alertsHtml += `
+        <div style="background-color: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 16px; margin: 12px 0; border-radius: 4px;">
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 24px; margin-right: 8px;">${emoji}</span>
+            <strong style="color: ${borderColor}; font-size: 16px;">${statusText}: ${alertData.machineName}</strong>
+          </div>
+          <div style="margin-left: 32px;">
+            <p style="margin: 4px 0;"><strong>Manutenção:</strong> ${alertData.maintenanceItem}</p>
+            <p style="margin: 4px 0;"><strong>Horímetro Atual:</strong> ${alertData.currentHourMeter?.toFixed(1)}h</p>
+            <p style="margin: 4px 0;"><strong>Próxima Revisão:</strong> ${alertData.nextRevisionHourMeter?.toFixed(1)}h</p>
+            <p style="margin: 4px 0; color: ${borderColor};"><strong>Status:</strong> ${isOverdue ? `ATRASADO (${hoursOverdue.toFixed(0)}h)` : `Faltam ${hoursOverdue.toFixed(0)}h`}</p>
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  const subject = `🚨 ${redCount > 0 ? `${redCount} URGENTE` : ''}${yellowCount > 0 ? ` ${yellowCount} Atenção` : ''} - Alertas de Manutenção`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px;">
+      <div style="background-color: #F44336; color: white; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px;">⚠️ Relatório de Alertas Críticos</h1>
+      </div>
+
+      <div style="background-color: #f9f9f9; padding: 24px; border-radius: 0 0 8px 8px;">
+        <p style="font-size: 16px; margin-bottom: 8px;">Olá <strong>${userName}</strong>,</p>
+
+        <p style="font-size: 16px; margin-bottom: 20px;">
+          Você possui <strong>${alertsData.length} alerta${alertsData.length > 1 ? 's' : ''} crítico${alertsData.length > 1 ? 's' : ''}</strong>
+          que ${alertsData.length > 1 ? 'requerem' : 'requer'} atenção:
+        </p>
+
+        <div style="background-color: #E3F2FD; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+          <strong style="color: #1976D2;">Resumo:</strong>
+          ${redCount > 0 ? `<span style="color: #F44336; margin-left: 12px;">🚨 ${redCount} Urgente${redCount > 1 ? 's' : ''}</span>` : ''}
+          ${yellowCount > 0 ? `<span style="color: #FF9800; margin-left: 12px;">⚠️ ${yellowCount} Atenção</span>` : ''}
+        </div>
+
+        ${alertsHtml}
+
+        <div style="background-color: #FFF3E0; border-left: 4px solid #FF9800; padding: 16px; margin-top: 24px; border-radius: 4px;">
+          <strong style="color: #E65100;">📋 Ação Requerida:</strong>
+          <p style="margin: 8px 0 0 0; color: #555;">
+            Por favor, verifique e resolva os alertas acima o quanto antes para garantir o bom funcionamento das operações.
+          </p>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 30px; color: #999; font-size: 12px;">
+        <p>Este é um email automático do sistema Controle de Máquina.</p>
+        <p>© ${new Date().getFullYear()} Controle de Máquina. Todos os direitos reservados.</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Enviar para todos os emails
+  const results = await Promise.all(
+    emails.map(email =>
+      sendEmail({
+        to: email,
+        subject,
+        html,
+      })
+    )
+  );
+
+  // Retorna true se pelo menos um email foi enviado com sucesso
+  return results.some(result => result === true);
+}
+
+/**
  * Envia email de alerta de tanque para um ou mais destinatários
  */
 export async function sendTankAlertEmail(
