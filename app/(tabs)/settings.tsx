@@ -413,7 +413,7 @@ export default function SettingsScreen() {
             </Text>
 
             <Text style={styles.modalDescription}>
-              Os seguintes dados serão permanentemente excluídos:
+              Todos os seus dados serão permanentemente excluídos:
             </Text>
 
             <View style={styles.modalList}>
@@ -422,12 +422,6 @@ export default function SettingsScreen() {
               <Text style={styles.modalListItem}>• Histórico de manutenções</Text>
               <Text style={styles.modalListItem}>• Propriedades cadastradas</Text>
               <Text style={styles.modalListItem}>• Sua conta de usuário</Text>
-            </View>
-
-            <View style={styles.modalImportantNote}>
-              <Text style={styles.modalImportantText}>
-                ⚠️ Seu histórico de assinatura será MANTIDO para evitar fraudes.
-              </Text>
             </View>
 
             <Text style={styles.modalConfirmText}>
@@ -734,28 +728,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   modalListItem: {
     fontSize: 14,
     color: '#555',
     marginBottom: 6,
     lineHeight: 20,
-  },
-  modalImportantNote: {
-    backgroundColor: '#FFF3CD',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#FFC107',
-  },
-  modalImportantText: {
-    fontSize: 13,
-    color: '#856404',
-    fontWeight: '600' as const,
-    textAlign: 'center' as const,
-    lineHeight: 18,
   },
   modalConfirmText: {
     fontSize: 15,
