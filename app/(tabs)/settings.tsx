@@ -17,6 +17,7 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@/lib/storage';
 import { supabase } from '@/lib/supabase/client';
+import { sendWelcomeEmail } from '@/lib/notifications/email-service';
 
 const MAX_EMAILS = 3;
 const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
@@ -101,14 +102,24 @@ export default function SettingsScreen() {
     try {
       console.log('[ADD EMAIL] Adicionando email:', emailToAdd);
 
-      // Adicionar email à lista (sem envio de teste)
+      // Adicionar email à lista
       const updatedEmails = [...savedEmails, emailToAdd];
       await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
       setSavedEmails(updatedEmails);
       setNewEmail('');
-      setIsSaving(false);
 
       console.log('[ADD EMAIL] ✅ Email adicionado com sucesso');
+
+      // Enviar email de boas-vindas
+      console.log('[ADD EMAIL] Enviando email de boas-vindas...');
+      const welcomeEmailSent = await sendWelcomeEmail(emailToAdd, currentUser?.name || 'Usuário');
+      if (welcomeEmailSent) {
+        console.log('[ADD EMAIL] ✅ Email de boas-vindas enviado com sucesso');
+      } else {
+        console.warn('[ADD EMAIL] ⚠️ Não foi possível enviar email de boas-vindas');
+      }
+
+      setIsSaving(false);
 
       // Se for o primeiro email e tiver alertas, enviar notificação imediata
       const isFirstEmail = savedEmails.length === 0;
