@@ -36,6 +36,7 @@ export default function RefuelingScreen() {
   );
   const [liters, setLiters] = useState<string>('');
   const [hourMeter, setHourMeter] = useState<string>('');
+  const [refueledBy, setRefueledBy] = useState<string>('');
   const [serviceType, setServiceType] = useState<ServiceType | ''>('');
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState<boolean>(false);
   const [newServiceName, setNewServiceName] = useState<string>('');
@@ -45,6 +46,7 @@ export default function RefuelingScreen() {
     setDate(new Date().toISOString().split('T')[0]);
     setLiters('');
     setHourMeter('');
+    setRefueledBy('');
     setServiceType('');
   };
 
@@ -73,6 +75,10 @@ export default function RefuelingScreen() {
     }
     if (!hourMeter || parseFloat(hourMeter) < 0) {
       Alert.alert('Erro', 'Informe o horímetro atual da máquina');
+      return;
+    }
+    if (!refueledBy.trim()) {
+      Alert.alert('Erro', 'Informe quem realizou o abastecimento');
       return;
     }
 
@@ -124,6 +130,7 @@ export default function RefuelingScreen() {
         date: date,
         liters: litersValue,
         hourMeter: parseDecimal(hourMeter),
+        refueledBy: refueledBy.trim(),
         serviceType: serviceType || undefined,
         userId: currentUser.id,
         userName: currentUser.name,
@@ -134,9 +141,14 @@ export default function RefuelingScreen() {
       await consumeFuel(litersValue);
       console.log('✅ Combustível consumido do tanque');
 
-      resetForm();
+      // Fechar modal e resetar formulário
       setIsModalOpen(false);
-      Alert.alert('Sucesso', `Abastecimento de ${formatLiters(litersValue)} registrado com sucesso!`);
+      resetForm();
+
+      // Aguardar um breve momento para garantir que o histórico seja atualizado na UI
+      setTimeout(() => {
+        Alert.alert('Sucesso', `Abastecimento de ${formatLiters(litersValue)} registrado com sucesso!`);
+      }, 100);
     } catch (error) {
       console.error('❌ Erro ao salvar abastecimento:', error);
       Alert.alert('Erro', 'Não foi possível salvar o abastecimento. Tente novamente.');
@@ -210,6 +222,12 @@ export default function RefuelingScreen() {
                       <View style={styles.historyCardRow}>
                         <Text style={styles.historyCardLabel}>Serviço:</Text>
                         <Text style={styles.historyCardValue}>{refueling.serviceType}</Text>
+                      </View>
+                    )}
+                    {refueling.refueledBy && (
+                      <View style={styles.historyCardRow}>
+                        <Text style={styles.historyCardLabel}>Abastecido por:</Text>
+                        <Text style={styles.historyCardValue}>{refueling.refueledBy}</Text>
                       </View>
                     )}
                     <Text style={styles.historyCardUser}>
@@ -319,6 +337,18 @@ export default function RefuelingScreen() {
                 returnKeyType="done"
                 blurOnSubmit={true}
                 onSubmitEditing={() => Keyboard.dismiss()}
+              />
+
+              <Text style={styles.label}>
+                Abastecido por: <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={refueledBy}
+                onChangeText={setRefueledBy}
+                placeholder="Ex: João Silva"
+                placeholderTextColor="#999"
+                autoCapitalize="words"
               />
 
               <Text style={styles.label}>Serviço Atual (opcional)</Text>

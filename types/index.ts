@@ -40,6 +40,7 @@ export interface Refueling {
   hourMeter: number;
   serviceType?: ServiceType;
   averageConsumption?: number;
+  refueledBy: string;
   userId: string;
   userName: string;
   createdAt: string;
@@ -60,6 +61,7 @@ export interface Maintenance {
   items: MaintenanceItem[];
   observation?: string;
   itemRevisions: MaintenanceItemRevision[];
+  performedBy: string;
   userId: string;
   userName: string;
   createdAt: string;

@@ -23,6 +23,7 @@ export default function MaintenanceScreen() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
   const [hourMeter, setHourMeter] = useState<string>('');
+  const [performedBy, setPerformedBy] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<MaintenanceItem[]>([]);
   const [observation, setObservation] = useState<string>('');
   const [itemRevisions, setItemRevisions] = useState<Record<MaintenanceItem, string>>({});
@@ -32,6 +33,7 @@ export default function MaintenanceScreen() {
   const resetForm = () => {
     setSelectedMachineId('');
     setHourMeter('');
+    setPerformedBy('');
     setSelectedItems([]);
     setObservation('');
     setItemRevisions({});
@@ -70,6 +72,10 @@ export default function MaintenanceScreen() {
       Alert.alert('Erro', 'Informe o horímetro atual da máquina');
       return;
     }
+    if (!performedBy.trim()) {
+      Alert.alert('Erro', 'Informe quem realizou a manutenção');
+      return;
+    }
     if (selectedItems.length === 0) {
       Alert.alert('Erro', 'Selecione pelo menos um item de manutenção');
       return;
@@ -97,6 +103,7 @@ export default function MaintenanceScreen() {
       propertyId: currentPropertyId,
       machineId: selectedMachineId,
       hourMeter: parseFloat(hourMeter),
+      performedBy: performedBy.trim(),
       items: selectedItems,
       observation: observation.trim() || undefined,
       itemRevisions: revisions,
@@ -104,9 +111,14 @@ export default function MaintenanceScreen() {
       userName: currentUser.name,
     });
 
-    resetForm();
+    // Fechar modal e resetar formulário
     setIsModalOpen(false);
-    Alert.alert('Sucesso', 'Manutenção registrada com sucesso!');
+    resetForm();
+
+    // Aguardar um breve momento para garantir que os dados sejam atualizados na UI
+    setTimeout(() => {
+      Alert.alert('Sucesso', 'Manutenção registrada com sucesso!');
+    }, 100);
   };
 
   useEffect(() => {
@@ -206,6 +218,18 @@ export default function MaintenanceScreen() {
                     returnKeyType="done"
                     blurOnSubmit={true}
                     onSubmitEditing={() => Keyboard.dismiss()}
+              />
+
+              <Text style={styles.label}>
+                Feito por: <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={performedBy}
+                onChangeText={setPerformedBy}
+                placeholder="Ex: João Silva"
+                placeholderTextColor="#999"
+                autoCapitalize="words"
               />
 
               <Text style={styles.label}>
