@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { PropertyProvider } from "@/contexts/PropertyContext";
+import { NotificationsProvider } from "@/components/NotificationsProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -67,9 +68,11 @@ export default function RootLayout() {
             <SubscriptionProvider>
               <PropertyProvider>
                 <DataProvider>
-                  <GestureHandlerRootView style={{ flex: 1 }}>
-                    <RootLayoutNav />
-                  </GestureHandlerRootView>
+                  <NotificationsProvider>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <RootLayoutNav />
+                    </GestureHandlerRootView>
+                  </NotificationsProvider>
                 </DataProvider>
               </PropertyProvider>
             </SubscriptionProvider>

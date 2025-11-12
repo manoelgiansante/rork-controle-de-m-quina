@@ -22,7 +22,8 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Usamos a câmera para anexar fotos das máquinas e abastecimentos.",
         "NSPhotoLibraryUsageDescription": "Precisamos da galeria para anexar imagens ao registro.",
-        "NSLocationWhenInUseUsageDescription": "Usamos sua localização para registrar operações no campo."
+        "NSLocationWhenInUseUsageDescription": "Usamos sua localização para registrar operações no campo.",
+        "NSUserNotificationsUsageDescription": "Precisamos enviar notificações para alertar sobre manutenções urgentes."
       }
     },
     "android": {
@@ -36,8 +37,12 @@
         "CAMERA",
         "ACCESS_FINE_LOCATION",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+        "WRITE_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      "useNextNotificationsApi": true
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -50,7 +55,15 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#2D5016",
+          "sounds": ["./assets/sounds/notification.wav"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

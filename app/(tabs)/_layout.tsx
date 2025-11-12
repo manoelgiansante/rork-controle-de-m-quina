@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from 'expo-router';
-import { BookOpen, CreditCard, Droplet, Fuel, Settings, Tractor, HelpCircle } from 'lucide-react-native';
+import { BookOpen, CreditCard, Droplet, Fuel, Settings, Tractor, HelpCircle, Wrench } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,7 +67,7 @@ export default function TabLayout() {
         name="maintenance"
         options={{
           title: 'Manutenção',
-          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Wrench size={24} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -96,6 +96,13 @@ export default function TabLayout() {
         options={{
           title: 'Assinatura',
           tabBarIcon: ({ color }) => <CreditCard size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Configurações',
+          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
         }}
       />
     </Tabs>

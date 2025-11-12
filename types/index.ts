@@ -14,6 +14,7 @@ export interface User {
   password: string;
   role: UserRole;
   name: string;
+  email?: string;
   acceptedTermsAt?: string;
 }
 
