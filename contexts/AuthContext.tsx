@@ -333,7 +333,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
         if (error) {
           console.error('[SUPABASE AUTH] Erro no login:', error.message || error);
+          console.log('[SUPABASE AUTH] Código do erro:', error.status || 'N/A');
           console.log('[SUPABASE AUTH] Tentando fallback para login local...');
+          console.log('[SUPABASE AUTH] Total de usuários no array local:', users.length);
+          console.log('[SUPABASE AUTH] Plataforma:', Platform.OS);
 
           // Fallback: tentar login local com AsyncStorage
           const localUser = users.find(
@@ -341,7 +344,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           );
 
           if (localUser) {
-            console.log('[SUPABASE AUTH] Usuário encontrado no storage local!');
+            console.log('[SUPABASE AUTH] ✅ Usuário encontrado no storage local!');
+            console.log('[SUPABASE AUTH] Usuário local:', { id: localUser.id, username: localUser.username, name: localUser.name });
             setCurrentUser(localUser);
 
             if (isWeb && typeof localStorage !== 'undefined') {
@@ -361,6 +365,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             return true;
           }
 
+          console.log('[SUPABASE AUTH] ❌ Usuário NÃO encontrado no storage local');
+          console.log('[SUPABASE AUTH] Username procurado:', username);
+          console.log('[SUPABASE AUTH] Usuários disponíveis:', users.map(u => ({ username: u.username, id: u.id })));
           return false;
         }
 
