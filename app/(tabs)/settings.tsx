@@ -1,5 +1,4 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useProperty } from '@/contexts/PropertyContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Bell, BellOff, Mail, Settings as SettingsIcon, User, Trash2, Edit2, X } from 'lucide-react-native';
 import React, { useState, useEffect } from 'react';
@@ -24,7 +23,6 @@ const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
 
 export default function SettingsScreen() {
   const { currentUser, logout } = useAuth();
-  const { currentPropertyName } = useProperty();
   const { expoPushToken, notificationsEnabled, toggleNotifications } = useNotifications();
   const router = useRouter();
 
@@ -476,10 +474,6 @@ export default function SettingsScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Usuário:</Text>
               <Text style={styles.infoValue}>{currentUser?.username}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Propriedade Atual:</Text>
-              <Text style={styles.infoValue}>{currentPropertyName || 'Não selecionada'}</Text>
             </View>
           </View>
         </View>
