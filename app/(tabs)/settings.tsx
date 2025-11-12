@@ -72,7 +72,7 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       'Sair',
       'Deseja realmente sair da sua conta?',
@@ -81,17 +81,11 @@ export default function SettingsScreen() {
         {
           text: 'Sair',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              // Redirecionar para login apenas no mobile (web já redireciona automaticamente)
-              if (Platform.OS !== 'web') {
-                router.replace('/login');
-              }
-            } catch (error) {
-              console.error('[SETTINGS] Erro ao fazer logout:', error);
-              Alert.alert('Erro', 'Não foi possível fazer logout. Tente novamente.');
-            }
+          onPress: () => {
+            console.log('[SETTINGS] Executando logout...');
+            logout();
+            console.log('[SETTINGS] Logout executado, _layout deve redirecionar automaticamente');
+            // O _layout.tsx já detecta quando isAuthenticated = false e redireciona automaticamente
           }
         },
       ]
@@ -178,23 +172,43 @@ export default function SettingsScreen() {
         '@controle_maquina:notified_alerts',
       ];
 
-      // Deletar do AsyncStorage
-      for (const key of storageKeys) {
-        try {
-          await AsyncStorage.removeItem(key);
-        } catch (err) {
-          console.warn(`[DELETE ACCOUNT] Erro ao deletar ${key}:`, err);
+      if (Platform.OS === 'web') {
+        // Web: usar localStorage
+        console.log('[DELETE ACCOUNT] Limpando localStorage (web)...');
+        if (typeof localStorage !== 'undefined') {
+          for (const key of storageKeys) {
+            try {
+              localStorage.removeItem(key);
+              console.log(`[DELETE ACCOUNT] ✓ Removido: ${key}`);
+            } catch (err) {
+              console.warn(`[DELETE ACCOUNT] Erro ao deletar ${key}:`, err);
+            }
+          }
+          // Limpar tudo do localStorage
+          try {
+            localStorage.clear();
+            console.log('[DELETE ACCOUNT] ✓ localStorage completamente limpo');
+          } catch (err) {
+            console.warn('[DELETE ACCOUNT] Erro ao limpar localStorage:', err);
+          }
         }
-      }
-
-      // Deletar do localStorage (web)
-      if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      } else {
+        // Mobile: usar AsyncStorage
+        console.log('[DELETE ACCOUNT] Limpando AsyncStorage (mobile)...');
         for (const key of storageKeys) {
           try {
-            localStorage.removeItem(key);
+            await AsyncStorage.removeItem(key);
+            console.log(`[DELETE ACCOUNT] ✓ Removido: ${key}`);
           } catch (err) {
-            console.warn(`[DELETE ACCOUNT] Erro ao deletar ${key} do localStorage:`, err);
+            console.warn(`[DELETE ACCOUNT] Erro ao deletar ${key}:`, err);
           }
+        }
+        // Limpar tudo do AsyncStorage
+        try {
+          await AsyncStorage.clear();
+          console.log('[DELETE ACCOUNT] ✓ AsyncStorage completamente limpo');
+        } catch (err) {
+          console.warn('[DELETE ACCOUNT] Erro ao limpar AsyncStorage:', err);
         }
       }
 
