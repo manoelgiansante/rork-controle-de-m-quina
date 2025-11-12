@@ -49,4 +49,4 @@ with_node \
   --entitlement "/Users/manoelnascimento/Documents/controle/ios/ControledeMquina/ControledeMquina.entitlements" \
    \
   --platform "apple" \
-  --packages "expo" "expo-asset" "expo-blur" "expo-constants" "expo-file-system" "expo-font" "expo-haptics" "expo-image" "expo-image-picker" "expo-keep-awake" "expo-linear-gradient" "expo-linking" "expo-location" "expo-router" "expo-splash-screen" "expo-symbols" "expo-system-ui" "expo-web-browser"
+  --packages "expo" "expo-application" "expo-asset" "expo-blur" "expo-constants" "expo-file-system" "expo-font" "expo-haptics" "expo-image" "expo-image-picker" "expo-keep-awake" "expo-linear-gradient" "expo-linking" "expo-location" "expo-notifications" "expo-router" "expo-splash-screen" "expo-symbols" "expo-system-ui" "expo-web-browser"

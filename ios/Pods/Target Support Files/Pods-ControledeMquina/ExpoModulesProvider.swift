@@ -7,6 +7,7 @@
 
 import ExpoModulesCore
 import Expo
+import EXApplication
 import ExpoAsset
 import ExpoBlur
 import EXConstants
@@ -19,6 +20,7 @@ import ExpoKeepAwake
 import ExpoLinearGradient
 import ExpoLinking
 import ExpoLocation
+import EXNotifications
 import ExpoHead
 import ExpoSplashScreen
 import ExpoSymbols
@@ -30,6 +32,7 @@ public class ExpoModulesProvider: ModulesProvider {
   public override func getModuleClasses() -> [AnyModule.Type] {
     return [
       ExpoFetchModule.self,
+      ApplicationModule.self,
       AssetModule.self,
       BlurViewModule.self,
       ConstantsModule.self,
@@ -44,6 +47,16 @@ public class ExpoModulesProvider: ModulesProvider {
       LinearGradientModule.self,
       ExpoLinkingModule.self,
       LocationModule.self,
+      BackgroundModule.self,
+      BadgeModule.self,
+      CategoriesModule.self,
+      EmitterModule.self,
+      HandlerModule.self,
+      PermissionsModule.self,
+      PresentationModule.self,
+      PushTokenModule.self,
+      SchedulerModule.self,
+      ServerRegistrationModule.self,
       ExpoHeadModule.self,
       LinkPreviewNativeModule.self,
       SplashScreenModule.self,
@@ -57,6 +70,7 @@ public class ExpoModulesProvider: ModulesProvider {
     return [
       FileSystemBackgroundSessionHandler.self,
       LinkingAppDelegateSubscriber.self,
+      NotificationsAppDelegateSubscriber.self,
       ExpoHeadAppDelegateSubscriber.self,
       SplashScreenAppDelegateSubscriber.self
     ]
