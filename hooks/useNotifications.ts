@@ -111,6 +111,10 @@ export function useNotifications() {
     lastCheckRef.current = now;
 
     console.log('🔍 Verificando alertas vermelhos...');
+    console.log('📧 Email do usuário:', currentUser.email);
+    console.log('👤 Nome do usuário:', currentUser.name);
+    console.log('🚨 Total de alertas:', alerts.length);
+
     await monitorRedAlerts(
       alerts,
       machines,
