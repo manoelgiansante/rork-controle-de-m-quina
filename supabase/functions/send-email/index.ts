@@ -35,6 +35,8 @@ serve(async (req) => {
     }
 
     console.log('📧 Enviando email para:', to)
+    console.log('🔑 API Key presente?', RESEND_API_KEY ? 'Sim' : 'Não')
+    console.log('🔑 API Key length:', RESEND_API_KEY?.length || 0)
 
     // Enviar email via Resend
     const response = await fetch('https://api.resend.com/emails', {
