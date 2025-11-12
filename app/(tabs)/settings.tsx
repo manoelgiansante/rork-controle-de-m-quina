@@ -43,12 +43,50 @@ export default function SettingsScreen() {
 
   const loadSavedEmails = async () => {
     try {
-      const emailsJson = await AsyncStorage.getItem(NOTIFICATION_EMAILS_KEY);
-      if (emailsJson) {
-        const emails: string[] = JSON.parse(emailsJson);
-        setSavedEmails(emails);
-        console.log('[SETTINGS] Emails carregados:', emails);
+      if (!currentUser?.id) {
+        console.log('[SETTINGS] Usuário não logado, pulando carregamento de emails');
+        return;
       }
+
+      // Buscar emails do Supabase
+      const { data, error } = await supabase
+        .from('notification_emails')
+        .select('email')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('[SETTINGS] Erro ao carregar emails do Supabase:', error);
+        // Fallback: tentar carregar do AsyncStorage local
+        const emailsJson = await AsyncStorage.getItem(NOTIFICATION_EMAILS_KEY);
+        if (emailsJson) {
+          const localEmails: string[] = JSON.parse(emailsJson);
+          setSavedEmails(localEmails);
+          console.log('[SETTINGS] Emails carregados do AsyncStorage (fallback):', localEmails);
+
+          // Migrar emails locais para o Supabase
+          console.log('[SETTINGS] Migrando emails locais para Supabase...');
+          for (const email of localEmails) {
+            try {
+              await supabase.from('notification_emails').insert({
+                user_id: currentUser.id,
+                email: email,
+              });
+            } catch (err) {
+              console.warn('[SETTINGS] Erro ao migrar email:', email, err);
+            }
+          }
+          console.log('[SETTINGS] ✅ Migração concluída');
+        }
+        return;
+      }
+
+      const emails = data?.map(row => row.email) || [];
+      setSavedEmails(emails);
+      console.log('[SETTINGS] Emails carregados do Supabase:', emails);
+
+      // Sincronizar com AsyncStorage local para cache
+      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(emails));
     } catch (error) {
       console.error('[SETTINGS] Erro ao carregar emails:', error);
     }
@@ -102,11 +140,30 @@ export default function SettingsScreen() {
     try {
       console.log('[ADD EMAIL] Adicionando email:', emailToAdd);
 
-      // Adicionar email à lista
+      if (!currentUser?.id) {
+        throw new Error('Usuário não está logado');
+      }
+
+      // Adicionar email no Supabase
+      const { error } = await supabase
+        .from('notification_emails')
+        .insert({
+          user_id: currentUser.id,
+          email: emailToAdd,
+        });
+
+      if (error) {
+        console.error('[ADD EMAIL] Erro do Supabase:', error);
+        throw new Error('Não foi possível salvar no servidor');
+      }
+
+      // Atualizar estado local
       const updatedEmails = [...savedEmails, emailToAdd];
-      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
       setSavedEmails(updatedEmails);
       setNewEmail('');
+
+      // Atualizar cache local
+      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
 
       console.log('[ADD EMAIL] ✅ Email adicionado com sucesso');
 
@@ -190,12 +247,33 @@ export default function SettingsScreen() {
     }
 
     try {
+      if (!currentUser?.id) {
+        throw new Error('Usuário não está logado');
+      }
+
+      const oldEmail = savedEmails[index];
+
+      // Atualizar email no Supabase
+      const { error } = await supabase
+        .from('notification_emails')
+        .update({ email: emailToSave })
+        .eq('user_id', currentUser.id)
+        .eq('email', oldEmail);
+
+      if (error) {
+        console.error('[EDIT EMAIL] Erro do Supabase:', error);
+        throw new Error('Não foi possível atualizar no servidor');
+      }
+
+      // Atualizar estado local
       const updatedEmails = [...savedEmails];
       updatedEmails[index] = emailToSave;
-      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
       setSavedEmails(updatedEmails);
       setEditingIndex(null);
       setEditingEmail('');
+
+      // Atualizar cache local
+      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
 
       console.log('[EDIT EMAIL] ✅ Email atualizado com sucesso');
 
@@ -238,9 +316,28 @@ export default function SettingsScreen() {
     if (!confirmDelete) return;
 
     try {
+      if (!currentUser?.id) {
+        throw new Error('Usuário não está logado');
+      }
+
+      // Deletar email do Supabase
+      const { error } = await supabase
+        .from('notification_emails')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('email', emailToDelete);
+
+      if (error) {
+        console.error('[DELETE EMAIL] Erro do Supabase:', error);
+        throw new Error('Não foi possível deletar do servidor');
+      }
+
+      // Atualizar estado local
       const updatedEmails = savedEmails.filter((_, i) => i !== index);
-      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
       setSavedEmails(updatedEmails);
+
+      // Atualizar cache local
+      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
 
       console.log('[DELETE EMAIL] ✅ Email removido com sucesso');
 
