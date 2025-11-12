@@ -2438,7 +2438,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNSVG (15.14.0):
+  - RNSVG (15.12.1):
     - React-Core
   - SDWebImage (5.21.3):
     - SDWebImage/Core (= 5.21.3)
@@ -2866,7 +2866,7 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 23e56519cc41d3bade3c8d4479f7760cb1c11996
   RNGestureHandler: 4e01eefc427d3af22b877fdb4f7bc826132daab6
   RNScreens: 9ae2656a55e9466dc04da3ba196d7932a6bd8146
-  RNSVG: c9dd030d3528c9c9c4d53524f397edf2e0314077
+  RNSVG: 3e87821b2215b30e19f90232247007e5c313a06c
   SDWebImage: 16309af6d214ba3f77a7c6f6fdda888cb313a50a
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
@@ -2874,6 +2874,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 728df40394d49f3f471688747cf558158b3a3bd1
 
-PODFILE CHECKSUM: 17b9a2c1dd3b4bb55ce0d553e33ba04ead3aa08c
+PODFILE CHECKSUM: 19c465613fddc3192c53e1b3fbf51d3254824ac1
 
 COCOAPODS: 1.16.2
