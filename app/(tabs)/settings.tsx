@@ -46,13 +46,68 @@ export default function SettingsScreen() {
     }
 
     setIsSaving(true);
-    // TODO: Implementar função para salvar email no banco de dados
-    // await updateUserEmail(currentUser.id, userEmail);
 
-    setTimeout(() => {
+    try {
+      // TODO: Salvar email no banco de dados
+      // await updateUserEmail(currentUser.id, userEmail);
+
+      // Enviar email de teste automaticamente
+      console.log('[SAVE EMAIL] Enviando email de teste para:', userEmail);
+
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: userEmail,
+          subject: '✅ Email Configurado com Sucesso - Controle de Máquina',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #2D5016;">Email Configurado com Sucesso! 🎉</h2>
+
+              <p>Olá, <strong>${currentUser?.name}</strong>!</p>
+
+              <p>Seu email foi configurado com sucesso no sistema <strong>Controle de Máquina</strong>.</p>
+
+              <div style="background-color: #E8F5E9; border-left: 4px solid #2D5016; padding: 16px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #2D5016;">📧 O que você vai receber:</h3>
+                <ul style="margin-bottom: 0;">
+                  <li>Alertas quando manutenções ficarem urgentes (vermelho)</li>
+                  <li>Notificações automáticas a cada 24 horas por alerta</li>
+                  <li>Verificações automáticas a cada 30 minutos</li>
+                </ul>
+              </div>
+
+              <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                Este é um email de teste para confirmar que tudo está funcionando corretamente.
+              </p>
+
+              <hr style="border: none; border-top: 1px solid #DDD; margin: 30px 0;">
+
+              <p style="color: #999; font-size: 12px; text-align: center;">
+                Controle de Máquina - Sistema de Gestão de Manutenção
+              </p>
+            </div>
+          `,
+        },
+      });
+
+      if (error) {
+        console.error('[SAVE EMAIL] Erro ao enviar email de teste:', error);
+        throw error;
+      }
+
+      console.log('[SAVE EMAIL] ✅ Email de teste enviado com sucesso!');
       setIsSaving(false);
-      Alert.alert('Sucesso', 'Email salvo com sucesso!');
-    }, 1000);
+      Alert.alert(
+        'Sucesso!',
+        `Email salvo e email de teste enviado para ${userEmail}!\n\nVerifique sua caixa de entrada (ou spam).`
+      );
+    } catch (error) {
+      console.error('[SAVE EMAIL] Erro:', error);
+      setIsSaving(false);
+      Alert.alert(
+        'Erro',
+        'Não foi possível enviar o email de teste. Verifique sua conexão e tente novamente.'
+      );
+    }
   };
 
   const handleTestNotification = async () => {
