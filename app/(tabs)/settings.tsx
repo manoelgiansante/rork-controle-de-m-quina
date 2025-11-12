@@ -48,10 +48,35 @@ export default function SettingsScreen() {
     setIsSaving(true);
 
     try {
-      // TODO: Salvar email no banco de dados
-      // await updateUserEmail(currentUser.id, userEmail);
+      // 1. Salvar email no usuário (AsyncStorage/localStorage)
+      if (!currentUser) {
+        throw new Error('Usuário não autenticado');
+      }
 
-      // Enviar email de teste automaticamente
+      console.log('[SAVE EMAIL] Salvando email no usuário:', userEmail);
+
+      // Atualizar usuário com email
+      const updatedUser = { ...currentUser, email: userEmail.trim() };
+
+      // Carregar todos os usuários
+      const usersJson = await AsyncStorage.getItem('@controle_maquina:users');
+      const allUsers: any[] = usersJson ? JSON.parse(usersJson) : [];
+
+      // Atualizar o usuário atual na lista
+      const userIndex = allUsers.findIndex((u) => u.id === currentUser.id);
+      if (userIndex >= 0) {
+        allUsers[userIndex] = updatedUser;
+      } else {
+        allUsers.push(updatedUser);
+      }
+
+      // Salvar de volta
+      await AsyncStorage.setItem('@controle_maquina:users', JSON.stringify(allUsers));
+      await AsyncStorage.setItem('@controle_maquina:current_user', JSON.stringify(updatedUser));
+
+      console.log('[SAVE EMAIL] ✅ Email salvo no AsyncStorage');
+
+      // 2. Enviar email de teste automaticamente
       console.log('[SAVE EMAIL] Enviando email de teste para:', userEmail);
 
       const { error } = await supabase.functions.invoke('send-email', {
@@ -105,7 +130,7 @@ export default function SettingsScreen() {
       setIsSaving(false);
       Alert.alert(
         'Erro',
-        'Não foi possível enviar o email de teste. Verifique sua conexão e tente novamente.'
+        'Não foi possível salvar o email. Verifique sua conexão e tente novamente.'
       );
     }
   };
