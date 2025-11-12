@@ -11,17 +11,13 @@ import {
   Platform,
 } from 'react-native';
 import { confirm } from '@/lib/confirm';
-import { ChevronDown, Edit2, LogOut, Plus, Trash2, X } from 'lucide-react-native';
+import { ChevronDown, Edit2, Plus, Trash2, X } from 'lucide-react-native';
 import { useProperty } from '@/contexts/PropertyContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import { useRouter } from 'expo-router';
 
 export default function PropertySelector() {
   const { properties, currentProperty, switchProperty, addProperty, updateProperty, deleteProperty, isLoading: propertyLoading } = useProperty();
   const { deletePropertyData } = useData();
-  const { logout, isLoading: authLoading } = useAuth();
-  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [newPropertyName, setNewPropertyName] = useState<string>('');
@@ -73,28 +69,6 @@ export default function PropertySelector() {
     setIsAddingNew(true);
   };
 
-  const handleLogout = async () => {
-    const ok = await confirm('Sair da conta', 'Deseja realmente sair da conta?');
-    if (!ok) return;
-
-    try {
-      console.log('PropertySelector: Iniciando logout...');
-      setIsModalOpen(false);
-      
-      await logout();
-      
-      if (Platform.OS !== 'web') {
-        console.log('PropertySelector: Redirecionando para login (mobile)');
-        router.replace('/login');
-      }
-    } catch (error) {
-      console.error('PropertySelector: Erro ao fazer logout:', error);
-      if (Platform.OS !== 'web') {
-        router.replace('/login');
-      }
-    }
-  };
-
   const handleDeleteProperty = async (propertyId: string, propertyName: string) => {
     if (properties.length === 1) {
       Alert.alert('Erro', 'Você precisa ter pelo menos uma propriedade cadastrada.');
@@ -118,8 +92,8 @@ export default function PropertySelector() {
     }
   };
 
-  if (authLoading || propertyLoading) {
-    console.log('[PropertySelector] Loading state:', { authLoading, propertyLoading });
+  if (propertyLoading) {
+    console.log('[PropertySelector] Loading state:', { propertyLoading });
     return (
       <View style={styles.selectorButton}>
         <Text style={styles.selectorText}>Carregando...</Text>
@@ -251,28 +225,17 @@ export default function PropertySelector() {
               )}
 
               {!isAddingNew && (
-                <>
-                  <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => {
-                      console.log('Clicou em adicionar nova propriedade');
-                      setIsAddingNew(true);
-                    }}
-                    testID="add-property-button"
-                  >
-                    <Plus size={20} color="#2D5016" />
-                    <Text style={styles.addButtonText}>Adicionar nova propriedade</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.logoutButton}
-                    onPress={handleLogout}
-                    testID="logout-button"
-                  >
-                    <LogOut size={20} color="#FF5722" />
-                    <Text style={styles.logoutButtonText}>Sair da conta</Text>
-                  </TouchableOpacity>
-                </>
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={() => {
+                    console.log('Clicou em adicionar nova propriedade');
+                    setIsAddingNew(true);
+                  }}
+                  testID="add-property-button"
+                >
+                  <Plus size={20} color="#2D5016" />
+                  <Text style={styles.addButtonText}>Adicionar nova propriedade</Text>
+                </TouchableOpacity>
               )}
             </ScrollView>
           </View>
@@ -473,22 +436,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFF',
-  },
-  logoutButton: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    backgroundColor: '#FFF1F0',
-    borderWidth: 1,
-    borderColor: '#FF5722',
-  },
-  logoutButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#FF5722',
-    marginLeft: 8,
   },
 });
