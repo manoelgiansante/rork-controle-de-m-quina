@@ -103,49 +103,7 @@ export default function SettingsScreen() {
     try {
       console.log('[ADD EMAIL] Adicionando email:', emailToAdd);
 
-      // Enviar email de teste
-      const { error } = await supabase.functions.invoke('send-email', {
-        body: {
-          to: emailToAdd,
-          subject: '✅ Email Configurado com Sucesso - Controle de Máquina',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #2D5016;">Email Configurado com Sucesso! 🎉</h2>
-
-              <p>Olá, <strong>${currentUser?.name}</strong>!</p>
-
-              <p>Este email foi configurado com sucesso no sistema <strong>Controle de Máquina</strong>.</p>
-
-              <div style="background-color: #E8F5E9; border-left: 4px solid #2D5016; padding: 16px; margin: 20px 0;">
-                <h3 style="margin-top: 0; color: #2D5016;">📧 O que você vai receber:</h3>
-                <ul style="margin-bottom: 0;">
-                  <li>Alertas quando manutenções ficarem urgentes (vermelho ou amarelo)</li>
-                  <li>Alertas quando o tanque de combustível estiver baixo</li>
-                  <li>Notificações automáticas a cada 24 horas por alerta</li>
-                  <li>Verificações automáticas a cada 30 minutos</li>
-                </ul>
-              </div>
-
-              <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                Este é um email de teste para confirmar que tudo está funcionando corretamente.
-              </p>
-
-              <hr style="border: none; border-top: 1px solid #DDD; margin: 30px 0;">
-
-              <p style="color: #999; font-size: 12px; text-align: center;">
-                Controle de Máquina - Sistema de Gestão de Manutenção
-              </p>
-            </div>
-          `,
-        },
-      });
-
-      if (error) {
-        console.error('[ADD EMAIL] Erro ao enviar email de teste:', error);
-        throw error;
-      }
-
-      // Adicionar email à lista
+      // Adicionar email à lista (sem envio de teste)
       const updatedEmails = [...savedEmails, emailToAdd];
       await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(updatedEmails));
       setSavedEmails(updatedEmails);
@@ -163,11 +121,11 @@ export default function SettingsScreen() {
       }
 
       if (Platform.OS === 'web') {
-        window.alert(`Email adicionado com sucesso!\n\nUm email de teste foi enviado para ${emailToAdd}.${alertMessage}\n\nVerifique sua caixa de entrada (ou spam).`);
+        window.alert(`✅ Email cadastrado com sucesso!${alertMessage}\n\n📧 ${emailToAdd} receberá notificações automáticas às 21h quando houver alertas críticos (vermelho ou amarelo).`);
       } else {
         Alert.alert(
           'Sucesso!',
-          `Email adicionado e email de teste enviado para ${emailToAdd}!${alertMessage}\n\nVerifique sua caixa de entrada (ou spam).`
+          `Email cadastrado com sucesso!${alertMessage}\n\n${emailToAdd} receberá notificações automáticas.`
         );
       }
     } catch (error) {
