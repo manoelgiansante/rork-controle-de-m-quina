@@ -117,20 +117,23 @@ export function useNotifications() {
   /**
    * Verifica e envia notificações para alertas vermelhos
    */
-  const checkForRedAlerts = async () => {
+  const checkForRedAlerts = async (forceEmailSend: boolean = false) => {
     if (!currentUser) return;
 
-    // Evitar verificações muito frequentes (mínimo 5 minutos entre verificações)
-    const now = new Date();
-    const minutesSinceLastCheck =
-      (now.getTime() - lastCheckRef.current.getTime()) / (1000 * 60);
+    // Se for teste forçado, não verificar limite de tempo
+    if (!forceEmailSend) {
+      // Evitar verificações muito frequentes (mínimo 5 minutos entre verificações)
+      const now = new Date();
+      const minutesSinceLastCheck =
+        (now.getTime() - lastCheckRef.current.getTime()) / (1000 * 60);
 
-    if (minutesSinceLastCheck < 5) {
-      console.log('⏸️ Pulando verificação (muito recente)');
-      return;
+      if (minutesSinceLastCheck < 5) {
+        console.log('⏸️ Pulando verificação (muito recente)');
+        return;
+      }
+
+      lastCheckRef.current = now;
     }
-
-    lastCheckRef.current = now;
 
     console.log('🔍 Verificando alertas vermelhos...');
     console.log('📧 Emails de notificação:', notificationEmails);
@@ -142,7 +145,8 @@ export function useNotifications() {
       machines,
       notificationEmails,
       currentUser.name,
-      notificationsEnabled
+      notificationsEnabled,
+      forceEmailSend
     );
   };
 
@@ -162,10 +166,21 @@ export function useNotifications() {
     await checkForRedAlerts();
   };
 
+  /**
+   * Testa o envio de emails simulando horário das 21h
+   */
+  const testEmailNotifications = async () => {
+    console.log('🧪 [TESTE] Iniciando teste de emails (simulando 21h)...');
+    lastCheckRef.current = new Date(0); // Reset para permitir verificação imediata
+    await checkForRedAlerts(true); // true = forçar envio de emails
+    console.log('🧪 [TESTE] Teste concluído!');
+  };
+
   return {
     expoPushToken,
     notificationsEnabled,
     toggleNotifications,
     forceCheckAlerts,
+    testEmailNotifications,
   };
 }

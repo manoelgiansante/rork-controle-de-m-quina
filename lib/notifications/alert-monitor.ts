@@ -85,7 +85,8 @@ export async function monitorRedAlerts(
   machines: Machine[],
   userEmails?: string | string[],
   userName?: string,
-  notificationsEnabled: boolean = true
+  notificationsEnabled: boolean = true,
+  forceEmailSend: boolean = false // Parâmetro para forçar envio (teste)
 ): Promise<void> {
   if (!notificationsEnabled) {
     console.log('⏸️ Notificações desabilitadas pelo usuário');
@@ -112,10 +113,14 @@ export async function monitorRedAlerts(
   const currentHour = now.getHours();
   const isScheduledTime = currentHour === 21; // 21h
 
-  console.log(`🕐 Hora atual: ${currentHour}h | Horário de envio: ${isScheduledTime ? 'SIM' : 'NÃO (apenas às 21h)'}`);
+  // Se forceEmailSend for true, simula que está às 21h (para testes)
+  const shouldSendEmails = forceEmailSend || isScheduledTime;
 
-  // Se não for horário de envio, apenas enviar notificações push (não email)
-  const shouldSendEmails = isScheduledTime;
+  if (forceEmailSend) {
+    console.log(`🧪 MODO TESTE: Forçando envio de emails (simulando 21h)`);
+  } else {
+    console.log(`🕐 Hora atual: ${currentHour}h | Horário de envio: ${isScheduledTime ? 'SIM' : 'NÃO (apenas às 21h)'}`);
+  }
 
   for (const alert of criticalAlerts) {
     // Verificar se já foi notificado hoje

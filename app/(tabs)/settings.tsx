@@ -25,7 +25,7 @@ const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
 export default function SettingsScreen() {
   const { currentUser, logout } = useAuth();
   const { currentPropertyName } = useProperty();
-  const { expoPushToken, notificationsEnabled, toggleNotifications } = useNotifications();
+  const { expoPushToken, notificationsEnabled, toggleNotifications, testEmailNotifications } = useNotifications();
   const router = useRouter();
 
   const [newEmail, setNewEmail] = useState('');
@@ -289,6 +289,47 @@ export default function SettingsScreen() {
       } else {
         Alert.alert('Erro', 'Não foi possível remover o email. Tente novamente.');
       }
+    }
+  };
+
+  const handleTestEmailNotifications = async () => {
+    console.log('[SETTINGS] handleTestEmailNotifications chamado');
+
+    if (savedEmails.length === 0) {
+      if (Platform.OS === 'web') {
+        window.alert('❌ Nenhum email cadastrado!\n\nAdicione pelo menos um email para testar o envio de notificações.');
+      } else {
+        Alert.alert('Atenção', 'Adicione pelo menos um email para testar o envio de notificações.');
+      }
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('🧪 Testar Envio de Emails (Simulação 21h)\n\nIsso irá simular o envio das 21h e enviar emails para todos os endereços cadastrados SE houver alertas críticos.\n\nDeseja continuar?');
+      if (!confirmed) {
+        console.log('[SETTINGS] Teste cancelado pelo usuário');
+        return;
+      }
+
+      console.log('[SETTINGS] Iniciando teste de emails...');
+      await testEmailNotifications();
+      console.log('[SETTINGS] Teste concluído!');
+      window.alert('✅ Teste concluído!\n\nVerifique o console para logs detalhados.\nSe houver alertas críticos (vermelho/amarelo), emails foram enviados para todos os endereços cadastrados.');
+    } else {
+      Alert.alert(
+        '🧪 Testar Envio de Emails',
+        'Isso irá simular o envio das 21h. SE houver alertas críticos, você receberá emails.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Testar',
+            onPress: async () => {
+              await testEmailNotifications();
+              Alert.alert('✅', 'Teste concluído! Verifique o console e seus emails se houver alertas críticos.');
+            },
+          },
+        ]
+      );
     }
   };
 
@@ -685,6 +726,17 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          {/* Test Button */}
+          {savedEmails.length > 0 && (
+            <TouchableOpacity
+              style={styles.testEmailButton}
+              onPress={handleTestEmailNotifications}
+            >
+              <Text style={styles.testEmailButtonIcon}>🧪</Text>
+              <Text style={styles.testEmailButtonText}>Testar Envio de Emails (Simular 21h)</Text>
+            </TouchableOpacity>
+          )}
+
           <View style={styles.infoList}>
             <Text style={styles.infoSectionText}>
               • Você receberá notificações push no celular quando alguma manutenção ficar urgente (vermelho/amarelo)
@@ -988,6 +1040,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
+  },
+  testEmailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#FF9800',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginVertical: 12,
+  },
+  testEmailButtonIcon: {
+    fontSize: 18,
+  },
+  testEmailButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FF9800',
   },
   infoList: {
     gap: 4,
