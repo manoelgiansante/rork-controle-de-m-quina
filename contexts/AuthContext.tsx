@@ -333,6 +333,34 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
         if (error) {
           console.error('[SUPABASE AUTH] Erro no login:', error.message || error);
+          console.log('[SUPABASE AUTH] Tentando fallback para login local...');
+
+          // Fallback: tentar login local com AsyncStorage
+          const localUser = users.find(
+            (u) => u.username === username && u.password === password
+          );
+
+          if (localUser) {
+            console.log('[SUPABASE AUTH] Usuário encontrado no storage local!');
+            setCurrentUser(localUser);
+
+            if (isWeb && typeof localStorage !== 'undefined') {
+              try {
+                localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(localUser));
+              } catch (err) {
+                console.error('[SUPABASE AUTH] Erro ao salvar no localStorage:', err);
+              }
+            } else {
+              try {
+                await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(localUser));
+              } catch (err) {
+                console.error('[SUPABASE AUTH] Erro ao salvar no AsyncStorage:', err);
+              }
+            }
+
+            return true;
+          }
+
           return false;
         }
 
