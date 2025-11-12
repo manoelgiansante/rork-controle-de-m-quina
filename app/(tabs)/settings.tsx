@@ -18,7 +18,6 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@/lib/storage';
 import { supabase } from '@/lib/supabase/client';
-import { clearNotificationHistory } from '@/lib/notifications/alert-monitor';
 
 const MAX_EMAILS = 3;
 const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
@@ -26,8 +25,7 @@ const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
 export default function SettingsScreen() {
   const { currentUser, logout } = useAuth();
   const { currentPropertyName } = useProperty();
-  const { expoPushToken, notificationsEnabled, toggleNotifications, testEmailNotifications } = useNotifications();
-  const [isClearing, setIsClearing] = useState(false);
+  const { expoPushToken, notificationsEnabled, toggleNotifications } = useNotifications();
   const router = useRouter();
 
   const [newEmail, setNewEmail] = useState('');
@@ -294,78 +292,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleClearNotificationHistory = async () => {
-    console.log('[SETTINGS] handleClearNotificationHistory chamado');
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('🗑️ Limpar Histórico de Notificações\n\nIsso irá limpar o registro de alertas já notificados, permitindo que sejam enviados novamente.\n\nÚtil para testes.\n\nDeseja continuar?');
-      if (!confirmed) {
-        return;
-      }
-    }
-
-    setIsClearing(true);
-    try {
-      await clearNotificationHistory();
-      console.log('[SETTINGS] ✅ Histórico limpo!');
-
-      if (Platform.OS === 'web') {
-        window.alert('✅ Histórico limpo!\n\nAgora você pode testar o envio de emails novamente.');
-      } else {
-        Alert.alert('✅ Sucesso', 'Histórico de notificações limpo!');
-      }
-    } catch (error) {
-      console.error('[SETTINGS] Erro ao limpar histórico:', error);
-      if (Platform.OS === 'web') {
-        window.alert('❌ Erro ao limpar histórico');
-      } else {
-        Alert.alert('Erro', 'Não foi possível limpar o histórico');
-      }
-    } finally {
-      setIsClearing(false);
-    }
-  };
-
-  const handleTestEmailNotifications = async () => {
-    console.log('[SETTINGS] handleTestEmailNotifications chamado');
-
-    if (savedEmails.length === 0) {
-      if (Platform.OS === 'web') {
-        window.alert('❌ Nenhum email cadastrado!\n\nAdicione pelo menos um email para testar o envio de notificações.');
-      } else {
-        Alert.alert('Atenção', 'Adicione pelo menos um email para testar o envio de notificações.');
-      }
-      return;
-    }
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('🧪 Testar Envio de Emails (Simulação 21h)\n\nIsso irá simular o envio das 21h e enviar emails para todos os endereços cadastrados SE houver alertas críticos.\n\nDICA: Se não receber emails, clique em "Limpar Histórico" primeiro.\n\nDeseja continuar?');
-      if (!confirmed) {
-        console.log('[SETTINGS] Teste cancelado pelo usuário');
-        return;
-      }
-
-      console.log('[SETTINGS] Iniciando teste de emails...');
-      await testEmailNotifications();
-      console.log('[SETTINGS] Teste concluído!');
-      window.alert('✅ Teste concluído!\n\nVerifique o console para logs detalhados.\nSe houver alertas críticos (vermelho/amarelo), emails foram enviados para todos os endereços cadastrados.');
-    } else {
-      Alert.alert(
-        '🧪 Testar Envio de Emails',
-        'Isso irá simular o envio das 21h. SE houver alertas críticos, você receberá emails.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Testar',
-            onPress: async () => {
-              await testEmailNotifications();
-              Alert.alert('✅', 'Teste concluído! Verifique o console e seus emails se houver alertas críticos.');
-            },
-          },
-        ]
-      );
-    }
-  };
 
   const handleLogout = async () => {
     console.log('[SETTINGS] handleLogout chamado');
@@ -760,29 +686,6 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Test Buttons */}
-          {savedEmails.length > 0 && (
-            <View style={styles.testButtonsContainer}>
-              <TouchableOpacity
-                style={[styles.clearHistoryButton, isClearing && styles.buttonDisabled]}
-                onPress={handleClearNotificationHistory}
-                disabled={isClearing}
-              >
-                <Text style={styles.clearHistoryButtonIcon}>🗑️</Text>
-                <Text style={styles.clearHistoryButtonText}>
-                  {isClearing ? 'Limpando...' : 'Limpar Histórico'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.testEmailButton}
-                onPress={handleTestEmailNotifications}
-              >
-                <Text style={styles.testEmailButtonIcon}>🧪</Text>
-                <Text style={styles.testEmailButtonText}>Testar Envio (Simular 21h)</Text>
-              </TouchableOpacity>
-            </View>
-          )}
 
           <View style={styles.infoList}>
             <Text style={styles.infoSectionText}>
@@ -1087,56 +990,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
-  },
-  testButtonsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginVertical: 12,
-  },
-  clearHistoryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFF',
-    borderWidth: 2,
-    borderColor: '#F44336',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  clearHistoryButtonIcon: {
-    fontSize: 16,
-  },
-  clearHistoryButtonText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: '#F44336',
-  },
-  testEmailButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFF',
-    borderWidth: 2,
-    borderColor: '#FF9800',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  testEmailButtonIcon: {
-    fontSize: 16,
-  },
-  testEmailButtonText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: '#FF9800',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
   },
   infoList: {
     gap: 4,
