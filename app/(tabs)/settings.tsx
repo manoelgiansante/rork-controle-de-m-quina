@@ -81,11 +81,21 @@ export default function SettingsScreen() {
         {
           text: 'Sair',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             console.log('[SETTINGS] Executando logout...');
-            logout();
-            console.log('[SETTINGS] Logout executado, _layout deve redirecionar automaticamente');
-            // O _layout.tsx já detecta quando isAuthenticated = false e redireciona automaticamente
+            try {
+              await logout();
+              console.log('[SETTINGS] Logout concluído com sucesso');
+              // O _layout.tsx detecta quando isAuthenticated = false e redireciona automaticamente
+            } catch (error) {
+              console.error('[SETTINGS] Erro ao fazer logout:', error);
+              // Mesmo com erro, tenta redirecionar
+              if (Platform.OS === 'web') {
+                window.location.href = '/login';
+              } else {
+                router.replace('/login');
+              }
+            }
           }
         },
       ]
@@ -104,12 +114,14 @@ export default function SettingsScreen() {
       console.log('[DELETE ACCOUNT] Iniciando exclusão de conta...');
 
       // 1. Deletar dados do Supabase (se estiver usando)
+      // IMPORTANTE: NÃO deletar subscription do Supabase para evitar fraude
       if (currentUser && Platform.OS === 'web' && supabase) {
-        console.log('[DELETE ACCOUNT] Deletando dados do Supabase...');
+        console.log('[DELETE ACCOUNT] Deletando dados do Supabase (exceto subscription)...');
 
         // Deletar máquinas do usuário
         try {
           await supabase.from('machines').delete().eq('user_id', currentUser.id);
+          console.log('[DELETE ACCOUNT] ✓ Machines deletadas do Supabase');
         } catch (err) {
           console.warn('[DELETE ACCOUNT] Erro ao deletar machines:', err);
         }
@@ -117,6 +129,7 @@ export default function SettingsScreen() {
         // Deletar abastecimentos
         try {
           await supabase.from('refuelings').delete().eq('user_id', currentUser.id);
+          console.log('[DELETE ACCOUNT] ✓ Refuelings deletados do Supabase');
         } catch (err) {
           console.warn('[DELETE ACCOUNT] Erro ao deletar refuelings:', err);
         }
@@ -124,6 +137,7 @@ export default function SettingsScreen() {
         // Deletar manutenções
         try {
           await supabase.from('maintenances').delete().eq('user_id', currentUser.id);
+          console.log('[DELETE ACCOUNT] ✓ Maintenances deletadas do Supabase');
         } catch (err) {
           console.warn('[DELETE ACCOUNT] Erro ao deletar maintenances:', err);
         }
@@ -131,35 +145,36 @@ export default function SettingsScreen() {
         // Deletar propriedades
         try {
           await supabase.from('properties').delete().eq('user_id', currentUser.id);
+          console.log('[DELETE ACCOUNT] ✓ Properties deletadas do Supabase');
         } catch (err) {
           console.warn('[DELETE ACCOUNT] Erro ao deletar properties:', err);
         }
 
-        // Deletar assinatura
-        try {
-          await supabase.from('subscriptions').delete().eq('user_id', currentUser.id);
-        } catch (err) {
-          console.warn('[DELETE ACCOUNT] Erro ao deletar subscription:', err);
-        }
+        // NÃO DELETAR SUBSCRIPTION - deixar registro para evitar fraude
+        console.log('[DELETE ACCOUNT] ℹ️ Subscription mantida no Supabase (anti-fraude)');
 
         // Deletar conta do usuário no Supabase Auth
         try {
           const { error } = await supabase.rpc('delete_user');
           if (error) {
             console.warn('[DELETE ACCOUNT] Erro ao deletar usuário do Auth:', error);
+          } else {
+            console.log('[DELETE ACCOUNT] ✓ Usuário deletado do Supabase Auth');
           }
         } catch (err) {
           console.warn('[DELETE ACCOUNT] Erro ao deletar usuário:', err);
         }
       }
 
-      // 2. Limpar TODOS os dados do AsyncStorage/LocalStorage
-      console.log('[DELETE ACCOUNT] Limpando dados locais...');
+      // 2. Limpar dados do AsyncStorage/LocalStorage
+      // IMPORTANTE: NÃO apagar @controle_maquina:subscription para evitar fraude
+      // (impede que a pessoa use os 7 dias grátis novamente)
+      console.log('[DELETE ACCOUNT] Limpando dados locais (exceto subscription)...');
 
       const storageKeys = [
         '@controle_maquina:users',
         '@controle_maquina:current_user',
-        '@controle_maquina:subscription',
+        // '@controle_maquina:subscription', // NÃO APAGAR - evita fraude de trial
         '@controle_maquina:properties',
         '@controle_maquina:current_property_id',
         '@controle_maquina:machines',
@@ -184,13 +199,7 @@ export default function SettingsScreen() {
               console.warn(`[DELETE ACCOUNT] Erro ao deletar ${key}:`, err);
             }
           }
-          // Limpar tudo do localStorage
-          try {
-            localStorage.clear();
-            console.log('[DELETE ACCOUNT] ✓ localStorage completamente limpo');
-          } catch (err) {
-            console.warn('[DELETE ACCOUNT] Erro ao limpar localStorage:', err);
-          }
+          console.log('[DELETE ACCOUNT] ✓ Dados removidos (subscription preservada)');
         }
       } else {
         // Mobile: usar AsyncStorage
@@ -203,13 +212,7 @@ export default function SettingsScreen() {
             console.warn(`[DELETE ACCOUNT] Erro ao deletar ${key}:`, err);
           }
         }
-        // Limpar tudo do AsyncStorage
-        try {
-          await AsyncStorage.clear();
-          console.log('[DELETE ACCOUNT] ✓ AsyncStorage completamente limpo');
-        } catch (err) {
-          console.warn('[DELETE ACCOUNT] Erro ao limpar AsyncStorage:', err);
-        }
+        console.log('[DELETE ACCOUNT] ✓ Dados removidos (subscription preservada)');
       }
 
       console.log('[DELETE ACCOUNT] Conta deletada com sucesso!');
@@ -401,7 +404,7 @@ export default function SettingsScreen() {
             </Text>
 
             <Text style={styles.modalDescription}>
-              Todos os seus dados serão permanentemente excluídos:
+              Os seguintes dados serão permanentemente excluídos:
             </Text>
 
             <View style={styles.modalList}>
@@ -409,8 +412,13 @@ export default function SettingsScreen() {
               <Text style={styles.modalListItem}>• Histórico de abastecimentos</Text>
               <Text style={styles.modalListItem}>• Histórico de manutenções</Text>
               <Text style={styles.modalListItem}>• Propriedades cadastradas</Text>
-              <Text style={styles.modalListItem}>• Sua assinatura</Text>
               <Text style={styles.modalListItem}>• Sua conta de usuário</Text>
+            </View>
+
+            <View style={styles.modalImportantNote}>
+              <Text style={styles.modalImportantText}>
+                ⚠️ Seu histórico de assinatura será MANTIDO para evitar fraudes.
+              </Text>
             </View>
 
             <Text style={styles.modalConfirmText}>
@@ -703,13 +711,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modalListItem: {
     fontSize: 14,
     color: '#555',
     marginBottom: 6,
     lineHeight: 20,
+  },
+  modalImportantNote: {
+    backgroundColor: '#FFF3CD',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FFC107',
+  },
+  modalImportantText: {
+    fontSize: 13,
+    color: '#856404',
+    fontWeight: '600' as const,
+    textAlign: 'center' as const,
+    lineHeight: 18,
   },
   modalConfirmText: {
     fontSize: 15,
