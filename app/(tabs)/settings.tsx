@@ -36,10 +36,12 @@ export default function SettingsScreen() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Carregar emails salvos ao montar o componente
+  // Carregar emails salvos ao montar o componente e quando o usuário mudar
   useEffect(() => {
-    loadSavedEmails();
-  }, []);
+    if (currentUser?.id) {
+      loadSavedEmails();
+    }
+  }, [currentUser?.id]);
 
   const loadSavedEmails = async () => {
     try {
