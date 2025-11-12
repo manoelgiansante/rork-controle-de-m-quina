@@ -5,6 +5,8 @@
  * por questões de segurança (não expor API keys no app)
  */
 
+import { supabase } from '@/lib/supabase/client';
+
 interface EmailData {
   to: string;
   subject: string;
@@ -21,26 +23,27 @@ interface EmailData {
  */
 export async function sendEmail(data: EmailData): Promise<boolean> {
   try {
-    // TODO: Substituir pela URL da sua Edge Function quando criada
-    const edgeFunctionUrl = process.env.EXPO_PUBLIC_SUPABASE_URL + '/functions/v1/send-email';
+    console.log('📧 [EMAIL-SERVICE] Tentando enviar email para:', data.to);
+    console.log('📧 [EMAIL-SERVICE] Subject:', data.subject);
 
-    const response = await fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+    const { data: responseData, error } = await supabase.functions.invoke('send-email', {
+      body: {
+        to: data.to,
+        subject: data.subject,
+        html: data.html,
       },
-      body: JSON.stringify(data),
     });
 
-    if (!response.ok) {
-      throw new Error(`Email service error: ${response.status}`);
+    if (error) {
+      console.error('📧 [EMAIL-SERVICE] Erro do Supabase:', error);
+      throw error;
     }
 
+    console.log('📧 [EMAIL-SERVICE] Response data:', responseData);
     console.log('✅ Email enviado com sucesso para:', data.to);
     return true;
   } catch (error) {
-    console.error('❌ Erro ao enviar email:', error);
+    console.error('❌ [EMAIL-SERVICE] Erro ao enviar email:', error);
     return false;
   }
 }
