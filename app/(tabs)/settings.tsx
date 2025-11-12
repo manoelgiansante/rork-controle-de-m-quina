@@ -147,20 +147,35 @@ export default function SettingsScreen() {
   };
 
   const handleTestNotification = async () => {
-    Alert.alert(
-      'Testar Notificações',
-      'Isso irá verificar imediatamente se há alertas vermelhos e enviar notificações.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Testar',
-          onPress: async () => {
-            await forceCheckAlerts();
-            Alert.alert('✅', 'Verificação completa! Se houver alertas vermelhos, você receberá notificações.');
+    console.log('[SETTINGS] handleTestNotification chamado');
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Testar Notificações\n\nIsso irá verificar imediatamente se há alertas críticos e enviar notificações por email.');
+      if (!confirmed) {
+        console.log('[SETTINGS] Teste cancelado pelo usuário');
+        return;
+      }
+
+      console.log('[SETTINGS] Iniciando teste de notificações...');
+      await forceCheckAlerts();
+      console.log('[SETTINGS] Teste concluído!');
+      window.alert('✅ Verificação completa!\n\nSe houver alertas críticos (vermelho/amarelo), você receberá notificações por email.');
+    } else {
+      Alert.alert(
+        'Testar Notificações',
+        'Isso irá verificar imediatamente se há alertas críticos e enviar notificações.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Testar',
+            onPress: async () => {
+              await forceCheckAlerts();
+              Alert.alert('✅', 'Verificação completa! Se houver alertas críticos, você receberá notificações.');
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleLogout = async () => {
