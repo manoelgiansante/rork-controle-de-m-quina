@@ -72,34 +72,62 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Sair',
-      'Deseja realmente sair da sua conta?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            console.log('[SETTINGS] Executando logout...');
-            try {
-              await logout();
-              console.log('[SETTINGS] Logout concluído com sucesso');
-              // O _layout.tsx detecta quando isAuthenticated = false e redireciona automaticamente
-            } catch (error) {
-              console.error('[SETTINGS] Erro ao fazer logout:', error);
-              // Mesmo com erro, tenta redirecionar
-              if (Platform.OS === 'web') {
-                window.location.href = '/login';
-              } else {
-                router.replace('/login');
-              }
-            }
+  const handleLogout = async () => {
+    console.log('[SETTINGS] handleLogout chamado');
+
+    // No web, usar window.confirm; no mobile, usar Alert.alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Deseja realmente sair da sua conta?');
+      if (!confirmed) {
+        console.log('[SETTINGS] Logout cancelado pelo usuário');
+        return;
+      }
+    } else {
+      // Mobile: usar Alert.alert tradicional
+      Alert.alert(
+        'Sair',
+        'Deseja realmente sair da sua conta?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Sair',
+            style: 'destructive',
+            onPress: () => performLogout(),
           }
-        },
-      ]
-    );
+        ]
+      );
+      return; // Sair aqui para mobile, performLogout será chamado pelo Alert
+    }
+
+    // Web: continuar diretamente
+    await performLogout();
+  };
+
+  const performLogout = async () => {
+    console.log('[SETTINGS] Executando logout...');
+    try {
+      await logout();
+      console.log('[SETTINGS] Logout concluído');
+
+      // Redirecionar
+      setTimeout(() => {
+        if (Platform.OS === 'web') {
+          console.log('[SETTINGS] Redirecionando para /login (web)');
+          window.location.href = '/login';
+        } else {
+          console.log('[SETTINGS] Redirecionando para /login (mobile)');
+          router.replace('/login');
+        }
+      }, 100);
+    } catch (error) {
+      console.error('[SETTINGS] Erro ao fazer logout:', error);
+      // Redirecionar mesmo com erro
+      if (Platform.OS === 'web') {
+        window.location.href = '/login';
+      } else {
+        router.replace('/login');
+      }
+    }
   };
 
   const handleDeleteAccount = async () => {
