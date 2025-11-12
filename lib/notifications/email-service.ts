@@ -196,3 +196,155 @@ export async function sendRedAlertEmail(
     html,
   });
 }
+
+/**
+ * Gera HTML formatado para email de alerta de tanque
+ */
+export function generateTankAlertEmailHTML(
+  userName: string,
+  currentLiters: number,
+  capacityLiters: number,
+  alertLevelLiters: number,
+  status: 'red' | 'yellow' | 'green'
+): string {
+  const percentageFilled = (currentLiters / capacityLiters) * 100;
+  const isUrgent = status === 'red';
+  const headerColor = isUrgent ? '#F44336' : '#FF9800';
+  const emoji = isUrgent ? '🚨' : '⚠️';
+  const title = isUrgent ? 'Alerta URGENTE: Tanque de Combustível Baixo' : 'Atenção: Tanque de Combustível';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: ${headerColor};
+      color: white;
+      padding: 20px;
+      border-radius: 8px 8px 0 0;
+      text-align: center;
+    }
+    .content {
+      background-color: #f9f9f9;
+      padding: 30px;
+      border-radius: 0 0 8px 8px;
+    }
+    .alert-box {
+      background-color: #fff;
+      border-left: 4px solid ${headerColor};
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .info-row {
+      margin: 10px 0;
+    }
+    .label {
+      font-weight: bold;
+      color: #666;
+    }
+    .value {
+      color: #333;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #999;
+      font-size: 12px;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #2D5016;
+      color: white;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${emoji} ${title}</h1>
+  </div>
+  <div class="content">
+    <p>Olá <strong>${userName}</strong>,</p>
+
+    <p>O tanque de combustível da fazenda está ${isUrgent ? '<strong>ABAIXO</strong>' : 'próximo'} do nível de alerta configurado:</p>
+
+    <div class="alert-box">
+      <div class="info-row">
+        <span class="label">Combustível Atual:</span>
+        <span class="value">${currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%)</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Capacidade Total:</span>
+        <span class="value">${capacityLiters.toFixed(0)}L</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Nível de Alerta:</span>
+        <span class="value">${alertLevelLiters.toFixed(0)}L</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Status:</span>
+        <span class="value" style="color: ${headerColor}; font-weight: bold;">
+          ${isUrgent ? 'URGENTE - Reabasteça imediatamente!' : 'ATENÇÃO - Considere reabastecer em breve'}
+        </span>
+      </div>
+    </div>
+
+    <p>
+      <strong>Ação requerida:</strong> ${isUrgent ? 'Solicite o reabastecimento do tanque o quanto antes para evitar interrupções nas operações.' : 'Planeje o reabastecimento do tanque para os próximos dias.'}
+    </p>
+  </div>
+
+  <div class="footer">
+    <p>Este é um email automático do sistema Controle de Máquina.</p>
+    <p>© ${new Date().getFullYear()} Controle de Máquina. Todos os direitos reservados.</p>
+  </div>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Envia email de alerta de tanque
+ */
+export async function sendTankAlertEmail(
+  userEmail: string,
+  userName: string,
+  currentLiters: number,
+  capacityLiters: number,
+  alertLevelLiters: number,
+  status: 'red' | 'yellow' | 'green'
+): Promise<boolean> {
+  const html = generateTankAlertEmailHTML(
+    userName,
+    currentLiters,
+    capacityLiters,
+    alertLevelLiters,
+    status
+  );
+
+  const percentageFilled = (currentLiters / capacityLiters) * 100;
+  const subject = status === 'red'
+    ? `🚨 URGENTE: Tanque Baixo - ${currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%)`
+    : `⚠️ Atenção: Tanque de Combustível - ${currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%)`;
+
+  return sendEmail({
+    to: userEmail,
+    subject,
+    html,
+  });
+}

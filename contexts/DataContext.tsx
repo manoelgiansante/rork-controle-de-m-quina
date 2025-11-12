@@ -11,6 +11,7 @@ import type {
   MaintenanceItem,
   Refueling,
   ServiceType,
+  TankAlert,
 } from '@/types';
 import { useProperty } from '@/contexts/PropertyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -378,6 +379,76 @@ export const [DataProvider, useData] = createContextHook(() => {
       return 'red';
     },
     []
+  );
+
+  const calculateTankAlertStatus = useCallback(
+    (currentLiters: number, alertLevelLiters: number, capacityLiters: number): AlertStatus => {
+      const percentageFilled = (currentLiters / capacityLiters) * 100;
+
+      // Verde: acima de 50% ou acima do nível de alerta + 25%
+      if (currentLiters > alertLevelLiters * 1.25 && percentageFilled > 50) {
+        return 'green';
+      }
+
+      // Amarelo: entre o nível de alerta e 25% acima dele
+      if (currentLiters > alertLevelLiters) {
+        return 'yellow';
+      }
+
+      // Vermelho: no nível de alerta ou abaixo
+      return 'red';
+    },
+    []
+  );
+
+  const updateTankAlert = useCallback(
+    async (tank: FarmTank) => {
+      if (!tank.propertyId) return;
+
+      const status = calculateTankAlertStatus(
+        tank.currentLiters,
+        tank.alertLevelLiters,
+        tank.capacityLiters
+      );
+
+      const percentageFilled = (tank.currentLiters / tank.capacityLiters) * 100;
+
+      let message = '';
+      if (status === 'red') {
+        message = `URGENTE: Tanque está com apenas ${tank.currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%). Reabasteça imediatamente!`;
+      } else if (status === 'yellow') {
+        message = `ATENÇÃO: Tanque está com ${tank.currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%). Considere reabastecer em breve.`;
+      } else {
+        message = `Tanque OK: ${tank.currentLiters.toFixed(0)}L (${percentageFilled.toFixed(0)}%)`;
+      }
+
+      const tankAlert: TankAlert = {
+        id: `tank-${tank.propertyId}`,
+        type: 'tank',
+        propertyId: tank.propertyId,
+        tankCurrentLiters: tank.currentLiters,
+        tankCapacityLiters: tank.capacityLiters,
+        tankAlertLevelLiters: tank.alertLevelLiters,
+        percentageFilled,
+        status,
+        message,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Remover alerta de tanque anterior (se existir)
+      const alertsWithoutTank = allAlerts.filter(
+        a => !(a.type === 'tank' && a.propertyId === tank.propertyId)
+      );
+
+      // Adicionar novo alerta de tanque
+      const updatedAlerts = [...alertsWithoutTank, tankAlert];
+
+      setAllAlerts(updatedAlerts);
+      await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts));
+
+      console.log('[DATA] Alerta de tanque atualizado:', { status, message });
+    },
+    [allAlerts, calculateTankAlertStatus]
   );
 
   const addMaintenance = useCallback(
@@ -1188,9 +1259,13 @@ export const [DataProvider, useData] = createContextHook(() => {
       );
       setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
+
+      // Atualizar alerta de tanque
+      await updateTankAlert(updatedTank);
+
       return { success: true, overflow: 0 };
     },
-    [farmTank, allFarmTanks, currentPropertyId]
+    [farmTank, allFarmTanks, currentPropertyId, updateTankAlert]
   );
 
   const consumeFuel = useCallback(
@@ -1233,13 +1308,16 @@ export const [DataProvider, useData] = createContextHook(() => {
       setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
 
+      // Atualizar alerta de tanque
+      await updateTankAlert(updatedTank);
+
       if (newCurrentLiters <= farmTank.alertLevelLiters && oldLiters > farmTank.alertLevelLiters) {
         console.log(
           `⚠️ ALERTA: Tanque de combustível baixo: restam apenas ${newCurrentLiters.toFixed(0)} litros`
         );
       }
     },
-    [farmTank, allFarmTanks, currentPropertyId]
+    [farmTank, allFarmTanks, currentPropertyId, updateTankAlert]
   );
 
   const adjustTankFuel = useCallback(
@@ -1272,6 +1350,9 @@ export const [DataProvider, useData] = createContextHook(() => {
       setAllFarmTanks(updated);
       await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updated));
 
+      // Atualizar alerta de tanque
+      await updateTankAlert(updatedTank);
+
       console.log('[DATA] Ajuste de tanque realizado:', {
         adjustment: adjustment > 0 ? `+${adjustment}L` : `${adjustment}L`,
         reason,
@@ -1279,7 +1360,7 @@ export const [DataProvider, useData] = createContextHook(() => {
         to: newCurrentLiters.toFixed(0),
       });
     },
-    [farmTank, allFarmTanks, currentPropertyId]
+    [farmTank, allFarmTanks, currentPropertyId, updateTankAlert]
   );
 
   const deletePropertyData = useCallback(

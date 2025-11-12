@@ -1,6 +1,6 @@
 import type { Alert, Machine, MaintenanceAlert } from '@/types';
 import { sendLocalNotification } from './push-notifications';
-import { sendRedAlertEmail } from './email-service';
+import { sendRedAlertEmail, sendTankAlertEmail } from './email-service';
 import AsyncStorage from '@/lib/storage';
 
 const ALERT_HISTORY_KEY = '@controle_maquina:notified_alerts';
@@ -67,7 +67,7 @@ async function markAsNotified(alertId: string): Promise<void> {
 }
 
 /**
- * Monitora alertas e envia notificações para os vermelhos
+ * Monitora alertas e envia notificações para os vermelhos e amarelos
  */
 export async function monitorRedAlerts(
   alerts: Alert[],
@@ -81,36 +81,82 @@ export async function monitorRedAlerts(
     return;
   }
 
-  const redAlerts = alerts.filter(
-    (alert) => alert.status === 'red' && alert.type === 'maintenance'
-  ) as MaintenanceAlert[];
+  // Filtrar alertas vermelhos E amarelos (manutenção e tanque)
+  const criticalAlerts = alerts.filter(
+    (alert) => alert.status === 'red' || alert.status === 'yellow'
+  );
 
-  console.log(`🔍 Verificando ${redAlerts.length} alertas vermelhos...`);
+  console.log(`🔍 Verificando ${criticalAlerts.length} alertas críticos (vermelho/amarelo)...`);
 
-  for (const alert of redAlerts) {
+  for (const alert of criticalAlerts) {
     // Verificar se já foi notificado recentemente
     if (await wasRecentlyNotified(alert.id)) {
       console.log(`⏭️ Alerta ${alert.id} já foi notificado nas últimas 24h`);
       continue;
     }
 
-    const machine = machines.find((m) => m.id === alert.machineId);
+    // Processar alerta de tanque
+    if (alert.type === 'tank') {
+      const emoji = alert.status === 'red' ? '🚨' : '⚠️';
+      const urgency = alert.status === 'red' ? 'URGENTE' : 'ATENÇÃO';
+
+      // Enviar notificação local (push)
+      await sendLocalNotification(
+        `${emoji} ${urgency}: Tanque de Combustível`,
+        alert.message,
+        {
+          alertId: alert.id,
+          type: 'tank_alert',
+        }
+      );
+
+      // Enviar email se as informações estiverem disponíveis
+      if (userEmail && userName) {
+        await sendTankAlertEmail(
+          userEmail,
+          userName,
+          alert.tankCurrentLiters,
+          alert.tankCapacityLiters,
+          alert.tankAlertLevelLiters,
+          alert.status
+        );
+      }
+
+      // Marcar como notificado
+      await markAsNotified(alert.id);
+      console.log(`✅ Notificações de tanque enviadas para alerta: ${alert.id}`);
+      continue;
+    }
+
+    // Processar alerta de manutenção
+    const maintenanceAlert = alert as MaintenanceAlert;
+    const machine = machines.find((m) => m.id === maintenanceAlert.machineId);
     if (!machine) continue;
 
     const machineName = `[${machine.type}] ${machine.model}`;
-    const remaining = alert.nextRevisionHourMeter - machine.currentHourMeter;
+    const remaining = maintenanceAlert.nextRevisionHourMeter - machine.currentHourMeter;
     const hoursOverdue = Math.abs(remaining);
+
+    const emoji = maintenanceAlert.status === 'red' ? '🚨' : '⚠️';
+    const urgency = maintenanceAlert.status === 'red' ? 'URGENTE' : 'ATENÇÃO';
+
+    let message = '';
+    if (remaining < 0) {
+      message = `${machineName}: ${maintenanceAlert.maintenanceItem} está ${hoursOverdue.toFixed(0)}h atrasada!`;
+    } else if (maintenanceAlert.status === 'yellow') {
+      message = `${machineName}: ${maintenanceAlert.maintenanceItem} precisa de atenção (faltam ${remaining.toFixed(0)}h)`;
+    } else {
+      message = `${machineName}: ${maintenanceAlert.maintenanceItem} precisa ser feita AGORA!`;
+    }
 
     // Enviar notificação local (push)
     await sendLocalNotification(
-      '🚨 Manutenção Urgente!',
-      `${machineName}: ${alert.maintenanceItem} ${
-        remaining < 0 ? `está ${hoursOverdue.toFixed(0)}h atrasada!` : 'precisa ser feita AGORA!'
-      }`,
+      `${emoji} Manutenção ${urgency}!`,
+      message,
       {
-        alertId: alert.id,
+        alertId: maintenanceAlert.id,
         machineId: machine.id,
-        type: 'red_alert',
+        type: maintenanceAlert.status === 'red' ? 'red_alert' : 'yellow_alert',
       }
     );
 
