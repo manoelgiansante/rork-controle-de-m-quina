@@ -18,7 +18,7 @@ export interface User {
   acceptedTermsAt?: string;
 }
 
-export type MachineType = 'Trator' | 'Caminhão' | 'Pá Carregadeira' | 'Vagão' | 'Outro';
+export type MachineType = 'Trator' | 'Caminhão' | 'Carro' | 'Pá Carregadeira' | 'Vagão' | 'Colheitadeira' | 'Uniport' | 'Outro';
 
 export interface Machine {
   id: string;

@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { useProperty } from '@/contexts/PropertyContext';
+import { getMeterLabel, getMeterUnit } from '@/lib/machine-utils';
 import type { MaintenanceItem, MaintenanceItemRevision } from '@/types';
 import { Plus, Settings } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -68,8 +69,12 @@ export default function MaintenanceScreen() {
       Alert.alert('Erro', 'Selecione uma máquina');
       return;
     }
+
+    const machine = machines.find((m) => m.id === selectedMachineId);
+    const meterLabel = machine ? getMeterLabel(machine.type).toLowerCase() : 'horímetro';
+
     if (!hourMeter || parseFloat(hourMeter) < 0) {
-      Alert.alert('Erro', 'Informe o horímetro atual da máquina');
+      Alert.alert('Erro', `Informe o ${meterLabel} atual da máquina`);
       return;
     }
     if (!performedBy.trim()) {
@@ -206,7 +211,9 @@ export default function MaintenanceScreen() {
               )}
 
               <Text style={styles.label}>
-                Horímetro Atual <Text style={styles.required}>*</Text>
+                {selectedMachineId && machines.find(m => m.id === selectedMachineId)
+                  ? getMeterLabel(machines.find(m => m.id === selectedMachineId)!.type)
+                  : 'Horímetro'} Atual <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
                 style={styles.input}
@@ -215,9 +222,9 @@ export default function MaintenanceScreen() {
                 placeholder="Ex: 2025"
                 placeholderTextColor="#999"
                 keyboardType="number-pad"
-                    returnKeyType="done"
-                    blurOnSubmit={true}
-                    onSubmitEditing={() => Keyboard.dismiss()}
+                returnKeyType="done"
+                blurOnSubmit={true}
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
 
               <Text style={styles.label}>
@@ -287,12 +294,12 @@ export default function MaintenanceScreen() {
                 numberOfLines={3}
               />
 
-              {selectedItems.length > 0 && (
+              {selectedItems.length > 0 && selectedMachineId && (
                 <>
                   <View style={styles.divider} />
                   <Text style={styles.sectionTitle}>Próxima Revisão</Text>
                   <Text style={styles.sectionSubtitle}>
-                    Configure o intervalo de horas para cada serviço executado
+                    Configure o intervalo de {getMeterUnit(machines.find(m => m.id === selectedMachineId)!.type)} para cada serviço executado
                   </Text>
                   <View style={styles.revisionsList}>
                     {selectedItems.map((item) => (
@@ -308,11 +315,11 @@ export default function MaintenanceScreen() {
                             placeholder="250"
                             placeholderTextColor="#999"
                             keyboardType="number-pad"
-                    returnKeyType="done"
-                    blurOnSubmit={true}
-                    onSubmitEditing={() => Keyboard.dismiss()}
+                            returnKeyType="done"
+                            blurOnSubmit={true}
+                            onSubmitEditing={() => Keyboard.dismiss()}
                           />
-                          <Text style={styles.revisionInputSuffix}>horas</Text>
+                          <Text style={styles.revisionInputSuffix}>{getMeterUnit(machines.find(m => m.id === selectedMachineId)!.type)}</Text>
                         </View>
                       </View>
                     ))}

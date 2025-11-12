@@ -1,4 +1,5 @@
 import { useData } from '@/contexts/DataContext';
+import { getMeterLabel, getMeterUnit, formatMeterValue } from '@/lib/machine-utils';
 import type { AlertStatus, Maintenance, Refueling } from '@/types';
 import {
   AlertCircle,
@@ -118,6 +119,7 @@ export default function ReportsScreen() {
 
     const remaining = item.nextRevisionHourMeter - machine.currentHourMeter;
     const isOverdue = remaining < 0;
+    const meterUnit = getMeterUnit(machine.type);
 
     return (
       <View style={[styles.alertCard, { borderLeftColor: color }]}>
@@ -132,10 +134,10 @@ export default function ReportsScreen() {
         </View>
         <View style={styles.alertDetails}>
           <Text style={styles.alertDetailText}>
-            Previsto: {item.nextRevisionHourMeter}h
+            Previsto: {item.nextRevisionHourMeter}{meterUnit}
           </Text>
           <Text style={styles.alertDetailText}>
-            Atual: {machine.currentHourMeter}h
+            Atual: {machine.currentHourMeter}{meterUnit}
           </Text>
           <Text
             style={[
@@ -144,8 +146,8 @@ export default function ReportsScreen() {
             ]}
           >
             {isOverdue
-              ? `Atrasado ${Math.abs(remaining)}h`
-              : `Faltam ${remaining}h`}
+              ? `Atrasado ${Math.abs(remaining)}${meterUnit}`
+              : `Faltam ${remaining}${meterUnit}`}
           </Text>
         </View>
       </View>
@@ -180,7 +182,7 @@ export default function ReportsScreen() {
         </Text>
         {avgConsumption !== null ? (
           <Text style={styles.consumptionValue}>
-            {avgConsumption.toFixed(2)} L/h
+            {avgConsumption.toFixed(2)} L/{getMeterUnit(machine.type)}
           </Text>
         ) : (
           <Text style={styles.consumptionEmpty}>
@@ -268,7 +270,7 @@ export default function ReportsScreen() {
                               </View>
                             </View>
                             <Text style={styles.historyHourMeter}>
-                              Horímetro: {maintenance.hourMeter}h
+                              {getMeterLabel(machine.type)}: {formatMeterValue(maintenance.hourMeter, machine.type, 0)}
                             </Text>
                             <View style={styles.historyItems}>
                               {maintenance.items.map((item, idx) => (
@@ -355,14 +357,14 @@ export default function ReportsScreen() {
                                 <Text style={styles.refuelingValue}>{refueling.liters}L</Text>
                               </View>
                               <View style={styles.refuelingRow}>
-                                <Text style={styles.refuelingLabel}>Horímetro:</Text>
-                                <Text style={styles.refuelingValue}>{refueling.hourMeter}h</Text>
+                                <Text style={styles.refuelingLabel}>{getMeterLabel(machine.type)}:</Text>
+                                <Text style={styles.refuelingValue}>{formatMeterValue(refueling.hourMeter, machine.type, 0)}</Text>
                               </View>
                               {refueling.averageConsumption && (
                                 <View style={styles.refuelingRow}>
                                   <Text style={styles.refuelingLabel}>Consumo médio:</Text>
                                   <Text style={styles.refuelingValue}>
-                                    {refueling.averageConsumption.toFixed(2)} L/h
+                                    {refueling.averageConsumption.toFixed(2)} L/{getMeterUnit(machine.type)}
                                   </Text>
                                 </View>
                               )}
@@ -650,7 +652,9 @@ export default function ReportsScreen() {
               </TouchableOpacity>
             </View>
 
-            {editingMaintenance && (
+            {editingMaintenance && (() => {
+              const machine = machines.find(m => m.id === editingMaintenance.machineId);
+              return (
               <ScrollView style={styles.modalBody}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Data da Manutenção</Text>
@@ -675,7 +679,9 @@ export default function ReportsScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Horímetro da Manutenção (h)</Text>
+                  <Text style={styles.inputLabel}>
+                    {machine ? getMeterLabel(machine.type) : 'Horímetro'} da Manutenção ({machine ? getMeterUnit(machine.type) : 'h'})
+                  </Text>
                   <TextInput
                     style={styles.input}
                     value={editingMaintenance.hourMeter.toString()}
@@ -711,7 +717,7 @@ export default function ReportsScreen() {
                 <View style={styles.divider} />
                 <Text style={styles.sectionTitle}>Intervalo da Próxima Revisão</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Configure as horas para a próxima revisão de cada serviço
+                  Configure {machine ? getMeterUnit(machine.type) : 'as horas'} para a próxima revisão de cada serviço
                 </Text>
 
                 {editingMaintenance.itemRevisions.map((revision, idx) => (
@@ -733,11 +739,11 @@ export default function ReportsScreen() {
                           });
                         }}
                         keyboardType="number-pad"
-                    returnKeyType="done"
-                    blurOnSubmit={true}
-                    onSubmitEditing={() => Keyboard.dismiss()}
+                        returnKeyType="done"
+                        blurOnSubmit={true}
+                        onSubmitEditing={() => Keyboard.dismiss()}
                       />
-                      <Text style={styles.revisionInputSuffix}>horas</Text>
+                      <Text style={styles.revisionInputSuffix}>{machine ? getMeterUnit(machine.type) : 'horas'}</Text>
                     </View>
                   </View>
                 ))}
@@ -749,7 +755,8 @@ export default function ReportsScreen() {
                   <Text style={styles.saveButtonText}>Salvar Alterações</Text>
                 </TouchableOpacity>
               </ScrollView>
-            )}
+              );
+            })()}
           </View>
         </View>
       </Modal>
@@ -769,7 +776,9 @@ export default function ReportsScreen() {
               </TouchableOpacity>
             </View>
 
-            {editingRefueling && (
+            {editingRefueling && (() => {
+              const machine = machines.find(m => m.id === editingRefueling.machineId);
+              return (
               <View style={styles.modalBody}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Litros</Text>
@@ -790,7 +799,9 @@ export default function ReportsScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Horímetro (h)</Text>
+                  <Text style={styles.inputLabel}>
+                    {machine ? getMeterLabel(machine.type) : 'Horímetro'} ({machine ? getMeterUnit(machine.type) : 'h'})
+                  </Text>
                   <TextInput
                     style={styles.input}
                     value={editingRefueling.hourMeter.toString()}
@@ -814,7 +825,8 @@ export default function ReportsScreen() {
                   <Text style={styles.saveButtonText}>Salvar</Text>
                 </TouchableOpacity>
               </View>
-            )}
+              );
+            })()}
           </View>
         </View>
       </Modal>

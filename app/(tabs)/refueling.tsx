@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { parseDecimal, formatLiters } from '@/lib/decimal-utils';
+import { getMeterLabel, getMeterUnit, formatMeterValue } from '@/lib/machine-utils';
 import type { ServiceType } from '@/types';
 import { Calendar, Droplet, Plus, FileText } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -73,8 +74,13 @@ export default function RefuelingScreen() {
       Alert.alert('Erro', 'Informe a quantidade de litros abastecidos');
       return;
     }
+
+    const machine = machines.find((m) => m.id === selectedMachineId);
+    const meterLabel = machine ? getMeterLabel(machine.type).toLowerCase() : 'horímetro';
+    const meterUnit = machine ? getMeterUnit(machine.type) : 'h';
+
     if (!hourMeter || parseFloat(hourMeter) < 0) {
-      Alert.alert('Erro', 'Informe o horímetro atual da máquina');
+      Alert.alert('Erro', `Informe o ${meterLabel} atual da máquina`);
       return;
     }
     if (!refueledBy.trim()) {
@@ -82,11 +88,10 @@ export default function RefuelingScreen() {
       return;
     }
 
-    const machine = machines.find((m) => m.id === selectedMachineId);
     if (machine && parseFloat(hourMeter) < machine.currentHourMeter) {
       Alert.alert(
         'Atenção',
-        `O horímetro informado (${hourMeter}h) é menor que o horímetro atual da máquina (${machine.currentHourMeter}h). Deseja continuar?`,
+        `O ${meterLabel} informado (${hourMeter}${meterUnit}) é menor que o ${meterLabel} atual da máquina (${machine.currentHourMeter}${meterUnit}). Deseja continuar?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           { text: 'Continuar', onPress: async () => await saveRefueling() },
@@ -207,14 +212,14 @@ export default function RefuelingScreen() {
                       <Text style={styles.historyCardValue}>{formatLiters(refueling.liters)}</Text>
                     </View>
                     <View style={styles.historyCardRow}>
-                      <Text style={styles.historyCardLabel}>Horímetro:</Text>
-                      <Text style={styles.historyCardValue}>{refueling.hourMeter.toFixed(1)}h</Text>
+                      <Text style={styles.historyCardLabel}>{getMeterLabel(machine.type)}:</Text>
+                      <Text style={styles.historyCardValue}>{formatMeterValue(refueling.hourMeter, machine.type, 1)}</Text>
                     </View>
                     {refueling.averageConsumption && (
                       <View style={styles.historyCardRow}>
                         <Text style={styles.historyCardLabel}>Consumo médio:</Text>
                         <Text style={styles.historyCardValue}>
-                          {refueling.averageConsumption.toFixed(2)} L/h
+                          {refueling.averageConsumption.toFixed(2)} L/{getMeterUnit(machine.type)}
                         </Text>
                       </View>
                     )}
@@ -324,7 +329,9 @@ export default function RefuelingScreen() {
               />
 
               <Text style={styles.label}>
-                Horímetro Atual <Text style={styles.required}>*</Text>
+                {selectedMachineId && machines.find(m => m.id === selectedMachineId)
+                  ? getMeterLabel(machines.find(m => m.id === selectedMachineId)!.type)
+                  : 'Horímetro'} Atual <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
                 style={styles.input}
@@ -332,7 +339,6 @@ export default function RefuelingScreen() {
                 onChangeText={setHourMeter}
                 placeholder="Ex: 2025"
                 placeholderTextColor="#999"
-                keyboardType="number-pad"
                 keyboardType="number-pad"
                 returnKeyType="done"
                 blurOnSubmit={true}

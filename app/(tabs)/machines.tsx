@@ -21,12 +21,16 @@ import {
 } from 'react-native';
 import { confirm } from '@/lib/confirm';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getMeterLabel, formatMeterValue } from '@/lib/machine-utils';
 
 const MACHINE_TYPES: MachineType[] = [
   'Trator',
   'Caminhão',
+  'Carro',
   'Pá Carregadeira',
   'Vagão',
+  'Colheitadeira',
+  'Uniport',
   'Outro',
 ];
 
@@ -87,9 +91,10 @@ export default function MachinesScreen() {
     }
 
     const hourMeterValue = initialHourMeter.trim() ? parseFloat(initialHourMeter) : 0;
-    
+
     if (initialHourMeter.trim() && (isNaN(hourMeterValue) || hourMeterValue < 0)) {
-      Alert.alert('Erro', 'Por favor, insira um horímetro válido');
+      const meterLabel = getMeterLabel(selectedType).toLowerCase();
+      Alert.alert('Erro', `Por favor, insira um ${meterLabel} válido`);
       return;
     }
 
@@ -155,7 +160,7 @@ export default function MachinesScreen() {
           </View>
           <Text style={styles.machineModel}>{item.model}</Text>
           <Text style={styles.machineHours}>
-            Horímetro: {item.currentHourMeter.toFixed(0)}h
+            {getMeterLabel(item.type)}: {formatMeterValue(item.currentHourMeter, item.type, 0)}
           </Text>
         </View>
         {isMaster && (
@@ -275,7 +280,7 @@ export default function MachinesScreen() {
 
                 {!editingMachine && (
                   <>
-                    <Text style={styles.label}>Horímetro Inicial (Opcional)</Text>
+                    <Text style={styles.label}>{getMeterLabel(selectedType)} Inicial (Opcional)</Text>
                     <TextInput
                       style={styles.input}
                       value={initialHourMeter}

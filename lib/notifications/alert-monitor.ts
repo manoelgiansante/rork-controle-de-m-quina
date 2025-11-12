@@ -1,6 +1,7 @@
 import type { Alert, Machine, MaintenanceAlert } from '@/types';
 import { sendLocalNotification } from './push-notifications';
 import { sendRedAlertEmail, sendTankAlertEmail, sendConsolidatedAlertsEmail } from './email-service';
+import { getMeterUnit } from '@/lib/machine-utils';
 import AsyncStorage from '@/lib/storage';
 
 const ALERT_HISTORY_KEY = '@controle_maquina:notified_alerts';
@@ -188,15 +189,16 @@ export async function monitorRedAlerts(
     const machineName = `[${machine.type}] ${machine.model}`;
     const remaining = maintenanceAlert.nextRevisionHourMeter - machine.currentHourMeter;
     const hoursOverdue = Math.abs(remaining);
+    const meterUnit = getMeterUnit(machine.type);
 
     const emoji = maintenanceAlert.status === 'red' ? '🚨' : '⚠️';
     const urgency = maintenanceAlert.status === 'red' ? 'URGENTE' : 'ATENÇÃO';
 
     let message = '';
     if (remaining < 0) {
-      message = `${machineName}: ${maintenanceAlert.maintenanceItem} está ${hoursOverdue.toFixed(0)}h atrasada!`;
+      message = `${machineName}: ${maintenanceAlert.maintenanceItem} está ${hoursOverdue.toFixed(0)}${meterUnit} atrasada!`;
     } else if (maintenanceAlert.status === 'yellow') {
-      message = `${machineName}: ${maintenanceAlert.maintenanceItem} precisa de atenção (faltam ${remaining.toFixed(0)}h)`;
+      message = `${machineName}: ${maintenanceAlert.maintenanceItem} precisa de atenção (faltam ${remaining.toFixed(0)}${meterUnit})`;
     } else {
       message = `${machineName}: ${maintenanceAlert.maintenanceItem} precisa ser feita AGORA!`;
     }
@@ -218,6 +220,7 @@ export async function monitorRedAlerts(
       type: 'maintenance' as const,
       status: maintenanceAlert.status,
       machineName,
+      machineType: machine.type,
       maintenanceItem: maintenanceAlert.maintenanceItem,
       currentHourMeter: machine.currentHourMeter,
       nextRevisionHourMeter: maintenanceAlert.nextRevisionHourMeter,

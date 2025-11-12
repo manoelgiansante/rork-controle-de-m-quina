@@ -6,6 +6,8 @@
  */
 
 import { supabase } from '@/lib/supabase/client';
+import { getMeterLabel, getMeterUnit } from '@/lib/machine-utils';
+import type { MachineType } from '@/types';
 
 interface EmailData {
   to: string;
@@ -54,11 +56,14 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
 export function generateAlertEmailHTML(
   userName: string,
   machineName: string,
+  machineType: MachineType,
   maintenanceItem: string,
   currentHourMeter: number,
   nextRevisionHourMeter: number
 ): string {
   const hoursOverdue = Math.abs(nextRevisionHourMeter - currentHourMeter);
+  const meterLabel = getMeterLabel(machineType);
+  const meterUnit = getMeterUnit(machineType);
 
   return `
 <!DOCTYPE html>
@@ -140,17 +145,17 @@ export function generateAlertEmailHTML(
         <span class="value">${maintenanceItem}</span>
       </div>
       <div class="info-row">
-        <span class="label">Horímetro Atual:</span>
-        <span class="value">${currentHourMeter.toFixed(1)}h</span>
+        <span class="label">${meterLabel} Atual:</span>
+        <span class="value">${currentHourMeter.toFixed(1)}${meterUnit}</span>
       </div>
       <div class="info-row">
         <span class="label">Próxima Revisão:</span>
-        <span class="value">${nextRevisionHourMeter.toFixed(1)}h</span>
+        <span class="value">${nextRevisionHourMeter.toFixed(1)}${meterUnit}</span>
       </div>
       <div class="info-row">
         <span class="label">Status:</span>
         <span class="value" style="color: #F44336; font-weight: bold;">
-          ${hoursOverdue > 0 ? `ATRASADO (${hoursOverdue.toFixed(1)}h)` : 'URGENTE'}
+          ${hoursOverdue > 0 ? `ATRASADO (${hoursOverdue.toFixed(1)}${meterUnit})` : 'URGENTE'}
         </span>
       </div>
     </div>
@@ -181,6 +186,7 @@ export async function sendRedAlertEmail(
   userEmails: string | string[],
   userName: string,
   machineName: string,
+  machineType: MachineType,
   maintenanceItem: string,
   currentHourMeter: number,
   nextRevisionHourMeter: number
@@ -188,6 +194,7 @@ export async function sendRedAlertEmail(
   const html = generateAlertEmailHTML(
     userName,
     machineName,
+    machineType,
     maintenanceItem,
     currentHourMeter,
     nextRevisionHourMeter
@@ -349,6 +356,7 @@ export async function sendConsolidatedAlertsEmail(
     tankAlertLevelLiters?: number;
     // Maintenance data
     machineName?: string;
+    machineType?: MachineType;
     maintenanceItem?: string;
     currentHourMeter?: number;
     nextRevisionHourMeter?: number;
@@ -389,6 +397,8 @@ export async function sendConsolidatedAlertsEmail(
     } else {
       const hoursOverdue = Math.abs((alertData.nextRevisionHourMeter || 0) - (alertData.currentHourMeter || 0));
       const isOverdue = (alertData.currentHourMeter || 0) >= (alertData.nextRevisionHourMeter || 0);
+      const meterLabel = alertData.machineType ? getMeterLabel(alertData.machineType) : 'Horímetro';
+      const meterUnit = alertData.machineType ? getMeterUnit(alertData.machineType) : 'h';
 
       alertsHtml += `
         <div style="background-color: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 16px; margin: 12px 0; border-radius: 4px;">
@@ -398,9 +408,9 @@ export async function sendConsolidatedAlertsEmail(
           </div>
           <div style="margin-left: 32px;">
             <p style="margin: 4px 0;"><strong>Manutenção:</strong> ${alertData.maintenanceItem}</p>
-            <p style="margin: 4px 0;"><strong>Horímetro Atual:</strong> ${alertData.currentHourMeter?.toFixed(1)}h</p>
-            <p style="margin: 4px 0;"><strong>Próxima Revisão:</strong> ${alertData.nextRevisionHourMeter?.toFixed(1)}h</p>
-            <p style="margin: 4px 0; color: ${borderColor};"><strong>Status:</strong> ${isOverdue ? `ATRASADO (${hoursOverdue.toFixed(0)}h)` : `Faltam ${hoursOverdue.toFixed(0)}h`}</p>
+            <p style="margin: 4px 0;"><strong>${meterLabel} Atual:</strong> ${alertData.currentHourMeter?.toFixed(1)}${meterUnit}</p>
+            <p style="margin: 4px 0;"><strong>Próxima Revisão:</strong> ${alertData.nextRevisionHourMeter?.toFixed(1)}${meterUnit}</p>
+            <p style="margin: 4px 0; color: ${borderColor};"><strong>Status:</strong> ${isOverdue ? `ATRASADO (${hoursOverdue.toFixed(0)}${meterUnit})` : `Faltam ${hoursOverdue.toFixed(0)}${meterUnit}`}</p>
           </div>
         </div>
       `;
