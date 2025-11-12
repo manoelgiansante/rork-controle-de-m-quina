@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useProperty } from '@/contexts/PropertyContext';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Bell, BellOff, Mail, RefreshCcw, Settings as SettingsIcon, User, Trash2, Edit2, X } from 'lucide-react-native';
+import { Bell, BellOff, Mail, Settings as SettingsIcon, User, Trash2, Edit2, X } from 'lucide-react-native';
 import React, { useState, useEffect } from 'react';
 import {
   Alert,
@@ -25,8 +25,7 @@ const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
 export default function SettingsScreen() {
   const { currentUser, logout } = useAuth();
   const { currentPropertyName } = useProperty();
-  const { expoPushToken, notificationsEnabled, toggleNotifications, forceCheckAlerts } =
-    useNotifications();
+  const { expoPushToken, notificationsEnabled, toggleNotifications } = useNotifications();
   const router = useRouter();
 
   const [newEmail, setNewEmail] = useState('');
@@ -282,38 +281,6 @@ export default function SettingsScreen() {
       } else {
         Alert.alert('Erro', 'Não foi possível remover o email. Tente novamente.');
       }
-    }
-  };
-
-  const handleTestNotification = async () => {
-    console.log('[SETTINGS] handleTestNotification chamado');
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Testar Notificações\n\nIsso irá verificar imediatamente se há alertas críticos e enviar notificações por email.');
-      if (!confirmed) {
-        console.log('[SETTINGS] Teste cancelado pelo usuário');
-        return;
-      }
-
-      console.log('[SETTINGS] Iniciando teste de notificações...');
-      await forceCheckAlerts();
-      console.log('[SETTINGS] Teste concluído!');
-      window.alert('✅ Verificação completa!\n\nSe houver alertas críticos (vermelho/amarelo), você receberá notificações por email.');
-    } else {
-      Alert.alert(
-        'Testar Notificações',
-        'Isso irá verificar imediatamente se há alertas críticos e enviar notificações.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Testar',
-            onPress: async () => {
-              await forceCheckAlerts();
-              Alert.alert('✅', 'Verificação completa! Se houver alertas críticos, você receberá notificações.');
-            },
-          },
-        ]
-      );
     }
   };
 
@@ -694,14 +661,6 @@ export default function SettingsScreen() {
               </Text>
             </View>
           )}
-
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={handleTestNotification}
-          >
-            <RefreshCcw size={18} color="#2D5016" />
-            <Text style={styles.testButtonText}>Testar Notificações Agora</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Info Section */}
@@ -968,22 +927,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: '#4CAF50',
-  },
-  testButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 2,
-    borderColor: '#2D5016',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 16,
-  },
-  testButtonText: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: '#2D5016',
   },
   infoSection: {
     backgroundColor: '#E8F5E9',
