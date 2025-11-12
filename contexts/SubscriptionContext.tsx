@@ -503,7 +503,10 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     return () => clearInterval(interval);
   }, [isWeb, currentUser, loadSubscription]);
 
-  const needsTrialActivation = subscriptionInfo.status === 'none' && !isLoading;
+  // Usuário precisa ativar trial SE: status é 'none' E nunca teve trial antes
+  // Se já teve trial que expirou, não deve mostrar opção de trial novamente
+  const hasHadTrial = subscriptionInfo.trialEndsAt !== undefined;
+  const needsTrialActivation = subscriptionInfo.status === 'none' && !isLoading && !hasHadTrial;
   const needsSubscription = !subscriptionInfo.isActive && !isLoading;
   const isInTrial = subscriptionInfo.status === 'trial' && subscriptionInfo.isActive;
 
