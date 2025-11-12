@@ -253,8 +253,14 @@ export async function monitorRedAlerts(
  * Limpa o histórico de notificações (útil para testes)
  */
 export async function clearNotificationHistory(): Promise<void> {
-  await AsyncStorage.removeItem(ALERT_HISTORY_KEY);
-  console.log('🗑️ Histórico de notificações limpo');
+  try {
+    await AsyncStorage.removeItem(ALERT_HISTORY_KEY);
+    console.log('🗑️ Histórico de notificações limpo com sucesso');
+    return;
+  } catch (error) {
+    console.error('❌ Erro ao limpar histórico:', error);
+    throw error;
+  }
 }
 
 /**
