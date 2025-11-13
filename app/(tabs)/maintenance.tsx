@@ -9,6 +9,7 @@ import {
   Alert,
   Keyboard,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -66,14 +67,23 @@ export default function MaintenanceScreen() {
   const handleAddNewItem = async () => {
     const trimmedName = newItemName.trim();
     if (!trimmedName) {
-      Alert.alert('Erro', 'Digite o nome do item de manutenção');
+      if (Platform.OS === 'web') {
+        window.alert('Digite o nome do item de manutenção');
+      } else {
+        Alert.alert('Erro', 'Digite o nome do item de manutenção');
+      }
       return;
     }
 
     await addMaintenanceItem(trimmedName);
     setNewItemName('');
     setIsAddItemModalOpen(false);
-    Alert.alert('Sucesso', 'Novo item de manutenção adicionado!');
+
+    if (Platform.OS === 'web') {
+      window.alert('Novo item de manutenção adicionado!');
+    } else {
+      Alert.alert('Sucesso', 'Novo item de manutenção adicionado!');
+    }
   };
 
   const handleEditItem = (item: MaintenanceItem) => {
@@ -85,7 +95,11 @@ export default function MaintenanceScreen() {
   const handleSaveEditedItem = async () => {
     const trimmedName = editedItemName.trim();
     if (!trimmedName) {
-      Alert.alert('Erro', 'Digite o nome do item de manutenção');
+      if (Platform.OS === 'web') {
+        window.alert('Digite o nome do item de manutenção');
+      } else {
+        Alert.alert('Erro', 'Digite o nome do item de manutenção');
+      }
       return;
     }
 
@@ -94,28 +108,46 @@ export default function MaintenanceScreen() {
       setIsEditItemModalOpen(false);
       setItemToEdit(null);
       setEditedItemName('');
-      Alert.alert('Sucesso', 'Item de manutenção atualizado!');
+
+      if (Platform.OS === 'web') {
+        window.alert('Item de manutenção atualizado!');
+      } else {
+        Alert.alert('Sucesso', 'Item de manutenção atualizado!');
+      }
     }
   };
 
   const handleDeleteItem = (item: MaintenanceItem) => {
     console.log('[MAINTENANCE] Excluir item clicado:', item);
-    Alert.alert(
-      'Confirmar Exclusão',
-      `Deseja realmente excluir o item "${item}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            console.log('[MAINTENANCE] Confirmado exclusão de:', item);
-            await deleteMaintenanceItem(item);
-            Alert.alert('Sucesso', 'Item de manutenção removido!');
+
+    if (Platform.OS === 'web') {
+      // Para web, usar confirm nativo
+      const confirmed = window.confirm(`Deseja realmente excluir o item "${item}"?`);
+      if (confirmed) {
+        console.log('[MAINTENANCE] Confirmado exclusão de:', item);
+        deleteMaintenanceItem(item).then(() => {
+          window.alert('Item de manutenção removido!');
+        });
+      }
+    } else {
+      // Para mobile, usar Alert do React Native
+      Alert.alert(
+        'Confirmar Exclusão',
+        `Deseja realmente excluir o item "${item}"?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Excluir',
+            style: 'destructive',
+            onPress: async () => {
+              console.log('[MAINTENANCE] Confirmado exclusão de:', item);
+              await deleteMaintenanceItem(item);
+              Alert.alert('Sucesso', 'Item de manutenção removido!');
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleAddMaintenance = async () => {
