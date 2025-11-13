@@ -99,6 +99,7 @@ export default function MaintenanceScreen() {
   };
 
   const handleDeleteItem = (item: MaintenanceItem) => {
+    console.log('[MAINTENANCE] Excluir item clicado:', item);
     Alert.alert(
       'Confirmar Exclusão',
       `Deseja realmente excluir o item "${item}"?`,
@@ -108,6 +109,7 @@ export default function MaintenanceScreen() {
           text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
+            console.log('[MAINTENANCE] Confirmado exclusão de:', item);
             await deleteMaintenanceItem(item);
             Alert.alert('Sucesso', 'Item de manutenção removido!');
           },
@@ -386,14 +388,24 @@ export default function MaintenanceScreen() {
                     </TouchableOpacity>
                     <View style={styles.itemActions}>
                       <TouchableOpacity
-                        onPress={() => handleEditItem(item)}
+                        onPress={() => {
+                          console.log('[MAINTENANCE] Editar item clicado:', item);
+                          handleEditItem(item);
+                        }}
                         style={styles.itemActionButton}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        activeOpacity={0.7}
                       >
                         <Edit2 size={18} color="#2D5016" />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={() => handleDeleteItem(item)}
+                        onPress={() => {
+                          console.log('[MAINTENANCE] Botão excluir pressionado:', item);
+                          handleDeleteItem(item);
+                        }}
                         style={styles.itemActionButton}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        activeOpacity={0.7}
                       >
                         <Trash2 size={18} color="#DC2626" />
                       </TouchableOpacity>
@@ -705,18 +717,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   itemActionButton: {
-    padding: 8,
+    padding: 10,
     borderRadius: 8,
     backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    flex: 1,
     borderRadius: 8,
-    marginBottom: 6,
+    flexShrink: 1,
   },
   checkboxContainerSelected: {
     backgroundColor: '#E8F5E9',
