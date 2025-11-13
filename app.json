@@ -62,7 +62,6 @@
           "sounds": ["./assets/sounds/notification.wav"]
         }
       ],
-      "expo-in-app-purchases",
       [
         "expo-build-properties",
         {
