@@ -3,7 +3,7 @@ import { useData } from '@/contexts/DataContext';
 import { useProperty } from '@/contexts/PropertyContext';
 import { getMeterLabel, getMeterUnit } from '@/lib/machine-utils';
 import type { MaintenanceItem, MaintenanceItemRevision } from '@/types';
-import { Plus, Settings } from 'lucide-react-native';
+import { Plus, Settings, FileText, Edit2, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -18,9 +18,18 @@ import {
 } from 'react-native';
 
 export default function MaintenanceScreen() {
-  const { machines, addMaintenance, maintenanceItems, addMaintenanceItem } = useData();
+  const { machines, addMaintenance, maintenanceItems, addMaintenanceItem, updateMaintenanceItem, deleteMaintenanceItem, maintenances } = useData();
   const { currentUser } = useAuth();
   const { currentPropertyId } = useProperty();
+
+  const sortedMaintenances = React.useMemo(() => {
+    return [...maintenances].sort((a, b) => {
+      const dateA = new Date(a.date || a.createdAt);
+      const dateB = new Date(b.date || b.createdAt);
+      return dateB.getTime() - dateA.getTime(); // Descendente (mais recente primeiro)
+    });
+  }, [maintenances]);
+
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
   const [hourMeter, setHourMeter] = useState<string>('');
@@ -30,6 +39,9 @@ export default function MaintenanceScreen() {
   const [itemRevisions, setItemRevisions] = useState<Record<MaintenanceItem, string>>({});
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState<boolean>(false);
   const [newItemName, setNewItemName] = useState<string>('');
+  const [isEditItemModalOpen, setIsEditItemModalOpen] = useState<boolean>(false);
+  const [itemToEdit, setItemToEdit] = useState<MaintenanceItem | null>(null);
+  const [editedItemName, setEditedItemName] = useState<string>('');
 
   const resetForm = () => {
     setSelectedMachineId('');
@@ -62,6 +74,46 @@ export default function MaintenanceScreen() {
     setNewItemName('');
     setIsAddItemModalOpen(false);
     Alert.alert('Sucesso', 'Novo item de manutenção adicionado!');
+  };
+
+  const handleEditItem = (item: MaintenanceItem) => {
+    setItemToEdit(item);
+    setEditedItemName(item);
+    setIsEditItemModalOpen(true);
+  };
+
+  const handleSaveEditedItem = async () => {
+    const trimmedName = editedItemName.trim();
+    if (!trimmedName) {
+      Alert.alert('Erro', 'Digite o nome do item de manutenção');
+      return;
+    }
+
+    if (itemToEdit) {
+      await updateMaintenanceItem(itemToEdit, trimmedName);
+      setIsEditItemModalOpen(false);
+      setItemToEdit(null);
+      setEditedItemName('');
+      Alert.alert('Sucesso', 'Item de manutenção atualizado!');
+    }
+  };
+
+  const handleDeleteItem = (item: MaintenanceItem) => {
+    Alert.alert(
+      'Confirmar Exclusão',
+      `Deseja realmente excluir o item "${item}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteMaintenanceItem(item);
+            Alert.alert('Sucesso', 'Item de manutenção removido!');
+          },
+        },
+      ]
+    );
   };
 
   const handleAddMaintenance = async () => {
@@ -157,6 +209,65 @@ export default function MaintenanceScreen() {
           <Settings size={22} color="#FFF" strokeWidth={2} />
           <Text style={styles.addButtonText}>Registrar Manutenção</Text>
         </TouchableOpacity>
+
+        <View style={styles.historySection}>
+          <View style={styles.historySectionHeader}>
+            <FileText size={22} color="#333" />
+            <Text style={styles.historySectionTitle}>Histórico de Manutenções</Text>
+          </View>
+
+          {sortedMaintenances.length === 0 ? (
+            <View style={styles.emptyHistory}>
+              <Text style={styles.emptyHistoryText}>Nenhuma manutenção registrada</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.historyList}>
+              {sortedMaintenances.map((maintenance) => {
+                const machine = machines.find(m => m.id === maintenance.machineId);
+                if (!machine) return null;
+
+                return (
+                  <View key={maintenance.id} style={styles.historyCard}>
+                    <View style={styles.historyCardHeader}>
+                      <Settings size={18} color="#2D5016" />
+                      <Text style={styles.historyCardDate}>
+                        {new Date(maintenance.date).toLocaleDateString('pt-BR')}
+                      </Text>
+                    </View>
+                    <Text style={styles.historyCardMachine}>
+                      [{machine.type}] {machine.model}
+                    </Text>
+                    <View style={styles.historyCardRow}>
+                      <Text style={styles.historyCardLabel}>{getMeterLabel(machine.type)}:</Text>
+                      <Text style={styles.historyCardValue}>
+                        {maintenance.hourMeter} {getMeterUnit(machine.type)}
+                      </Text>
+                    </View>
+                    <View style={styles.historyCardRow}>
+                      <Text style={styles.historyCardLabel}>Itens:</Text>
+                      <Text style={styles.historyCardValue}>
+                        {maintenance.items.join(', ')}
+                      </Text>
+                    </View>
+                    {maintenance.observation && (
+                      <View style={styles.historyCardRow}>
+                        <Text style={styles.historyCardLabel}>Observação:</Text>
+                        <Text style={styles.historyCardValue}>{maintenance.observation}</Text>
+                      </View>
+                    )}
+                    <View style={styles.historyCardRow}>
+                      <Text style={styles.historyCardLabel}>Realizado por:</Text>
+                      <Text style={styles.historyCardValue}>{maintenance.performedBy}</Text>
+                    </View>
+                    <Text style={styles.historyCardUser}>
+                      Registrado por: {maintenance.userName}
+                    </Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
       </ScrollView>
 
       <Modal
@@ -244,35 +355,50 @@ export default function MaintenanceScreen() {
               </Text>
               <View style={styles.itemsList}>
                 {maintenanceItems.map((item) => (
-                  <TouchableOpacity
-                    key={item}
-                    style={[
-                      styles.checkboxContainer,
-                      selectedItems.includes(item) &&
-                        styles.checkboxContainerSelected,
-                    ]}
-                    onPress={() => toggleItem(item)}
-                  >
-                    <View
+                  <View key={item} style={styles.itemRow}>
+                    <TouchableOpacity
                       style={[
-                        styles.checkbox,
-                        selectedItems.includes(item) && styles.checkboxSelected,
-                      ]}
-                    >
-                      {selectedItems.includes(item) && (
-                        <View style={styles.checkboxInner} />
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.checkboxLabel,
+                        styles.checkboxContainer,
                         selectedItems.includes(item) &&
-                          styles.checkboxLabelSelected,
+                          styles.checkboxContainerSelected,
                       ]}
+                      onPress={() => toggleItem(item)}
                     >
-                      {item}
-                    </Text>
-                  </TouchableOpacity>
+                      <View
+                        style={[
+                          styles.checkbox,
+                          selectedItems.includes(item) && styles.checkboxSelected,
+                        ]}
+                      >
+                        {selectedItems.includes(item) && (
+                          <View style={styles.checkboxInner} />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          styles.checkboxLabel,
+                          selectedItems.includes(item) &&
+                            styles.checkboxLabelSelected,
+                        ]}
+                      >
+                        {item}
+                      </Text>
+                    </TouchableOpacity>
+                    <View style={styles.itemActions}>
+                      <TouchableOpacity
+                        onPress={() => handleEditItem(item)}
+                        style={styles.itemActionButton}
+                      >
+                        <Edit2 size={18} color="#2D5016" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteItem(item)}
+                        style={styles.itemActionButton}
+                      >
+                        <Trash2 size={18} color="#DC2626" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 ))}
                 <TouchableOpacity
                   style={styles.addItemButton}
@@ -385,6 +511,50 @@ export default function MaintenanceScreen() {
                 onPress={handleAddNewItem}
               >
                 <Text style={styles.modalButtonSaveText}>Adicionar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isEditItemModalOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => {
+          setIsEditItemModalOpen(false);
+          setItemToEdit(null);
+          setEditedItemName('');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.addItemModalContent}>
+            <Text style={styles.modalTitle}>Editar Item de Manutenção</Text>
+            <Text style={styles.label}>Nome do Item</Text>
+            <TextInput
+              style={styles.input}
+              value={editedItemName}
+              onChangeText={setEditedItemName}
+              placeholder="Ex: Troca de óleo do motor"
+              placeholderTextColor="#999"
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={() => {
+                  setIsEditItemModalOpen(false);
+                  setItemToEdit(null);
+                  setEditedItemName('');
+                }}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButtonSave}
+                onPress={handleSaveEditedItem}
+              >
+                <Text style={styles.modalButtonSaveText}>Salvar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -523,11 +693,28 @@ const styles = StyleSheet.create({
   itemsList: {
     marginBottom: 8,
   },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  itemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  itemActionButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+  },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
+    flex: 1,
     borderRadius: 8,
     marginBottom: 6,
   },
@@ -676,5 +863,77 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  historySection: {
+    marginTop: 32,
+  },
+  historySectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  historySectionTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#333',
+  },
+  historyList: {
+    // Sem limitação de altura para permitir scroll completo
+  },
+  emptyHistory: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyHistoryText: {
+    fontSize: 15,
+    color: '#999',
+    fontStyle: 'italic' as const,
+  },
+  historyCard: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2D5016',
+  },
+  historyCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  historyCardDate: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#333',
+  },
+  historyCardMachine: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#666',
+    marginBottom: 12,
+  },
+  historyCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  historyCardLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  historyCardValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#333',
+    flexShrink: 1,
+  },
+  historyCardUser: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 8,
+    fontStyle: 'italic' as const,
   },
 });

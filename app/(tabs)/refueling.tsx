@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   historyList: {
-    maxHeight: 400,
+    // Removido maxHeight para permitir scroll completo de todo o histórico
   },
   emptyHistory: {
     alignItems: 'center',

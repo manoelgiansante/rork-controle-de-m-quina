@@ -1,6 +1,6 @@
 import { SUBSCRIPTION_PLANS, useSubscription } from '@/contexts/SubscriptionContext';
 import type { BillingCycle, PlanType } from '@/types';
-import { Check, CreditCard, Trash2 } from 'lucide-react-native';
+import { Check, CreditCard } from 'lucide-react-native';
 import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
@@ -737,31 +737,6 @@ export default function SubscriptionScreen() {
             onConfirm={handleCancelSubscription}
             isLoading={canceling}
           />
-
-          <View style={styles.deleteAccountSection}>
-            <Text style={styles.deleteAccountText}>
-              Deseja excluir permanentemente sua conta e todos os seus dados?
-            </Text>
-            <TouchableOpacity
-              style={styles.deleteAccountButton}
-              onPress={() => {
-                if (Platform.OS === 'web') {
-                  window.location.href = '/exclusao-dados';
-                } else {
-                  Alert.alert(
-                    'Exclusão de Conta',
-                    'Para excluir sua conta, acesse: https://controledemaquina.com.br/exclusao-dados',
-                    [{ text: 'OK' }]
-                  );
-                }
-              }}
-            >
-              <Trash2 size={18} color="#FFF" />
-              <Text style={styles.deleteAccountButtonText}>
-                Excluir Minha Conta
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </ScrollView>
     );
@@ -1136,36 +1111,6 @@ const styles = StyleSheet.create({
   reactivateButtonText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '600' as const,
-  },
-  deleteAccountSection: {
-    marginTop: 60,
-    marginBottom: 20,
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  deleteAccountText: {
-    fontSize: 13,
-    color: '#999',
-    textAlign: 'center' as const,
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  deleteAccountButton: {
-    backgroundColor: '#8B0000',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexDirection: 'row' as const,
-    gap: 8,
-    minHeight: 48,
-  },
-  deleteAccountButtonText: {
-    color: '#FFF',
-    fontSize: 15,
     fontWeight: '600' as const,
   },
 });

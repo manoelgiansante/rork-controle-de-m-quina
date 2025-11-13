@@ -1212,6 +1212,48 @@ export const [DataProvider, useData] = createContextHook(() => {
     [maintenanceItems, currentUser]
   );
 
+  const updateMaintenanceItem = useCallback(
+    async (oldItem: MaintenanceItem, newItem: MaintenanceItem) => {
+      const index = maintenanceItems.indexOf(oldItem);
+      if (index !== -1) {
+        const updated = [...maintenanceItems];
+        updated[index] = newItem;
+        setMaintenanceItems(updated);
+        await AsyncStorage.setItem(
+          STORAGE_KEYS.MAINTENANCE_ITEMS,
+          JSON.stringify(updated)
+        );
+
+        if (currentUser) {
+          console.log('[DATA] Atualizando item de manutenção no Supabase (WEB e MOBILE)...');
+          await db.upsertUserPreferences(currentUser.id, {
+            maintenanceItems: updated,
+          });
+        }
+      }
+    },
+    [maintenanceItems, currentUser]
+  );
+
+  const deleteMaintenanceItem = useCallback(
+    async (item: MaintenanceItem) => {
+      const updated = maintenanceItems.filter(i => i !== item);
+      setMaintenanceItems(updated);
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.MAINTENANCE_ITEMS,
+        JSON.stringify(updated)
+      );
+
+      if (currentUser) {
+        console.log('[DATA] Removendo item de manutenção no Supabase (WEB e MOBILE)...');
+        await db.upsertUserPreferences(currentUser.id, {
+          maintenanceItems: updated,
+        });
+      }
+    },
+    [maintenanceItems, currentUser]
+  );
+
   const updateTankInitialData = useCallback(async (data: Omit<FarmTank, 'propertyId'>) => {
     if (!currentPropertyId) {
       throw new Error('No property selected');
@@ -1464,6 +1506,8 @@ export const [DataProvider, useData] = createContextHook(() => {
       getMaintenancesForMachine,
       addServiceType,
       addMaintenanceItem,
+      updateMaintenanceItem,
+      deleteMaintenanceItem,
       updateTankInitialData,
       updateTankCapacity,
       addFuel,
@@ -1495,6 +1539,8 @@ export const [DataProvider, useData] = createContextHook(() => {
       getMaintenancesForMachine,
       addServiceType,
       addMaintenanceItem,
+      updateMaintenanceItem,
+      deleteMaintenanceItem,
       updateTankInitialData,
       updateTankCapacity,
       addFuel,
