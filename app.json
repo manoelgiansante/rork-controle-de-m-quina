@@ -64,7 +64,6 @@
           "sounds": ["./assets/sounds/notification.wav"]
         }
       ],
-      "react-native-iap",
       [
         "expo-build-properties",
         {
