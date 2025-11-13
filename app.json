@@ -16,7 +16,7 @@
       "jsEngine": "hermes",
       "supportsTablet": false,
       "bundleIdentifier": "com.manoel.controledemaquina",
-      "buildNumber": "31",
+      "buildNumber": "30",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Usamos a câmera para anexar fotos das máquinas e abastecimentos.",
@@ -62,11 +62,12 @@
           "sounds": ["./assets/sounds/notification.wav"]
         }
       ],
+      "expo-in-app-purchases",
       [
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "2.1.20"
+            "kotlinVersion": "1.9.24"
           }
         }
       ]
