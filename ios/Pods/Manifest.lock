@@ -2409,6 +2409,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RNIap (12.15.4):
+    - React-Core
   - RNScreens (4.16.0):
     - boost
     - DoubleConversion
@@ -2551,6 +2553,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNIap (from `../node_modules/react-native-iap`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - SocketRocket (~> 0.7.1)
@@ -2759,6 +2762,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNIap:
+    :path: "../node_modules/react-native-iap"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   RNSVG:
@@ -2865,6 +2870,7 @@ SPEC CHECKSUMS:
   ReactCommon: 8df6e27c060970b9fb77a86e69a1cf9b934ea458
   RNCAsyncStorage: 23e56519cc41d3bade3c8d4479f7760cb1c11996
   RNGestureHandler: 4e01eefc427d3af22b877fdb4f7bc826132daab6
+  RNIap: 38776f86996edea5837ba2a0dfc1e35427191327
   RNScreens: 9ae2656a55e9466dc04da3ba196d7932a6bd8146
   RNSVG: 3e87821b2215b30e19f90232247007e5c313a06c
   SDWebImage: 16309af6d214ba3f77a7c6f6fdda888cb313a50a

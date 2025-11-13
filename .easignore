@@ -54,3 +54,9 @@ web-build/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Large files that EAS will regenerate
+ios/Pods/
+ios/build/
+android/.gradle/
+android/app/build/

@@ -1,12 +1,18 @@
 /**
  * SubscriptionService - Gerenciamento de Assinaturas via In-App Purchase (IAP)
  *
- * TEMPORARILY DISABLED: expo-in-app-purchases is incompatible with Expo SDK 54
- * This service will be re-enabled when a compatible version is available or
- * when migrated to react-native-iap.
+ * Usando react-native-iap para compatibilidade com Expo SDK 54
  */
 
 import { Platform } from 'react-native';
+import * as RNIap from 'react-native-iap';
+import type {
+  Product,
+  Purchase,
+  PurchaseError,
+  Subscription,
+  SubscriptionPurchase,
+} from 'react-native-iap';
 
 /**
  * Product IDs configurados no Apple App Store Connect e Google Play Console
@@ -129,44 +135,276 @@ export interface IAPPurchase {
 
 class SubscriptionServiceClass {
   private isConnected = false;
+  private purchaseUpdateListener: any = null;
+  private purchaseErrorListener: any = null;
 
+  /**
+   * Conecta ao serviço de IAP da plataforma (Apple ou Google)
+   */
   async connect(): Promise<boolean> {
-    console.warn('[IAP] DISABLED: expo-in-app-purchases incompatible with SDK 54');
-    return false;
+    try {
+      console.log('[IAP] Conectando ao serviço IAP...');
+
+      if (this.isConnected) {
+        console.log('[IAP] Já está conectado');
+        return true;
+      }
+
+      await RNIap.initConnection();
+      this.isConnected = true;
+
+      console.log('[IAP] ✅ Conectado com sucesso!');
+
+      // Setup listeners para updates de compra
+      this.setupPurchaseListeners();
+
+      return true;
+    } catch (error: any) {
+      console.error('[IAP] ❌ Erro ao conectar:', error);
+      console.error('[IAP] Error code:', error.code);
+      console.error('[IAP] Error message:', error.message);
+      this.isConnected = false;
+      return false;
+    }
   }
 
+  /**
+   * Desconecta do serviço de IAP
+   */
   async disconnect(): Promise<void> {
-    console.warn('[IAP] DISABLED');
+    try {
+      console.log('[IAP] Desconectando...');
+
+      // Remove listeners
+      if (this.purchaseUpdateListener) {
+        this.purchaseUpdateListener.remove();
+        this.purchaseUpdateListener = null;
+      }
+      if (this.purchaseErrorListener) {
+        this.purchaseErrorListener.remove();
+        this.purchaseErrorListener = null;
+      }
+
+      await RNIap.endConnection();
+      this.isConnected = false;
+
+      console.log('[IAP] ✅ Desconectado');
+    } catch (error) {
+      console.error('[IAP] Erro ao desconectar:', error);
+    }
   }
 
+  /**
+   * Configura listeners para updates de compra
+   */
+  private setupPurchaseListeners(): void {
+    try {
+      // Listener para updates de compra (sucesso)
+      this.purchaseUpdateListener = RNIap.purchaseUpdatedListener((purchase: Purchase | SubscriptionPurchase) => {
+        console.log('[IAP] Purchase updated:', purchase);
+        // Este listener será processado em purchaseProduct()
+      });
+
+      // Listener para erros de compra
+      this.purchaseErrorListener = RNIap.purchaseErrorListener((error: PurchaseError) => {
+        console.error('[IAP] Purchase error:', error);
+        console.error('[IAP] Error code:', error.code);
+        console.error('[IAP] Error message:', error.message);
+      });
+
+      console.log('[IAP] ✅ Listeners configurados');
+    } catch (error) {
+      console.error('[IAP] Erro ao configurar listeners:', error);
+    }
+  }
+
+  /**
+   * Busca produtos disponíveis na loja
+   */
   async getProducts(): Promise<IAPProduct[]> {
-    console.warn('[IAP] DISABLED');
-    return [];
+    try {
+      if (!this.isConnected) {
+        console.warn('[IAP] Não está conectado. Conecte primeiro usando connect()');
+        return [];
+      }
+
+      console.log('[IAP] Buscando produtos...');
+
+      const productIds = Platform.OS === 'ios'
+        ? Object.values(PRODUCT_IDS.ios)
+        : Object.values(PRODUCT_IDS.android);
+
+      console.log('[IAP] Product IDs:', productIds);
+
+      // Busca produtos como subscriptions (não como produtos one-time)
+      const subscriptions = await RNIap.getSubscriptions({ skus: productIds });
+
+      console.log('[IAP] Subscriptions encontradas:', subscriptions.length);
+      console.log('[IAP] Subscriptions:', JSON.stringify(subscriptions, null, 2));
+
+      const products: IAPProduct[] = subscriptions.map((sub: Subscription) => ({
+        productId: sub.productId,
+        title: sub.title || '',
+        description: sub.description || '',
+        price: sub.localizedPrice || sub.price || '0',
+        priceValue: parseFloat(sub.price || '0'),
+        currency: sub.currency || 'BRL',
+        platform: Platform.OS as 'ios' | 'android',
+      }));
+
+      console.log('[IAP] ✅ Produtos processados:', products.length);
+      return products;
+    } catch (error: any) {
+      console.error('[IAP] ❌ Erro ao buscar produtos:', error);
+      console.error('[IAP] Error code:', error.code);
+      console.error('[IAP] Error message:', error.message);
+      return [];
+    }
   }
 
+  /**
+   * Inicia a compra de um produto
+   */
   async purchaseProduct(productId: string): Promise<IAPPurchase | null> {
-    console.warn('[IAP] DISABLED');
-    return null;
+    try {
+      if (!this.isConnected) {
+        throw new Error('Não está conectado ao IAP. Conecte primeiro usando connect()');
+      }
+
+      console.log('[IAP] Iniciando compra do produto:', productId);
+
+      // Solicita compra de subscription
+      await RNIap.requestSubscription({ sku: productId });
+
+      console.log('[IAP] Aguardando confirmação da compra...');
+
+      // Aguarda o listener de purchase update
+      // Em produção, você deve usar o purchaseUpdatedListener para processar
+      // Por enquanto, retorna null para indicar que a compra foi iniciada
+      return null;
+    } catch (error: any) {
+      console.error('[IAP] ❌ Erro ao comprar produto:', error);
+      console.error('[IAP] Error code:', error.code);
+      console.error('[IAP] Error message:', error.message);
+
+      if (error.code === 'E_USER_CANCELLED') {
+        throw new Error('Compra cancelada pelo usuário');
+      }
+
+      throw error;
+    }
   }
 
+  /**
+   * Valida uma compra no backend
+   */
   async validatePurchase(purchase: IAPPurchase, userId: string): Promise<boolean> {
-    console.warn('[IAP] DISABLED');
-    return false;
+    try {
+      console.log('[IAP] Validando compra no backend...');
+      console.log('[IAP] Purchase:', purchase);
+      console.log('[IAP] User ID:', userId);
+
+      // TODO: Implementar validação no backend
+      // Deve enviar o receipt para o backend validar com Apple/Google
+
+      const response = await fetch(
+        Platform.OS === 'web'
+          ? '/api/iap/validate'
+          : 'https://controledemaquina.com.br/api/iap/validate',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            platform: Platform.OS,
+            productId: purchase.productId,
+            transactionId: purchase.transactionId,
+            receipt: purchase.receipt,
+            userId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Erro na validação do backend');
+      }
+
+      const result = await response.json();
+      console.log('[IAP] ✅ Validação concluída:', result);
+
+      return result.valid === true;
+    } catch (error) {
+      console.error('[IAP] ❌ Erro ao validar compra:', error);
+      return false;
+    }
   }
 
+  /**
+   * Finaliza uma transação (acknowledge)
+   */
   async finishTransaction(purchase: IAPPurchase): Promise<void> {
-    console.warn('[IAP] DISABLED');
+    try {
+      console.log('[IAP] Finalizando transação...');
+
+      if (Platform.OS === 'ios') {
+        await RNIap.finishTransaction({ purchase: purchase as any });
+      } else {
+        // Android: acknowledge purchase
+        await RNIap.acknowledgePurchaseAndroid({ token: purchase.receipt });
+      }
+
+      console.log('[IAP] ✅ Transação finalizada');
+    } catch (error) {
+      console.error('[IAP] ❌ Erro ao finalizar transação:', error);
+    }
   }
 
+  /**
+   * Restaura compras anteriores
+   */
   async restorePurchases(userId: string): Promise<IAPPurchase[]> {
-    console.warn('[IAP] DISABLED');
-    return [];
+    try {
+      if (!this.isConnected) {
+        console.warn('[IAP] Não está conectado');
+        return [];
+      }
+
+      console.log('[IAP] Restaurando compras...');
+
+      const purchases = await RNIap.getAvailablePurchases();
+
+      console.log('[IAP] Compras encontradas:', purchases.length);
+      console.log('[IAP] Purchases:', JSON.stringify(purchases, null, 2));
+
+      const iapPurchases: IAPPurchase[] = purchases.map((purchase: Purchase) => ({
+        transactionId: purchase.transactionId || '',
+        productId: purchase.productId,
+        purchaseTime: purchase.transactionDate ? new Date(purchase.transactionDate).getTime() : Date.now(),
+        receipt: purchase.transactionReceipt || '',
+        platform: Platform.OS as 'ios' | 'android',
+      }));
+
+      console.log('[IAP] ✅ Compras restauradas:', iapPurchases.length);
+      return iapPurchases;
+    } catch (error: any) {
+      console.error('[IAP] ❌ Erro ao restaurar compras:', error);
+      console.error('[IAP] Error code:', error.code);
+      console.error('[IAP] Error message:', error.message);
+      return [];
+    }
   }
 
+  /**
+   * Retorna o limite de máquinas de um plano
+   */
   getMachineLimit(planType: SubscriptionPlanType): number | null {
     return SUBSCRIPTION_PLANS[planType].machineLimit;
   }
 
+  /**
+   * Mapeia um productId para um planType
+   */
   getProductPlanType(productId: string): SubscriptionPlanType | null {
     const iosIds = PRODUCT_IDS.ios;
     const androidIds = PRODUCT_IDS.android;
