@@ -22,10 +22,15 @@ let PRODUCT_IDS: any = null;
 let IAPProduct: any = null;
 
 if (Platform.OS !== 'web') {
-  const iapModule = require('@/lib/SubscriptionService');
-  SubscriptionService = iapModule.SubscriptionService;
-  PRODUCT_IDS = iapModule.PRODUCT_IDS;
-  IAPProduct = iapModule.IAPProduct;
+  try {
+    const iapModule = require('@/lib/SubscriptionService');
+    SubscriptionService = iapModule.SubscriptionService;
+    PRODUCT_IDS = iapModule.PRODUCT_IDS;
+    IAPProduct = iapModule.IAPProduct;
+  } catch (error) {
+    console.warn('[IAP] SubscriptionService not available:', error);
+    // IAP não está disponível nesta versão
+  }
 }
 
 type IAPProduct = any;
