@@ -637,6 +637,130 @@ export async function upsertUserPreferences(
   }
 }
 
+// ==================== TANK ADDITIONS ====================
+
+export async function fetchTankAdditions(propertyId: string): Promise<TankAddition[]> {
+  const { data, error } = await supabase
+    .from('farm_tank_additions')
+    .select('*')
+    .eq('property_id', propertyId)
+    .order('timestamp', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error('[DB] Error fetching tank additions:', error);
+    throw error;
+  }
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    propertyId: row.property_id,
+    litersAdded: parseFloat(row.liters_added),
+    timestamp: row.timestamp,
+    createdAt: row.created_at,
+    reason: row.reason,
+  }));
+}
+
+export async function createTankAddition(addition: Omit<TankAddition, 'id' | 'createdAt'>): Promise<TankAddition> {
+  const { data, error } = await supabase
+    .from('farm_tank_additions')
+    .insert({
+      property_id: addition.propertyId,
+      liters_added: addition.litersAdded,
+      timestamp: addition.timestamp,
+      reason: addition.reason,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[DB] Error creating tank addition:', error);
+    throw error;
+  }
+
+  return {
+    id: data.id,
+    propertyId: data.property_id,
+    litersAdded: parseFloat(data.liters_added),
+    timestamp: data.timestamp,
+    createdAt: data.created_at,
+    reason: data.reason,
+  };
+}
+
+// ==================== MACHINE ARCHIVE ====================
+
+export async function archiveMachine(machineId: string): Promise<void> {
+  console.log('[DB] Arquivando máquina:', machineId);
+
+  const { error } = await supabase
+    .from('machines')
+    .update({
+      archived: true,
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', machineId);
+
+  if (error) {
+    console.error('[DB] Error archiving machine:', error);
+    throw error;
+  }
+
+  console.log('[DB] ✅ Máquina arquivada com sucesso');
+}
+
+export async function unarchiveMachine(machineId: string): Promise<void> {
+  console.log('[DB] Desarquivando máquina:', machineId);
+
+  const { error } = await supabase
+    .from('machines')
+    .update({
+      archived: false,
+      archived_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', machineId);
+
+  if (error) {
+    console.error('[DB] Error unarchiving machine:', error);
+    throw error;
+  }
+
+  console.log('[DB] ✅ Máquina desarquivada com sucesso');
+}
+
+export async function checkMachineHasHistory(machineId: string): Promise<{
+  hasRefuelings: boolean;
+  hasMaintenances: boolean;
+  refuelingCount: number;
+  maintenanceCount: number;
+}> {
+  console.log('[DB] Verificando histórico da máquina:', machineId);
+
+  const [refuelingsResult, maintenancesResult] = await Promise.all([
+    supabase
+      .from('refuelings')
+      .select('id', { count: 'exact', head: true })
+      .eq('machine_id', machineId),
+    supabase
+      .from('maintenances')
+      .select('id', { count: 'exact', head: true })
+      .eq('machine_id', machineId),
+  ]);
+
+  const refuelingCount = refuelingsResult.count || 0;
+  const maintenanceCount = maintenancesResult.count || 0;
+
+  return {
+    hasRefuelings: refuelingCount > 0,
+    hasMaintenances: maintenanceCount > 0,
+    refuelingCount,
+    maintenanceCount,
+  };
+}
+
 // ==================== SUBSCRIPTIONS ====================
 
 export async function fetchSubscription(userId: string): Promise<any | null> {

@@ -28,6 +28,8 @@ export interface Machine {
   currentHourMeter: number;
   createdAt: string;
   updatedAt: string;
+  archived?: boolean;
+  archivedAt?: string;
 }
 
 export type ServiceType = string;

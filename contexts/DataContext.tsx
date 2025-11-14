@@ -73,7 +73,12 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   // Dados filtrados pela propriedade atualmente selecionada
   const machines = useMemo(
-    () => allMachines.filter(m => m.propertyId === currentPropertyId),
+    () => allMachines.filter(m => m.propertyId === currentPropertyId && !m.archived),
+    [allMachines, currentPropertyId]
+  );
+
+  const archivedMachines = useMemo(
+    () => allMachines.filter(m => m.propertyId === currentPropertyId && m.archived),
     [allMachines, currentPropertyId]
   );
 
@@ -391,6 +396,43 @@ export const [DataProvider, useData] = createContextHook(() => {
       await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
     },
     [allMachines]
+  );
+
+  const archiveMachine = useCallback(
+    async (machineId: string) => {
+      console.log('[DATA] Arquivando máquina...');
+      await db.archiveMachine(machineId);
+
+      const updated = allMachines.map((m) =>
+        m.id === machineId ? { ...m, archived: true, archivedAt: new Date().toISOString() } : m
+      );
+      setAllMachines(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
+      console.log('[DATA] ✅ Máquina arquivada com sucesso');
+    },
+    [allMachines]
+  );
+
+  const unarchiveMachine = useCallback(
+    async (machineId: string) => {
+      console.log('[DATA] Desarquivando máquina...');
+      await db.unarchiveMachine(machineId);
+
+      const updated = allMachines.map((m) =>
+        m.id === machineId ? { ...m, archived: false, archivedAt: undefined } : m
+      );
+      setAllMachines(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
+      console.log('[DATA] ✅ Máquina desarquivada com sucesso');
+    },
+    [allMachines]
+  );
+
+  const checkMachineCanBeDeleted = useCallback(
+    async (machineId: string) => {
+      return await db.checkMachineHasHistory(machineId);
+    },
+    []
   );
 
   const addRefueling = useCallback(
@@ -1359,6 +1401,19 @@ export const [DataProvider, useData] = createContextHook(() => {
       console.log('[DATA] Atualizando tanque no Supabase (WEB e MOBILE)...');
       await db.upsertFarmTank(updatedTank);
 
+      // Registrar adição no histórico
+      try {
+        await db.createTankAddition({
+          propertyId: currentPropertyId,
+          litersAdded: litersAdded,
+          timestamp: new Date().toISOString(),
+          reason: 'Adição de combustível',
+        });
+        console.log('[DATA] Adição de combustível registrada no histórico');
+      } catch (error) {
+        console.error('[DATA] Erro ao registrar adição no histórico:', error);
+      }
+
       const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
       );
@@ -1449,6 +1504,19 @@ export const [DataProvider, useData] = createContextHook(() => {
       });
       await db.upsertFarmTank(updatedTank);
 
+      // Registrar ajuste no histórico
+      try {
+        await db.createTankAddition({
+          propertyId: currentPropertyId,
+          litersAdded: adjustment,
+          timestamp: new Date().toISOString(),
+          reason: reason || 'Ajuste manual',
+        });
+        console.log('[DATA] Ajuste de combustível registrado no histórico');
+      } catch (error) {
+        console.error('[DATA] Erro ao registrar ajuste no histórico:', error);
+      }
+
       const updated = allFarmTanks.map(t =>
         t.propertyId === currentPropertyId ? updatedTank : t
       );
@@ -1500,6 +1568,7 @@ export const [DataProvider, useData] = createContextHook(() => {
   return useMemo(
     () => ({
       machines,
+      archivedMachines,
       refuelings,
       maintenances,
       alerts,
@@ -1511,6 +1580,9 @@ export const [DataProvider, useData] = createContextHook(() => {
       addMachine,
       updateMachine,
       deleteMachine,
+      archiveMachine,
+      unarchiveMachine,
+      checkMachineCanBeDeleted,
       addRefueling,
       updateRefueling,
       deleteRefueling,
@@ -1534,6 +1606,7 @@ export const [DataProvider, useData] = createContextHook(() => {
     }),
     [
       machines,
+      archivedMachines,
       refuelings,
       maintenances,
       alerts,
@@ -1545,6 +1618,9 @@ export const [DataProvider, useData] = createContextHook(() => {
       addMachine,
       updateMachine,
       deleteMachine,
+      archiveMachine,
+      unarchiveMachine,
+      checkMachineCanBeDeleted,
       addRefueling,
       updateRefueling,
       deleteRefueling,

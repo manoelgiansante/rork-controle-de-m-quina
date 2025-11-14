@@ -1,6 +1,0 @@
-module Pods_ControledeMquina {
-  umbrella header "Pods-ControledeMquina-umbrella.h"
-
-  export *
-  module * { export * }
-}
