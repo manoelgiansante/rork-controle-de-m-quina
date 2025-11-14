@@ -388,14 +388,84 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const deleteMachine = useCallback(
     async (machineId: string) => {
+      const machine = allMachines.find(m => m.id === machineId);
+      if (!machine) {
+        console.error('[DATA] Máquina não encontrada:', machineId);
+        return;
+      }
+
+      console.log('[DATA] ========== EXCLUSÃO COMPLETA DE MÁQUINA ==========');
+      console.log('[DATA] Máquina:', machine.model);
+
+      // 1. Buscar todos os abastecimentos da máquina
+      const machineRefuelings = allRefuelings.filter(r => r.machineId === machineId);
+      console.log('[DATA] Abastecimentos encontrados:', machineRefuelings.length);
+
+      // 2. Somar litros de todos os abastecimentos para devolver ao tanque
+      const totalLiters = machineRefuelings.reduce((sum, r) => sum + r.liters, 0);
+      console.log('[DATA] Total de litros a devolver ao tanque:', totalLiters);
+
+      // 3. Devolver litros ao tanque (se houver abastecimentos)
+      if (totalLiters > 0 && farmTank) {
+        const newCurrentLiters = farmTank.currentLiters + totalLiters;
+        const updatedTank: FarmTank = {
+          ...farmTank,
+          currentLiters: newCurrentLiters,
+        };
+
+        console.log('[DATA] Devolvendo combustível ao tanque:', {
+          litrosAntigos: farmTank.currentLiters,
+          litrosDevolvidos: totalLiters,
+          litrosNovos: newCurrentLiters,
+        });
+
+        await db.upsertFarmTank(updatedTank);
+        const updatedTanks = allFarmTanks.map(t =>
+          t.propertyId === farmTank.propertyId ? updatedTank : t
+        );
+        setAllFarmTanks(updatedTanks);
+        await AsyncStorage.setItem(STORAGE_KEYS.FARM_TANK, JSON.stringify(updatedTanks));
+      }
+
+      // 4. Deletar todos os abastecimentos
+      console.log('[DATA] Deletando', machineRefuelings.length, 'abastecimento(s)...');
+      for (const refueling of machineRefuelings) {
+        await db.deleteRefueling(refueling.id);
+      }
+      const updatedRefuelings = allRefuelings.filter(r => r.machineId !== machineId);
+      setAllRefuelings(updatedRefuelings);
+      await AsyncStorage.setItem(STORAGE_KEYS.REFUELINGS, JSON.stringify(updatedRefuelings));
+
+      // 5. Deletar todas as manutenções
+      const machineMaintenances = allMaintenances.filter(m => m.machineId === machineId);
+      console.log('[DATA] Deletando', machineMaintenances.length, 'manutenção(ões)...');
+      for (const maintenance of machineMaintenances) {
+        await db.deleteMaintenance(maintenance.id);
+      }
+      const updatedMaintenances = allMaintenances.filter(m => m.machineId !== machineId);
+      setAllMaintenances(updatedMaintenances);
+      await AsyncStorage.setItem(STORAGE_KEYS.MAINTENANCES, JSON.stringify(updatedMaintenances));
+
+      // 6. Deletar todos os alertas
+      const machineAlerts = allAlerts.filter(a => a.machineId === machineId);
+      console.log('[DATA] Deletando', machineAlerts.length, 'alerta(s)...');
+      for (const alert of machineAlerts) {
+        await db.deleteAlert(alert.id);
+      }
+      const updatedAlerts = allAlerts.filter(a => a.machineId !== machineId);
+      setAllAlerts(updatedAlerts);
+      await AsyncStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(updatedAlerts));
+
+      // 7. Deletar a máquina
       console.log('[DATA] Deletando máquina do Supabase (WEB e MOBILE)...');
       await db.deleteMachine(machineId);
+      const updatedMachines = allMachines.filter((m) => m.id !== machineId);
+      setAllMachines(updatedMachines);
+      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updatedMachines));
 
-      const updated = allMachines.filter((m) => m.id !== machineId);
-      setAllMachines(updated);
-      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
+      console.log('[DATA] ✅ Máquina e todo histórico deletados com sucesso!');
     },
-    [allMachines]
+    [allMachines, allRefuelings, allMaintenances, allAlerts, farmTank, allFarmTanks]
   );
 
   // Verificar se máquina pode ser deletada (tem histórico?)
