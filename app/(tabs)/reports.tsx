@@ -31,6 +31,7 @@ type ReportSection = 'alerts' | 'maintenance' | 'refueling' | 'consumption';
 export default function ReportsScreen() {
   const {
     machines,
+    allMachines,
     alerts,
     getMaintenancesForMachine,
     getRefuelingsForMachine,
@@ -221,18 +222,29 @@ export default function ReportsScreen() {
         return (
           <ScrollView style={styles.sectionContent}>
             <Text style={styles.sectionTitle}>Histórico de Manutenção</Text>
-            {machines.length === 0 ? (
+            {allMachines.length === 0 ? (
               <Text style={styles.emptyText}>Nenhuma máquina cadastrada</Text>
             ) : (
               <View style={styles.historyContainer}>
-                {machines.map((machine) => {
+                {allMachines.map((machine) => {
                   const maintenances = getMaintenancesForMachine(machine.id);
+                  const isArchived = machine.archived === true;
                   return (
-                    <View key={machine.id} style={styles.machineSection}>
+                    <View key={machine.id} style={[
+                      styles.machineSection,
+                      isArchived && styles.machineSectionArchived
+                    ]}>
                       <View style={styles.machineSectionHeader}>
-                        <Text style={styles.machineSectionTitle}>
-                          [{machine.type}] {machine.model}
-                        </Text>
+                        <View style={styles.machineTitleContainer}>
+                          <Text style={styles.machineSectionTitle}>
+                            [{machine.type}] {machine.model}
+                          </Text>
+                          {isArchived && (
+                            <View style={styles.archivedBadge}>
+                              <Text style={styles.archivedBadgeText}>ARQUIVADO</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={styles.maintenanceCount}>
                           {maintenances.length} manutenções
                         </Text>
@@ -302,18 +314,29 @@ export default function ReportsScreen() {
         return (
           <ScrollView style={styles.sectionContent}>
             <Text style={styles.sectionTitle}>Histórico de Abastecimento</Text>
-            {machines.length === 0 ? (
+            {allMachines.length === 0 ? (
               <Text style={styles.emptyText}>Nenhuma máquina cadastrada</Text>
             ) : (
               <View style={styles.historyContainer}>
-                {machines.map((machine) => {
+                {allMachines.map((machine) => {
                   const refuelings = getRefuelingsForMachine(machine.id);
+                  const isArchived = machine.archived === true;
                   return (
-                    <View key={machine.id} style={styles.machineSection}>
+                    <View key={machine.id} style={[
+                      styles.machineSection,
+                      isArchived && styles.machineSectionArchived
+                    ]}>
                       <View style={styles.machineSectionHeader}>
-                        <Text style={styles.machineSectionTitle}>
-                          [{machine.type}] {machine.model}
-                        </Text>
+                        <View style={styles.machineTitleContainer}>
+                          <Text style={styles.machineSectionTitle}>
+                            [{machine.type}] {machine.model}
+                          </Text>
+                          {isArchived && (
+                            <View style={styles.archivedBadge}>
+                              <Text style={styles.archivedBadgeText}>ARQUIVADO</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={styles.refuelingCount}>
                           {refuelings.length} abastecimentos
                         </Text>
@@ -1216,5 +1239,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFF',
+  },
+  machineSectionArchived: {
+    backgroundColor: '#FFF9E6',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    padding: 8,
+  },
+  machineTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  archivedBadge: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  archivedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#333',
+  },
+  alertRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  alertLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  alertValue: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#333',
   },
 });

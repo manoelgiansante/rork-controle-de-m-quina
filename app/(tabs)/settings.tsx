@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Bell, BellOff, Mail, Settings as SettingsIcon, User, Trash2, Edit2, X } from 'lucide-react-native';
+import { Bell, BellOff, Mail, Settings as SettingsIcon, User, Trash2, Edit2, X, Archive, RefreshCw } from 'lucide-react-native';
 import React, { useState, useEffect } from 'react';
 import {
   Alert,
@@ -24,6 +25,7 @@ const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
 
 export default function SettingsScreen() {
   const { currentUser, logout } = useAuth();
+  const { archivedMachines, unarchiveMachine, deleteMachine } = useData();
   const { expoPushToken, notificationsEnabled, toggleNotifications } = useNotifications();
   const router = useRouter();
 
@@ -417,6 +419,74 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleReactivateMachine = async (machineId: string, machineName: string) => {
+    const confirmReactivate = Platform.OS === 'web'
+      ? window.confirm(`Deseja reativar ${machineName}? A máquina voltará para a aba Maquinários.`)
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Reativar Máquina',
+            `Deseja reativar ${machineName}?\n\nA máquina voltará para a aba Maquinários.`,
+            [
+              { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Reativar', onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmReactivate) return;
+
+    try {
+      await unarchiveMachine(machineId);
+
+      if (Platform.OS === 'web') {
+        window.alert(`${machineName} foi reativada!\n\nAgora ela aparece novamente na aba Maquinários.`);
+      } else {
+        Alert.alert('Sucesso!', `${machineName} foi reativada!\n\nAgora ela aparece novamente na aba Maquinários.`);
+      }
+    } catch (error) {
+      console.error('[REACTIVATE MACHINE] Erro:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Não foi possível reativar a máquina. Tente novamente.');
+      } else {
+        Alert.alert('Erro', 'Não foi possível reativar a máquina. Tente novamente.');
+      }
+    }
+  };
+
+  const handleDeleteMachinePermanently = async (machineId: string, machineName: string) => {
+    const confirmDelete = Platform.OS === 'web'
+      ? window.confirm(`⚠️ ATENÇÃO!\n\nDeseja EXCLUIR PERMANENTEMENTE ${machineName}?\n\nEsta ação:\n• Apagará TODO o histórico (abastecimentos e manutenções)\n• Devolverá o combustível ao tanque\n• NÃO PODE SER DESFEITA\n\nTem certeza?`)
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            '⚠️ Excluir Permanentemente',
+            `Deseja EXCLUIR PERMANENTEMENTE ${machineName}?\n\nEsta ação:\n• Apagará TODO o histórico (abastecimentos e manutenções)\n• Devolverá o combustível ao tanque\n• NÃO PODE SER DESFEITA`,
+            [
+              { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Excluir Tudo', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        });
+
+    if (!confirmDelete) return;
+
+    try {
+      await deleteMachine(machineId);
+
+      if (Platform.OS === 'web') {
+        window.alert(`${machineName} foi excluída permanentemente!\n\nTodo o histórico foi apagado e o combustível devolvido ao tanque.`);
+      } else {
+        Alert.alert('Excluído!', `${machineName} foi excluída permanentemente!\n\nTodo o histórico foi apagado e o combustível devolvido ao tanque.`);
+      }
+    } catch (error) {
+      console.error('[DELETE MACHINE] Erro:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Não foi possível excluir a máquina. Tente novamente.');
+      } else {
+        Alert.alert('Erro', 'Não foi possível excluir a máquina. Tente novamente.');
+      }
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (deleteConfirmText.trim().toUpperCase() !== 'EXCLUIR') {
       Alert.alert('Erro', 'Digite "EXCLUIR" para confirmar a exclusão da conta.');
@@ -763,6 +833,59 @@ export default function SettingsScreen() {
               • Alertas de tanque de combustível também são notificados
             </Text>
           </View>
+        </View>
+
+        {/* Archived Machines Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Archive size={22} color="#333" />
+            <Text style={styles.sectionTitle}>Maquinários Arquivados</Text>
+          </View>
+
+          <Text style={styles.sectionDescription}>
+            Máquinas que foram arquivadas. Todo o histórico foi preservado nos relatórios.
+          </Text>
+
+          {archivedMachines.length === 0 ? (
+            <View style={styles.emptyArchivedContainer}>
+              <Archive size={48} color="#CCC" />
+              <Text style={styles.emptyArchivedText}>Nenhum maquinário arquivado</Text>
+              <Text style={styles.emptyArchivedSubtext}>
+                Quando você arquivar uma máquina, ela aparecerá aqui
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.archivedMachinesList}>
+              {archivedMachines.map((machine) => (
+                <View key={machine.id} style={styles.archivedMachineItem}>
+                  <View style={styles.archivedMachineInfo}>
+                    <Text style={styles.archivedMachineName}>{machine.model}</Text>
+                    <Text style={styles.archivedMachineDate}>
+                      Arquivado em {new Date(machine.archivedAt || '').toLocaleDateString('pt-BR')}
+                    </Text>
+                  </View>
+
+                  <View style={styles.archivedMachineActions}>
+                    <TouchableOpacity
+                      style={styles.reactivateButton}
+                      onPress={() => handleReactivateMachine(machine.id, machine.model)}
+                    >
+                      <RefreshCw size={16} color="#2D5016" />
+                      <Text style={styles.reactivateButtonText}>REATIVAR</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.deletePermanentlyButton}
+                      onPress={() => handleDeleteMachinePermanently(machine.id, machine.model)}
+                    >
+                      <Trash2 size={16} color="#D32F2F" />
+                      <Text style={styles.deletePermanentlyButtonText}>EXCLUIR</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Logout Button */}
@@ -1290,5 +1413,84 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  emptyArchivedContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyArchivedText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#999',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyArchivedSubtext: {
+    fontSize: 14,
+    color: '#BBB',
+    textAlign: 'center' as const,
+    lineHeight: 20,
+  },
+  archivedMachinesList: {
+    gap: 12,
+  },
+  archivedMachineItem: {
+    backgroundColor: '#FFF9E6',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  archivedMachineInfo: {
+    marginBottom: 12,
+  },
+  archivedMachineName: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#333',
+    marginBottom: 4,
+  },
+  archivedMachineDate: {
+    fontSize: 13,
+    color: '#666',
+  },
+  archivedMachineActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  reactivateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#E8F5E9',
+    borderWidth: 2,
+    borderColor: '#2D5016',
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  reactivateButtonText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#2D5016',
+  },
+  deletePermanentlyButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFEBEE',
+    borderWidth: 2,
+    borderColor: '#D32F2F',
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  deletePermanentlyButtonText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: '#D32F2F',
   },
 });
