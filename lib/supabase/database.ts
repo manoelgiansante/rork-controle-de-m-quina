@@ -124,6 +124,8 @@ export async function fetchMachines(propertyId: string): Promise<Machine[]> {
     type: row.type,
     model: row.model,
     currentHourMeter: parseFloat(row.current_hour_meter),
+    archived: row.archived || false,
+    archivedAt: row.archived_at || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -686,6 +688,32 @@ export async function archiveMachine(machineId: string): Promise<void> {
   }
 
   console.log('[DB] ✅ Máquina arquivada com sucesso');
+}
+
+export async function fetchArchivedMachines(propertyId: string): Promise<Machine[]> {
+  const { data, error } = await supabase
+    .from('machines')
+    .select('*')
+    .eq('property_id', propertyId)
+    .eq('archived', true)
+    .order('archived_at', { ascending: false });
+
+  if (error) {
+    console.error('[DB] Error fetching archived machines:', error);
+    throw error;
+  }
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    propertyId: row.property_id,
+    type: row.type,
+    model: row.model,
+    currentHourMeter: parseFloat(row.current_hour_meter),
+    archived: row.archived || false,
+    archivedAt: row.archived_at || null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
 }
 
 export async function unarchiveMachine(machineId: string): Promise<void> {
