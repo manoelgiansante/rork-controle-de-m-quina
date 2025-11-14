@@ -1,6 +1,6 @@
 import { useData } from '@/contexts/DataContext';
 import type { FuelType } from '@/types';
-import { AlertTriangle, Droplets, Fuel, Plus, Settings } from 'lucide-react-native';
+import { AlertTriangle, Droplets, Fuel, Plus, Settings, FileText } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   Keyboard,
@@ -18,7 +18,7 @@ import {
 const FUEL_TYPES: FuelType[] = ['Diesel comum', 'Diesel S10'];
 
 export default function FuelTankScreen() {
-  const { farmTank, updateTankInitialData, addFuel, updateTankCapacity, registerUnloggedConsumption, adjustTankFuel } = useData();
+  const { farmTank, tankAdditions, updateTankInitialData, addFuel, updateTankCapacity, registerUnloggedConsumption, adjustTankFuel } = useData();
 
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
   const [isAddFuelModalOpen, setIsAddFuelModalOpen] = useState<boolean>(false);
@@ -446,6 +446,57 @@ export default function FuelTankScreen() {
           >
             <Text style={styles.actionButtonSecondaryText}>Ajustar Configurações do Tanque</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.historySection}>
+          <View style={styles.historySectionHeader}>
+            <FileText size={22} color="#333" />
+            <Text style={styles.historySectionTitle}>Histórico de Adições</Text>
+          </View>
+
+          {tankAdditions.length === 0 ? (
+            <View style={styles.emptyHistory}>
+              <Text style={styles.emptyHistoryText}>Nenhuma adição registrada</Text>
+            </View>
+          ) : (
+            <View style={styles.historyList}>
+              {tankAdditions
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                .map((addition) => (
+                  <View key={addition.id} style={styles.historyCard}>
+                    <View style={styles.historyCardHeader}>
+                      <Text style={styles.historyCardDate}>
+                        {new Date(addition.timestamp).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                      <Text style={styles.historyCardTime}>
+                        {new Date(addition.timestamp).toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                    <View style={styles.historyCardBody}>
+                      <View style={styles.historyCardRow}>
+                        <Text style={styles.historyCardLabel}>Litros adicionados:</Text>
+                        <Text style={styles.historyCardValue}>
+                          {addition.litersAdded.toFixed(0)} L
+                        </Text>
+                      </View>
+                      {addition.reason && (
+                        <View style={styles.historyCardRow}>
+                          <Text style={styles.historyCardLabel}>Motivo:</Text>
+                          <Text style={styles.historyCardValueSecondary}>{addition.reason}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -1186,5 +1237,86 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#E64A19',
     textAlign: 'center',
+  },
+  historySection: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  historySectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  historySectionTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#333',
+  },
+  emptyHistory: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyHistoryText: {
+    fontSize: 15,
+    color: '#999',
+  },
+  historyList: {
+    gap: 12,
+  },
+  historyCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  historyCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  historyCardDate: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#333',
+  },
+  historyCardTime: {
+    fontSize: 13,
+    color: '#999',
+  },
+  historyCardBody: {
+    gap: 8,
+  },
+  historyCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  historyCardLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500' as const,
+  },
+  historyCardValue: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#2D5016',
+  },
+  historyCardValueSecondary: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 8,
   },
 });

@@ -6,6 +6,7 @@ import type {
   Maintenance,
   Alert,
   FarmTank,
+  TankAddition,
   ServiceType,
   MaintenanceItem,
 } from '@/types';
@@ -544,6 +545,29 @@ export async function upsertFarmTank(tank: FarmTank): Promise<void> {
     console.error('[DB] Error upserting farm tank:', error);
     throw error;
   }
+}
+
+export async function fetchTankAdditions(propertyId: string): Promise<TankAddition[]> {
+  const { data, error } = await supabase
+    .from('farm_tank_additions')
+    .select('*')
+    .eq('property_id', propertyId)
+    .order('timestamp', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error('[DB] Error fetching tank additions:', error);
+    throw error;
+  }
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    propertyId: row.property_id,
+    litersAdded: parseFloat(row.liters_added),
+    timestamp: row.timestamp,
+    createdAt: row.created_at,
+    reason: row.reason,
+  }));
 }
 
 // ==================== USER PREFERENCES ====================

@@ -142,6 +142,15 @@ export interface FarmTank {
   alertLevelLiters: number;
 }
 
+export interface TankAddition {
+  id: string;
+  propertyId: string;
+  litersAdded: number;
+  timestamp: string;
+  createdAt: string;
+  reason?: string;
+}
+
 export interface AppData {
   users: User[];
   machines: Machine[];

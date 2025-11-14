@@ -6,6 +6,7 @@ import type {
   Alert,
   AlertStatus,
   FarmTank,
+  TankAddition,
   Machine,
   Maintenance,
   MaintenanceItem,
@@ -67,6 +68,7 @@ export const [DataProvider, useData] = createContextHook(() => {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>(DEFAULT_MAINTENANCE_ITEMS);
   const [allFarmTanks, setAllFarmTanks] = useState<FarmTank[]>([]);
+  const [allTankAdditions, setAllTankAdditions] = useState<TankAddition[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Dados filtrados pela propriedade atualmente selecionada
@@ -93,6 +95,11 @@ export const [DataProvider, useData] = createContextHook(() => {
   const farmTank = useMemo(
     () => allFarmTanks.find(t => t.propertyId === currentPropertyId) || null,
     [allFarmTanks, currentPropertyId]
+  );
+
+  const tankAdditions = useMemo(
+    () => allTankAdditions.filter(t => t.propertyId === currentPropertyId),
+    [allTankAdditions, currentPropertyId]
   );
 
   /**
@@ -130,12 +137,13 @@ export const [DataProvider, useData] = createContextHook(() => {
       let allMaintenancesFromDB: Maintenance[] = [];
       let allAlertsFromDB: Alert[] = [];
       let allFarmTanksFromDB: FarmTank[] = [];
+      let allTankAdditionsFromDB: TankAddition[] = [];
       let preferencesFromDB: { serviceTypes: ServiceType[]; maintenanceItems: MaintenanceItem[] } | null = null;
 
       try {
         // Carregar dados de TODAS as propriedades do usuário
         const dataPromises = userPropertyIds.map(async (propertyId) => {
-          const [machines, refuelings, maintenances, alerts, farmTank] = await Promise.all([
+          const [machines, refuelings, maintenances, alerts, farmTank, tankAdditions] = await Promise.all([
             db.fetchMachines(propertyId).catch(err => {
               console.error(`[DATA] Erro ao buscar máquinas da property ${propertyId}:`, err);
               return [];
@@ -156,9 +164,13 @@ export const [DataProvider, useData] = createContextHook(() => {
               console.error(`[DATA] Erro ao buscar tanque da property ${propertyId}:`, err);
               return null;
             }),
+            db.fetchTankAdditions(propertyId).catch(err => {
+              console.error(`[DATA] Erro ao buscar adições do tanque da property ${propertyId}:`, err);
+              return [];
+            }),
           ]);
 
-          return { machines, refuelings, maintenances, alerts, farmTank };
+          return { machines, refuelings, maintenances, alerts, farmTank, tankAdditions };
         });
 
         const allPropertyData = await Promise.all(dataPromises);
@@ -169,6 +181,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           allRefuelingsFromDB.push(...data.refuelings);
           allMaintenancesFromDB.push(...data.maintenances);
           allAlertsFromDB.push(...data.alerts);
+          allTankAdditionsFromDB.push(...data.tankAdditions);
           if (data.farmTank) {
             allFarmTanksFromDB.push(data.farmTank);
           }
@@ -186,6 +199,7 @@ export const [DataProvider, useData] = createContextHook(() => {
           maintenances: allMaintenancesFromDB.length,
           alerts: allAlertsFromDB.length,
           farmTanks: allFarmTanksFromDB.length,
+          tankAdditions: allTankAdditionsFromDB.length,
         });
 
       } catch (err) {
@@ -241,6 +255,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       setAllMaintenances(allMaintenancesFromDB);
       setAllAlerts(allAlertsFromDB);
       setAllFarmTanks(allFarmTanksFromDB);
+      setAllTankAdditions(allTankAdditionsFromDB);
 
       if (preferencesFromDB) {
         setServiceTypes(preferencesFromDB.serviceTypes);
@@ -1491,6 +1506,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       serviceTypes,
       maintenanceItems,
       farmTank,
+      tankAdditions,
       isLoading,
       addMachine,
       updateMachine,
@@ -1524,6 +1540,7 @@ export const [DataProvider, useData] = createContextHook(() => {
       serviceTypes,
       maintenanceItems,
       farmTank,
+      tankAdditions,
       isLoading,
       addMachine,
       updateMachine,
