@@ -124,51 +124,42 @@ export default function MachinesScreen() {
     const canDelete = await checkMachineCanBeDeleted(machine.id);
 
     if (!canDelete.canDelete) {
-      // Máquina tem histórico - oferecer 3 opções
+      // Máquina tem histórico - perguntar se quer arquivar (recomendado)
       const message = `${machine.model} possui histórico de uso:\n\n` +
         `${canDelete.refuelingCount} abastecimento(s)\n` +
         `${canDelete.maintenanceCount} manutenção(ões)\n\n` +
-        `Para preservar o histórico, recomendamos ARQUIVAR.\n\n` +
-        `O que deseja fazer?`;
+        `RECOMENDAMOS ARQUIVAR para preservar o histórico.\n\n` +
+        `Deseja ARQUIVAR esta máquina? (clique OK)\n\n` +
+        `Ou clique CANCELAR se quiser EXCLUIR TUDO permanentemente.`;
 
-      Alert.alert(
-        'Máquina com Histórico',
-        message,
-        [
-          {
-            text: 'Cancelar',
-            style: 'cancel',
-          },
-          {
-            text: 'Excluir Tudo',
-            style: 'destructive',
-            onPress: async () => {
-              // Confirmar exclusão definitiva
-              const confirmDelete = await confirm(
-                'Confirmar Exclusão',
-                `ATENÇÃO: Isto irá EXCLUIR PERMANENTEMENTE ${machine.model} e todo seu histórico!\n\nEsta ação NÃO pode ser desfeita.\n\nTem certeza absoluta?`
-              );
+      const wantsToArchive = await confirm('Máquina com Histórico', message);
 
-              if (confirmDelete) {
-                await deleteMachine(machine.id);
-                Alert.alert('Excluído', 'Máquina e todo histórico foram excluídos permanentemente.');
-              }
-            },
-          },
-          {
-            text: 'Arquivar',
-            onPress: async () => {
-              await archiveMachine(machine.id);
-              Alert.alert('Sucesso', `${machine.model} foi arquivada!\n\nTodo o histórico foi preservado.`);
-            },
-          },
-        ],
-        { cancelable: true }
+      if (wantsToArchive) {
+        // Usuário escolheu ARQUIVAR
+        await archiveMachine(machine.id);
+        Alert.alert('Sucesso', `${machine.model} foi arquivada!\n\nTodo o histórico foi preservado.`);
+        return;
+      }
+
+      // Usuário clicou CANCELAR, perguntar se realmente quer EXCLUIR TUDO
+      const confirmDelete = await confirm(
+        'ATENÇÃO: Exclusão Permanente',
+        `Você escolheu NÃO arquivar.\n\n` +
+        `Deseja EXCLUIR PERMANENTEMENTE ${machine.model} e TODO o histórico?\n\n` +
+        `• ${canDelete.refuelingCount} abastecimento(s) serão deletados\n` +
+        `• ${canDelete.maintenanceCount} manutenção(ões) serão deletadas\n` +
+        `• O combustível será devolvido ao tanque\n\n` +
+        `ESTA AÇÃO NÃO PODE SER DESFEITA!`
       );
+
+      if (confirmDelete) {
+        await deleteMachine(machine.id);
+        Alert.alert('Excluído', `${machine.model} e todo histórico foram excluídos.\n\nCombustível devolvido ao tanque.`);
+      }
       return;
     }
 
-    // Máquina sem histórico - pode deletar
+    // Máquina sem histórico - pode deletar diretamente
     const ok = await confirm(
       'Excluir Máquina',
       `Tem certeza que deseja excluir ${machine.model}?`
