@@ -5,12 +5,14 @@
  * Sincroniza com o backend para validar recibos e atualizar status de assinatura.
  *
  * IMPORTANTE:
- * - Usa expo-in-app-purchases para ambas plataformas (iOS e Android)
- * - Todos os recibos são validados no backend antes de conceder acesso
+ * - STUB VERSION: expo-in-app-purchases foi removido devido a incompatibilidade
+ * - Esta é uma versão temporária que retorna erros/valores vazios
+ * - Todos os métodos foram desabilitados temporariamente
  */
 
 import { Platform } from 'react-native';
-import * as InAppPurchases from 'expo-in-app-purchases';
+// REMOVED: import * as InAppPurchases from 'expo-in-app-purchases';
+// expo-in-app-purchases was removed due to incompatibility with expo-modules-core 3.0.25
 
 /**
  * Product IDs configurados no Apple App Store Connect e Google Play Console
@@ -137,68 +139,28 @@ class SubscriptionServiceClass {
 
   /**
    * Inicializa a conexão com a loja (Apple ou Google)
+   * STUB: Always returns false (IAP not available)
    */
   async connect(): Promise<boolean> {
-    if (this.isConnected) {
-      console.log('[IAP] Já conectado');
-      return true;
-    }
-
-    try {
-      console.log(`[IAP ${Platform.OS}] Conectando...`);
-      await InAppPurchases.connectAsync();
-      console.log(`[IAP ${Platform.OS}] ✅ Conectado`);
-
-      this.isConnected = true;
-      return true;
-    } catch (error) {
-      console.error('[IAP] Erro ao conectar:', error);
-      return false;
-    }
+    console.log('[IAP STUB] expo-in-app-purchases not available - IAP disabled');
+    return false;
   }
 
   /**
    * Desconecta da loja
+   * STUB: No-op
    */
   async disconnect(): Promise<void> {
-    if (!this.isConnected) return;
-
-    try {
-      await InAppPurchases.disconnectAsync();
-      this.isConnected = false;
-      console.log('[IAP] Desconectado');
-    } catch (error) {
-      console.error('[IAP] Erro ao desconectar:', error);
-    }
+    console.log('[IAP STUB] Disconnect (no-op)');
   }
 
   /**
    * Busca produtos disponíveis na loja
+   * STUB: Returns empty array
    */
   async getProducts(): Promise<IAPProduct[]> {
-    try {
-      const productIds = Platform.OS === 'ios'
-        ? Object.values(PRODUCT_IDS.ios)
-        : Object.values(PRODUCT_IDS.android);
-
-      console.log('[IAP] Buscando produtos:', productIds);
-
-      const { results } = await InAppPurchases.getProductsAsync(productIds);
-      console.log(`[IAP ${Platform.OS}] Produtos encontrados:`, results.length);
-
-      return results.map((product: any) => ({
-        productId: product.productId,
-        title: product.title || 'Sem título',
-        description: product.description || 'Sem descrição',
-        price: product.price || 'N/A',
-        priceValue: this.parsePrice(product.price),
-        currency: product.currencyCode || 'BRL',
-        platform: Platform.OS as 'ios' | 'android',
-      }));
-    } catch (error) {
-      console.error('[IAP] Erro ao buscar produtos:', error);
-      return [];
-    }
+    console.log('[IAP STUB] getProducts - returning empty array');
+    return [];
   }
 
   /**
@@ -218,64 +180,11 @@ class SubscriptionServiceClass {
 
   /**
    * Inicia o processo de compra de um produto
+   * STUB: Throws error (IAP not available)
    */
   async purchaseProduct(productId: string): Promise<IAPPurchase | null> {
-    try {
-      console.log('[IAP] Iniciando compra:', productId);
-
-      // Inicia a compra
-      await InAppPurchases.purchaseItemAsync(productId);
-
-      // Aguarda um pouco para garantir que a compra foi processada
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Busca no histórico de compras
-      const history = await InAppPurchases.getPurchaseHistoryAsync();
-
-      console.log('[IAP] Histórico de compras:', {
-        total: history.results.length,
-        produtos: history.results.map(p => p.productId)
-      });
-
-      // Busca a compra mais recente do produto solicitado
-      const purchase = history.results
-        .filter(p => p.productId === productId)
-        .sort((a, b) => (b.purchaseTime || 0) - (a.purchaseTime || 0))[0];
-
-      if (!purchase) {
-        console.error('[IAP] Compra não encontrada no histórico');
-        throw new Error('Compra cancelada ou não concluída');
-      }
-
-      console.log('[IAP] Compra concluída:', {
-        transactionId: purchase.transactionId,
-        productId: purchase.productId,
-        acknowledged: purchase.acknowledged
-      });
-
-      // Validar que temos o receipt
-      if (!purchase.transactionReceipt) {
-        console.error('[IAP] Receipt não encontrado na compra');
-        throw new Error('Receipt não disponível');
-      }
-
-      return {
-        transactionId: purchase.transactionId || '',
-        productId: purchase.productId,
-        purchaseTime: purchase.purchaseTime || Date.now(),
-        receipt: purchase.transactionReceipt,
-        platform: Platform.OS as 'ios' | 'android',
-      };
-    } catch (error: any) {
-      console.error('[IAP] Erro ao comprar produto:', error);
-
-      // Tratamento de erros específicos
-      if (error?.code === 'E_USER_CANCELLED') {
-        throw new Error('Compra cancelada pelo usuário');
-      }
-
-      throw error;
-    }
+    console.log('[IAP STUB] purchaseProduct called but IAP not available');
+    throw new Error('In-App Purchases not available in this build');
   }
 
   /**
@@ -332,55 +241,19 @@ class SubscriptionServiceClass {
 
   /**
    * Finaliza uma transação (importante para liberar compras pendentes)
+   * STUB: No-op
    */
   async finishTransaction(purchase: IAPPurchase): Promise<void> {
-    try {
-      console.log('[IAP] Finalizando transação:', purchase.transactionId);
-
-      await InAppPurchases.finishTransactionAsync(purchase as any, true);
-
-      console.log('[IAP] ✅ Transação finalizada');
-    } catch (error) {
-      console.error('[IAP] Erro ao finalizar transação:', error);
-    }
+    console.log('[IAP STUB] finishTransaction (no-op)');
   }
 
   /**
    * Restaura compras anteriores
+   * STUB: Returns empty array
    */
   async restorePurchases(userId: string): Promise<IAPPurchase[]> {
-    try {
-      console.log('[IAP] Restaurando compras...');
-
-      const history = await InAppPurchases.getPurchaseHistoryAsync();
-      console.log(`[IAP ${Platform.OS}] Compras encontradas:`, history.results.length);
-
-      const purchases: IAPPurchase[] = history.results
-        .filter(p => p.transactionReceipt) // Apenas compras com receipt
-        .map(purchase => ({
-          transactionId: purchase.transactionId || '',
-          productId: purchase.productId,
-          purchaseTime: purchase.purchaseTime || Date.now(),
-          receipt: purchase.transactionReceipt || '',
-          platform: Platform.OS as 'ios' | 'android',
-        }));
-
-      // Validar todas as compras no backend
-      let validatedCount = 0;
-      for (const purchase of purchases) {
-        const validated = await this.validatePurchase(purchase, userId);
-        if (validated) {
-          validatedCount++;
-        }
-      }
-
-      console.log(`[IAP] ✅ ${validatedCount} de ${purchases.length} compras restauradas com sucesso`);
-
-      return purchases;
-    } catch (error) {
-      console.error('[IAP] Erro ao restaurar compras:', error);
-      return [];
-    }
+    console.log('[IAP STUB] restorePurchases - returning empty array');
+    return [];
   }
 
   /**
