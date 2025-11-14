@@ -156,6 +156,8 @@ export async function createMachine(
     type: data.type,
     model: data.model,
     currentHourMeter: parseFloat(data.current_hour_meter),
+    archived: data.archived || false,
+    archivedAt: data.archived_at || null,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
