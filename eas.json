@@ -54,7 +54,7 @@
         "resourceClass": "large",
         "withoutCredentials": false,
         "cache": {
-          "disabled": false
+          "disabled": true
         }
       },
       "env": {
