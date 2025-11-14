@@ -124,19 +124,47 @@ export default function MachinesScreen() {
     const canDelete = await checkMachineCanBeDeleted(machine.id);
 
     if (!canDelete.canDelete) {
-      // Máquina tem histórico - oferecer arquivar ao invés de deletar
+      // Máquina tem histórico - oferecer 3 opções
       const message = `${machine.model} possui histórico de uso:\n\n` +
         `${canDelete.refuelingCount} abastecimento(s)\n` +
         `${canDelete.maintenanceCount} manutenção(ões)\n\n` +
-        `Para preservar o histórico, recomendamos ARQUIVAR ao invés de excluir.\n\n` +
-        `Deseja arquivar esta máquina?`;
+        `Para preservar o histórico, recomendamos ARQUIVAR.\n\n` +
+        `O que deseja fazer?`;
 
-      const shouldArchive = await confirm('Máquina com Histórico', message);
+      Alert.alert(
+        'Máquina com Histórico',
+        message,
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
+          },
+          {
+            text: 'Excluir Tudo',
+            style: 'destructive',
+            onPress: async () => {
+              // Confirmar exclusão definitiva
+              const confirmDelete = await confirm(
+                'Confirmar Exclusão',
+                `ATENÇÃO: Isto irá EXCLUIR PERMANENTEMENTE ${machine.model} e todo seu histórico!\n\nEsta ação NÃO pode ser desfeita.\n\nTem certeza absoluta?`
+              );
 
-      if (shouldArchive) {
-        await archiveMachine(machine.id);
-        Alert.alert('Sucesso', `${machine.model} foi arquivada com sucesso!\n\nTodo o histórico foi preservado.`);
-      }
+              if (confirmDelete) {
+                await deleteMachine(machine.id);
+                Alert.alert('Excluído', 'Máquina e todo histórico foram excluídos permanentemente.');
+              }
+            },
+          },
+          {
+            text: 'Arquivar',
+            onPress: async () => {
+              await archiveMachine(machine.id);
+              Alert.alert('Sucesso', `${machine.model} foi arquivada!\n\nTodo o histórico foi preservado.`);
+            },
+          },
+        ],
+        { cancelable: true }
+      );
       return;
     }
 
