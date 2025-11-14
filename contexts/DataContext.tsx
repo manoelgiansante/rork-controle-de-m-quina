@@ -398,41 +398,67 @@ export const [DataProvider, useData] = createContextHook(() => {
     [allMachines]
   );
 
-  const archiveMachine = useCallback(
-    async (machineId: string) => {
-      console.log('[DATA] Arquivando máquina...');
-      await db.archiveMachine(machineId);
-
-      const updated = allMachines.map((m) =>
-        m.id === machineId ? { ...m, archived: true, archivedAt: new Date().toISOString() } : m
-      );
-      setAllMachines(updated);
-      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
-      console.log('[DATA] ✅ Máquina arquivada com sucesso');
-    },
-    [allMachines]
-  );
-
-  const unarchiveMachine = useCallback(
-    async (machineId: string) => {
-      console.log('[DATA] Desarquivando máquina...');
-      await db.unarchiveMachine(machineId);
-
-      const updated = allMachines.map((m) =>
-        m.id === machineId ? { ...m, archived: false, archivedAt: undefined } : m
-      );
-      setAllMachines(updated);
-      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
-      console.log('[DATA] ✅ Máquina desarquivada com sucesso');
-    },
-    [allMachines]
-  );
-
+  // Verificar se máquina pode ser deletada (tem histórico?)
   const checkMachineCanBeDeleted = useCallback(
     async (machineId: string) => {
-      return await db.checkMachineHasHistory(machineId);
+      const refuelingCount = allRefuelings.filter(r => r.machineId === machineId).length;
+      const maintenanceCount = allMaintenances.filter(m => m.machineId === machineId).length;
+
+      return {
+        canDelete: refuelingCount === 0 && maintenanceCount === 0,
+        refuelingCount,
+        maintenanceCount,
+      };
     },
-    []
+    [allRefuelings, allMaintenances]
+  );
+
+  // Arquivar máquina (soft delete)
+  const archiveMachine = useCallback(
+    async (machineId: string) => {
+      const machine = allMachines.find(m => m.id === machineId);
+      if (!machine) return;
+
+      const archivedMachine = {
+        ...machine,
+        archived: true,
+        archivedAt: new Date().toISOString(),
+      };
+
+      console.log('[DATA] Arquivando máquina:', machine.model);
+      await db.updateMachine(archivedMachine);
+
+      const updated = allMachines.map(m =>
+        m.id === machineId ? archivedMachine : m
+      );
+      setAllMachines(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
+    },
+    [allMachines, currentPropertyId]
+  );
+
+  // Desarquivar máquina
+  const unarchiveMachine = useCallback(
+    async (machineId: string) => {
+      const machine = allMachines.find(m => m.id === machineId);
+      if (!machine) return;
+
+      const unarchivedMachine = {
+        ...machine,
+        archived: false,
+        archivedAt: undefined,
+      };
+
+      console.log('[DATA] Desarquivando máquina:', machine.model);
+      await db.updateMachine(unarchivedMachine);
+
+      const updated = allMachines.map(m =>
+        m.id === machineId ? unarchivedMachine : m
+      );
+      setAllMachines(updated);
+      await AsyncStorage.setItem(STORAGE_KEYS.MACHINES, JSON.stringify(updated));
+    },
+    [allMachines, currentPropertyId]
   );
 
   const addRefueling = useCallback(
