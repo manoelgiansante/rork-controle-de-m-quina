@@ -45,6 +45,8 @@ export default function MachinesScreen() {
   const [model, setModel] = useState<string>('');
   const [initialHourMeter, setInitialHourMeter] = useState<string>('');
   const [editingMachine, setEditingMachine] = useState<Machine | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
+  const [machineToDelete, setMachineToDelete] = useState<{ machine: Machine, canDelete: any } | null>(null);
 
 
 
@@ -124,38 +126,9 @@ export default function MachinesScreen() {
     const canDelete = await checkMachineCanBeDeleted(machine.id);
 
     if (!canDelete.canDelete) {
-      // Máquina tem histórico - perguntar se quer arquivar (recomendado)
-      const message = `${machine.model} possui histórico de uso:\n\n` +
-        `${canDelete.refuelingCount} abastecimento(s)\n` +
-        `${canDelete.maintenanceCount} manutenção(ões)\n\n` +
-        `RECOMENDAMOS ARQUIVAR para preservar o histórico.\n\n` +
-        `Deseja ARQUIVAR esta máquina? (clique OK)\n\n` +
-        `Ou clique CANCELAR se quiser EXCLUIR TUDO permanentemente.`;
-
-      const wantsToArchive = await confirm('Máquina com Histórico', message);
-
-      if (wantsToArchive) {
-        // Usuário escolheu ARQUIVAR
-        await archiveMachine(machine.id);
-        Alert.alert('Sucesso', `${machine.model} foi arquivada!\n\nTodo o histórico foi preservado.`);
-        return;
-      }
-
-      // Usuário clicou CANCELAR, perguntar se realmente quer EXCLUIR TUDO
-      const confirmDelete = await confirm(
-        'ATENÇÃO: Exclusão Permanente',
-        `Você escolheu NÃO arquivar.\n\n` +
-        `Deseja EXCLUIR PERMANENTEMENTE ${machine.model} e TODO o histórico?\n\n` +
-        `• ${canDelete.refuelingCount} abastecimento(s) serão deletados\n` +
-        `• ${canDelete.maintenanceCount} manutenção(ões) serão deletadas\n` +
-        `• O combustível será devolvido ao tanque\n\n` +
-        `ESTA AÇÃO NÃO PODE SER DESFEITA!`
-      );
-
-      if (confirmDelete) {
-        await deleteMachine(machine.id);
-        Alert.alert('Excluído', `${machine.model} e todo histórico foram excluídos.\n\nCombustível devolvido ao tanque.`);
-      }
+      // Máquina tem histórico - mostrar modal com 3 opções
+      setMachineToDelete({ machine, canDelete });
+      setDeleteModalOpen(true);
       return;
     }
 
@@ -168,6 +141,29 @@ export default function MachinesScreen() {
 
     await deleteMachine(machine.id);
     Alert.alert('Sucesso', 'Máquina excluída com sucesso!');
+  };
+
+  const handleArchive = async () => {
+    if (!machineToDelete) return;
+
+    setDeleteModalOpen(false);
+    await archiveMachine(machineToDelete.machine.id);
+    Alert.alert('Sucesso', `${machineToDelete.machine.model} foi arquivada!\n\nTodo o histórico foi preservado.`);
+    setMachineToDelete(null);
+  };
+
+  const handleDeletePermanently = async () => {
+    if (!machineToDelete) return;
+
+    setDeleteModalOpen(false);
+    await deleteMachine(machineToDelete.machine.id);
+    Alert.alert('Excluído', `${machineToDelete.machine.model} e todo histórico foram excluídos.\n\nCombustível devolvido ao tanque.`);
+    setMachineToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteModalOpen(false);
+    setMachineToDelete(null);
   };
 
   const getMachineAlerts = (machineId: string) => {
@@ -361,6 +357,52 @@ export default function MachinesScreen() {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Custom Delete/Archive Modal */}
+      <Modal
+        visible={deleteModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelDelete}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContent}>
+            <Text style={styles.deleteModalTitle}>Máquina com Histórico</Text>
+
+            {machineToDelete && (
+              <Text style={styles.deleteModalMessage}>
+                {machineToDelete.machine.model} possui histórico de uso:{'\n\n'}
+                • {machineToDelete.canDelete.refuelingCount} abastecimento(s){'\n'}
+                • {machineToDelete.canDelete.maintenanceCount} manutenção(ões){'\n\n'}
+                O que deseja fazer?
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={[styles.deleteModalButton, styles.archiveButton]}
+              onPress={handleArchive}
+            >
+              <Text style={styles.deleteModalButtonText}>📦 ARQUIVAR</Text>
+              <Text style={styles.deleteModalButtonSubtext}>Preserva todo o histórico</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.deleteModalButton, styles.deleteButton]}
+              onPress={handleDeletePermanently}
+            >
+              <Text style={styles.deleteModalButtonText}>🗑️ EXCLUIR TUDO</Text>
+              <Text style={styles.deleteModalButtonSubtext}>Apaga e devolve combustível</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.deleteModalButton, styles.cancelButton]}
+              onPress={handleCancelDelete}
+            >
+              <Text style={styles.cancelButtonText}>✖ CANCELAR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -585,6 +627,71 @@ const styles = StyleSheet.create({
   modalButtonSaveText: {
     fontSize: 16,
     fontWeight: '600' as const,
+    color: '#FFF',
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  deleteModalContent: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  deleteModalTitle: {
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: '#FFF',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  deleteModalMessage: {
+    fontSize: 16,
+    color: '#CCC',
+    marginBottom: 24,
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  deleteModalButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  archiveButton: {
+    backgroundColor: '#3478F6',
+  },
+  deleteButton: {
+    backgroundColor: '#DC3545',
+  },
+  cancelButton: {
+    backgroundColor: '#3A3A3C',
+    marginTop: 4,
+  },
+  deleteModalButtonText: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  deleteModalButtonSubtext: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500' as const,
     color: '#FFF',
   },
 });
