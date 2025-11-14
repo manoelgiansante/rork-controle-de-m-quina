@@ -1403,13 +1403,16 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       // Registrar adição no histórico
       try {
-        await db.createTankAddition({
+        const newAddition = await db.createTankAddition({
           propertyId: currentPropertyId,
           litersAdded: litersAdded,
           timestamp: new Date().toISOString(),
           reason: 'Adição de combustível',
         });
         console.log('[DATA] Adição de combustível registrada no histórico');
+
+        // Atualizar estado local com a nova adição
+        setAllTankAdditions(prev => [newAddition, ...prev]);
       } catch (error) {
         console.error('[DATA] Erro ao registrar adição no histórico:', error);
       }
@@ -1506,13 +1509,16 @@ export const [DataProvider, useData] = createContextHook(() => {
 
       // Registrar ajuste no histórico
       try {
-        await db.createTankAddition({
+        const newAddition = await db.createTankAddition({
           propertyId: currentPropertyId,
           litersAdded: adjustment,
           timestamp: new Date().toISOString(),
           reason: reason || 'Ajuste manual',
         });
         console.log('[DATA] Ajuste de combustível registrado no histórico');
+
+        // Atualizar estado local com a nova adição
+        setAllTankAdditions(prev => [newAddition, ...prev]);
       } catch (error) {
         console.error('[DATA] Erro ao registrar ajuste no histórico:', error);
       }
