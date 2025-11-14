@@ -639,29 +639,6 @@ export async function upsertUserPreferences(
 
 // ==================== TANK ADDITIONS ====================
 
-export async function fetchTankAdditions(propertyId: string): Promise<TankAddition[]> {
-  const { data, error } = await supabase
-    .from('farm_tank_additions')
-    .select('*')
-    .eq('property_id', propertyId)
-    .order('timestamp', { ascending: false })
-    .limit(100);
-
-  if (error) {
-    console.error('[DB] Error fetching tank additions:', error);
-    throw error;
-  }
-
-  return (data || []).map((row) => ({
-    id: row.id,
-    propertyId: row.property_id,
-    litersAdded: parseFloat(row.liters_added),
-    timestamp: row.timestamp,
-    createdAt: row.created_at,
-    reason: row.reason,
-  }));
-}
-
 export async function createTankAddition(addition: Omit<TankAddition, 'id' | 'createdAt'>): Promise<TankAddition> {
   const { data, error } = await supabase
     .from('farm_tank_additions')
