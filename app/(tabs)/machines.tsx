@@ -35,7 +35,7 @@ const MACHINE_TYPES: MachineType[] = [
 ];
 
 export default function MachinesScreen() {
-  const { machines, addMachine, updateMachine, deleteMachine, getAlertsForMachine } = useData();
+  const { machines, addMachine, updateMachine, deleteMachine, archiveMachine, checkMachineCanBeDeleted, getAlertsForMachine } = useData();
   const { isMaster } = useAuth();
   const { canAddMachine, subscriptionInfo } = useSubscription();
   const router = useRouter();
@@ -120,9 +120,30 @@ export default function MachinesScreen() {
   };
 
   const handleDeleteMachine = async (machine: Machine) => {
+    // Verificar se a máquina tem histórico
+    const canDelete = await checkMachineCanBeDeleted(machine.id);
+
+    if (!canDelete.canDelete) {
+      // Máquina tem histórico - oferecer arquivar ao invés de deletar
+      const message = `${machine.model} possui histórico de uso:\n\n` +
+        `${canDelete.refuelingCount} abastecimento(s)\n` +
+        `${canDelete.maintenanceCount} manutenção(ões)\n\n` +
+        `Para preservar o histórico, recomendamos ARQUIVAR ao invés de excluir.\n\n` +
+        `Deseja arquivar esta máquina?`;
+
+      const shouldArchive = await confirm('Máquina com Histórico', message);
+
+      if (shouldArchive) {
+        await archiveMachine(machine.id);
+        Alert.alert('Sucesso', `${machine.model} foi arquivada com sucesso!\n\nTodo o histórico foi preservado.`);
+      }
+      return;
+    }
+
+    // Máquina sem histórico - pode deletar
     const ok = await confirm(
       'Excluir Máquina',
-      `Tem certeza que deseja excluir ${machine.model}?\n\nTodos os abastecimentos e manutenções desta máquina também serão excluídos.`
+      `Tem certeza que deseja excluir ${machine.model}?`
     );
     if (!ok) return;
 
