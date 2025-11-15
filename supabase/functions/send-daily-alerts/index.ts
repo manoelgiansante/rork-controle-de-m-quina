@@ -77,40 +77,45 @@ function calculateMaintenanceAlerts(machines: Machine[], maintenances: Maintenan
   const alerts: any[] = []
 
   for (const machine of machines) {
-    // Buscar última manutenção desta máquina
-    const machineMaint = maintenances
+    // Buscar TODAS as manutenções desta máquina (não apenas a última!)
+    const machineMaints = maintenances
       .filter(m => m.machine_id === machine.id)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    if (!machineMaint || !machineMaint.item_revisions) continue
+    if (!machineMaints || machineMaints.length === 0) continue
 
-    // Para cada item de manutenção, verificar se está próximo do vencimento
-    for (const revision of machineMaint.item_revisions) {
-      const nextRevisionHourMeter = machineMaint.hour_meter + revision.nextRevisionHours
-      const remaining = nextRevisionHourMeter - machine.current_hour_meter
+    // Verificar TODAS as manutenções, não apenas a mais recente
+    for (const machineMaint of machineMaints) {
+      if (!machineMaint.item_revisions) continue
 
-      let status: AlertStatus = 'green'
+      // Para cada item de manutenção, verificar se está próximo do vencimento
+      for (const revision of machineMaint.item_revisions) {
+        const nextRevisionHourMeter = machineMaint.hour_meter + revision.nextRevisionHours
+        const remaining = nextRevisionHourMeter - machine.current_hour_meter
 
-      // Vermelho: vencido ou faltam menos de 20h
-      if (remaining <= 20) {
-        status = 'red'
-      }
-      // Amarelo: faltam entre 20 e 50h
-      else if (remaining <= 50) {
-        status = 'yellow'
-      }
+        let status: AlertStatus = 'green'
 
-      // Só adicionar se for crítico (vermelho ou amarelo)
-      if (status === 'red' || status === 'yellow') {
-        alerts.push({
-          type: 'maintenance',
-          status,
-          machineName: `[${machine.type}] ${machine.model}`,
-          machineType: machine.type,
-          maintenanceItem: revision.item,
-          currentHourMeter: machine.current_hour_meter,
-          nextRevisionHourMeter: nextRevisionHourMeter,
-        })
+        // Vermelho: vencido ou faltam menos de 20h
+        if (remaining <= 20) {
+          status = 'red'
+        }
+        // Amarelo: faltam entre 20 e 50h
+        else if (remaining <= 50) {
+          status = 'yellow'
+        }
+
+        // Só adicionar se for crítico (vermelho ou amarelo)
+        if (status === 'red' || status === 'yellow') {
+          alerts.push({
+            type: 'maintenance',
+            status,
+            machineName: `[${machine.type}] ${machine.model}`,
+            machineType: machine.type,
+            maintenanceItem: revision.item,
+            currentHourMeter: machine.current_hour_meter,
+            nextRevisionHourMeter: nextRevisionHourMeter,
+          })
+        }
       }
     }
   }
@@ -409,9 +414,16 @@ serve(async (req) => {
       const yellowCount = allAlerts.filter(a => a.status === 'yellow').length
       const subject = `🚨 ${redCount > 0 ? `${redCount} URGENTE` : ''}${yellowCount > 0 ? ` ${yellowCount} Atenção` : ''} - Alertas de Manutenção`
 
-      // Enviar emails
+      // Enviar emails (com delay para evitar rate limit do Resend)
       let emailsSentForUser = 0
-      for (const email of notificationEmails) {
+      for (let i = 0; i < notificationEmails.length; i++) {
+        const email = notificationEmails[i]
+
+        // Delay de 1 segundo entre emails (exceto no primeiro)
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+
         const sent = await sendEmail(email, subject, emailHtml)
         if (sent) {
           emailsSentForUser++
