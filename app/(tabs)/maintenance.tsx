@@ -33,6 +33,9 @@ export default function MaintenanceScreen() {
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
+  const [date, setDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
   const [hourMeter, setHourMeter] = useState<string>('');
   const [performedBy, setPerformedBy] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<MaintenanceItem[]>([]);
@@ -46,6 +49,7 @@ export default function MaintenanceScreen() {
 
   const resetForm = () => {
     setSelectedMachineId('');
+    setDate(new Date().toISOString().split('T')[0]);
     setHourMeter('');
     setPerformedBy('');
     setSelectedItems([]);
@@ -193,6 +197,7 @@ export default function MaintenanceScreen() {
     await addMaintenance({
       propertyId: currentPropertyId,
       machineId: selectedMachineId,
+      date,
       hourMeter: parseFloat(hourMeter),
       performedBy: performedBy.trim(),
       items: selectedItems,
@@ -370,6 +375,17 @@ export default function MaintenanceScreen() {
                 returnKeyType="done"
                 blurOnSubmit={true}
                 onSubmitEditing={() => Keyboard.dismiss()}
+              />
+
+              <Text style={styles.label}>
+                Data: <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={date}
+                onChangeText={setDate}
+                placeholder="AAAA-MM-DD"
+                placeholderTextColor="#999"
               />
 
               <Text style={styles.label}>
