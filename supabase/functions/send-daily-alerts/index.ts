@@ -123,7 +123,7 @@ function calculateMaintenanceAlerts(machines: Machine[], maintenances: Maintenan
   return alerts
 }
 
-// Calcular alertas de tanque dinamicamente (10% antes do vermelho = amarelo)
+// Calcular alertas de tanque dinamicamente (25% antes do vermelho = amarelo)
 function calculateTankAlerts(tanks: FarmTank[]) {
   const alerts: any[] = []
 
@@ -134,11 +134,11 @@ function calculateTankAlerts(tanks: FarmTank[]) {
     if (tank.current_liters <= tank.alert_level_liters) {
       status = 'red'
     }
-    // 🟡 Amarelo: Até 10% acima do nível de alerta (chegando perto!)
-    else if (tank.current_liters <= tank.alert_level_liters * 1.10) {
+    // 🟡 Amarelo: Até 25% acima do nível de alerta (chegando perto!)
+    else if (tank.current_liters <= tank.alert_level_liters * 1.25) {
       status = 'yellow'
     }
-    // 🟢 Verde: Acima de 10% do alerta (tudo OK)
+    // 🟢 Verde: Acima de 25% do alerta (tudo OK)
     else {
       status = 'green'
     }

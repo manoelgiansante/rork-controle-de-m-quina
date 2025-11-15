@@ -595,12 +595,12 @@ export const [DataProvider, useData] = createContextHook(() => {
         return 'red';
       }
 
-      // 🟡 Amarelo: Até 10% acima do nível de alerta (chegando perto!)
-      if (currentLiters <= alertLevelLiters * 1.10) {
+      // 🟡 Amarelo: Até 25% acima do nível de alerta (chegando perto!)
+      if (currentLiters <= alertLevelLiters * 1.25) {
         return 'yellow';
       }
 
-      // 🟢 Verde: Acima de 10% do alerta (tudo OK)
+      // 🟢 Verde: Acima de 25% do alerta (tudo OK)
       return 'green';
     },
     []
