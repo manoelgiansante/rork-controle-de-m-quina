@@ -9,32 +9,45 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 type AlertStatus = 'green' | 'yellow' | 'red'
 type MachineType = 'Trator' | 'Caminhão' | 'Carro' | 'Pá Carregadeira' | 'Vagão' | 'Colheitadeira' | 'Uniport' | 'Outro'
 
+interface MaintenanceAlert {
+  id: string
+  type: 'maintenance'
+  propertyId: string
+  machineId: string
+  maintenanceId: string
+  maintenanceItem: string
+  serviceHourMeter: number
+  intervalHours: number
+  nextRevisionHourMeter: number
+  status: AlertStatus
+  createdAt: string
+}
+
+interface TankAlert {
+  id: string
+  type: 'tank'
+  propertyId: string
+  tankCurrentLiters: number
+  tankCapacityLiters: number
+  tankAlertLevelLiters: number
+  percentageFilled: number
+  status: AlertStatus
+  message: string
+  createdAt: string
+}
+
+type Alert = MaintenanceAlert | TankAlert
+
 interface Machine {
   id: string
-  property_id: string
+  propertyId: string
   type: MachineType
   model: string
-  current_hour_meter: number
-}
-
-interface Maintenance {
-  id: string
-  property_id: string
-  machine_id: string
-  hour_meter: number
-  items: string[]
-  item_revisions: Array<{
-    item: string
-    nextRevisionHours: number
-  }>
-  created_at: string
-}
-
-interface FarmTank {
-  property_id: string
-  capacity_liters: number
-  current_liters: number
-  alert_level_liters: number
+  currentHourMeter: number
+  createdAt: string
+  updatedAt: string
+  archived?: boolean
+  archivedAt?: string
 }
 
 // Helper functions
@@ -70,85 +83,6 @@ function getMeterUnit(machineType: MachineType): string {
     default:
       return 'h'
   }
-}
-
-// Calcular alertas de manutenção dinamicamente
-function calculateMaintenanceAlerts(machines: Machine[], maintenances: Maintenance[]) {
-  const alerts: any[] = []
-
-  for (const machine of machines) {
-    // Buscar última manutenção desta máquina
-    const machineMaint = maintenances
-      .filter(m => m.machine_id === machine.id)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-
-    if (!machineMaint || !machineMaint.item_revisions) continue
-
-    // Para cada item de manutenção, verificar se está próximo do vencimento
-    for (const revision of machineMaint.item_revisions) {
-      const nextRevisionHourMeter = machineMaint.hour_meter + revision.nextRevisionHours
-      const remaining = nextRevisionHourMeter - machine.current_hour_meter
-
-      let status: AlertStatus = 'green'
-
-      // Vermelho: vencido ou faltam menos de 20h
-      if (remaining <= 20) {
-        status = 'red'
-      }
-      // Amarelo: faltam entre 20 e 50h
-      else if (remaining <= 50) {
-        status = 'yellow'
-      }
-
-      // Só adicionar se for crítico (vermelho ou amarelo)
-      if (status === 'red' || status === 'yellow') {
-        alerts.push({
-          type: 'maintenance',
-          status,
-          machineName: `[${machine.type}] ${machine.model}`,
-          machineType: machine.type,
-          maintenanceItem: revision.item,
-          currentHourMeter: machine.current_hour_meter,
-          nextRevisionHourMeter: nextRevisionHourMeter,
-        })
-      }
-    }
-  }
-
-  return alerts
-}
-
-// Calcular alertas de tanque dinamicamente
-function calculateTankAlerts(tanks: FarmTank[]) {
-  const alerts: any[] = []
-
-  for (const tank of tanks) {
-    const percentageFilled = (tank.current_liters / tank.capacity_liters) * 100
-
-    let status: AlertStatus = 'green'
-
-    // Vermelho: abaixo do nível de alerta
-    if (tank.current_liters <= tank.alert_level_liters) {
-      status = 'red'
-    }
-    // Amarelo: até 10% acima do nível de alerta
-    else if (tank.current_liters <= tank.alert_level_liters * 1.1) {
-      status = 'yellow'
-    }
-
-    // Só adicionar se for crítico
-    if (status === 'red' || status === 'yellow') {
-      alerts.push({
-        type: 'tank',
-        status,
-        tankCurrentLiters: tank.current_liters,
-        tankCapacityLiters: tank.capacity_liters,
-        tankAlertLevelLiters: tank.alert_level_liters,
-      })
-    }
-  }
-
-  return alerts
 }
 
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
@@ -247,6 +181,8 @@ function generateConsolidatedAlertsEmailHTML(
     }
   })
 
+  const subject = `🚨 ${redCount > 0 ? `${redCount} URGENTE` : ''}${yellowCount > 0 ? ` ${yellowCount} Atenção` : ''} - Alertas de Manutenção`
+
   return `
     <!DOCTYPE html>
     <html>
@@ -304,16 +240,17 @@ serve(async (req) => {
 
   try {
     console.log('🕐 [CRON] Iniciando verificação de alertas diários às 21h...')
-    console.log('📊 [NOVA VERSÃO] Calculando alertas dinamicamente!')
 
     if (!RESEND_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Variáveis de ambiente não configuradas')
     }
 
+    // Criar cliente Supabase com service role (admin)
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-    // Buscar todos os usuários
+    // 1. Buscar todos os usuários
     const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
+
     if (usersError) throw usersError
 
     console.log(`📊 Encontrados ${users.users.length} usuários`)
@@ -321,11 +258,11 @@ serve(async (req) => {
     let totalEmailsSent = 0
     let totalUsersWithAlerts = 0
 
-    // Para cada usuário
+    // 2. Para cada usuário, verificar alertas
     for (const authUser of users.users) {
       console.log(`\n👤 Processando usuário: ${authUser.email}`)
 
-      // Buscar nome do usuário
+      // Buscar dados do usuário (nome)
       const { data: userData } = await supabase
         .from('users')
         .select('name')
@@ -334,7 +271,7 @@ serve(async (req) => {
 
       const userName = userData?.name || authUser.email?.split('@')[0] || 'Usuário'
 
-      // Buscar propriedades
+      // Buscar propriedades do usuário
       const { data: properties } = await supabase
         .from('properties')
         .select('id')
@@ -348,52 +285,29 @@ serve(async (req) => {
       const propertyIds = properties.map(p => p.id)
       console.log(`  📍 Propriedades: ${propertyIds.length}`)
 
-      // Buscar máquinas
-      const { data: machines } = await supabase
-        .from('machines')
-        .select('id, property_id, type, model, current_hour_meter')
-        .in('property_id', propertyIds)
-        .eq('archived', false)
-
-      if (!machines || machines.length === 0) {
-        console.log('  ⏭️ Sem máquinas ativas')
-        continue
-      }
-
-      console.log(`  🚜 Máquinas: ${machines.length}`)
-
-      // Buscar manutenções
-      const { data: maintenances } = await supabase
-        .from('maintenances')
+      // Buscar todos os alertas críticos do usuário (vermelhos e amarelos)
+      const { data: alerts } = await supabase
+        .from('alerts')
         .select('*')
         .in('property_id', propertyIds)
-        .order('created_at', { ascending: false })
+        .in('status', ['red', 'yellow'])
 
-      console.log(`  🔧 Manutenções: ${maintenances?.length || 0}`)
-
-      // Buscar tanques
-      const { data: tanks } = await supabase
-        .from('farm_tanks')
-        .select('*')
-        .in('property_id', propertyIds)
-
-      console.log(`  ⛽ Tanques: ${tanks?.length || 0}`)
-
-      // CALCULAR ALERTAS DINAMICAMENTE
-      const maintenanceAlerts = calculateMaintenanceAlerts(machines, maintenances || [])
-      const tankAlerts = calculateTankAlerts(tanks || [])
-      const allAlerts = [...maintenanceAlerts, ...tankAlerts]
-
-      console.log(`  🚨 Alertas calculados: ${allAlerts.length}`)
-      console.log(`     - Manutenção: ${maintenanceAlerts.length}`)
-      console.log(`     - Tanque: ${tankAlerts.length}`)
-
-      if (allAlerts.length === 0) {
+      if (!alerts || alerts.length === 0) {
         console.log('  ✅ Sem alertas críticos')
         continue
       }
 
-      // Buscar emails de notificação
+      console.log(`  🚨 Alertas críticos: ${alerts.length}`)
+
+      // Buscar máquinas para pegar informações
+      const { data: machines } = await supabase
+        .from('machines')
+        .select('*')
+        .in('property_id', propertyIds)
+
+      const machinesMap = new Map(machines?.map(m => [m.id, m]) || [])
+
+      // Buscar emails de notificação do usuário
       const { data: emailsData } = await supabase
         .from('notification_emails')
         .select('email')
@@ -408,14 +322,44 @@ serve(async (req) => {
 
       console.log(`  📧 Emails configurados: ${notificationEmails.length}`)
 
-      // Gerar HTML do email
-      const emailHtml = generateConsolidatedAlertsEmailHTML(userName, allAlerts)
+      // Preparar dados dos alertas para o email
+      const alertsData: any[] = []
 
-      const redCount = allAlerts.filter(a => a.status === 'red').length
-      const yellowCount = allAlerts.filter(a => a.status === 'yellow').length
+      for (const alert of alerts) {
+        if (alert.type === 'tank') {
+          alertsData.push({
+            type: 'tank',
+            status: alert.status,
+            tankCurrentLiters: alert.tank_current_liters,
+            tankCapacityLiters: alert.tank_capacity_liters,
+            tankAlertLevelLiters: alert.tank_alert_level_liters,
+          })
+        } else if (alert.type === 'maintenance') {
+          const machine = machinesMap.get(alert.machine_id)
+          if (machine) {
+            alertsData.push({
+              type: 'maintenance',
+              status: alert.status,
+              machineName: `[${machine.type}] ${machine.model}`,
+              machineType: machine.type,
+              maintenanceItem: alert.maintenance_item,
+              currentHourMeter: machine.current_hour_meter,
+              nextRevisionHourMeter: alert.next_revision_hour_meter,
+            })
+          }
+        }
+      }
+
+      if (alertsData.length === 0) continue
+
+      // Gerar HTML do email
+      const emailHtml = generateConsolidatedAlertsEmailHTML(userName, alertsData)
+
+      const redCount = alertsData.filter(a => a.status === 'red').length
+      const yellowCount = alertsData.filter(a => a.status === 'yellow').length
       const subject = `🚨 ${redCount > 0 ? `${redCount} URGENTE` : ''}${yellowCount > 0 ? ` ${yellowCount} Atenção` : ''} - Alertas de Manutenção`
 
-      // Enviar emails
+      // Enviar para todos os emails configurados
       let emailsSentForUser = 0
       for (const email of notificationEmails) {
         const sent = await sendEmail(email, subject, emailHtml)
