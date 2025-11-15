@@ -6,6 +6,7 @@ import { useData } from '@/contexts/DataContext';
 import { registerForPushNotifications } from '@/lib/notifications/push-notifications';
 import { monitorRedAlerts } from '@/lib/notifications/alert-monitor';
 import AsyncStorage from '@/lib/storage';
+import { supabase } from '@/lib/supabase/client';
 
 const NOTIFICATION_EMAILS_KEY = '@controle_maquina:notification_emails';
 
@@ -23,19 +24,47 @@ export function useNotifications() {
   const appState = useRef(AppState.currentState);
   const lastCheckRef = useRef<Date>(new Date());
 
-  // Carregar emails de notificação
+  // Carregar emails de notificação do Supabase
   useEffect(() => {
-    loadNotificationEmails();
-  }, []);
+    if (currentUser?.id) {
+      loadNotificationEmails();
+    }
+  }, [currentUser?.id]);
 
   const loadNotificationEmails = async () => {
     try {
-      const emailsJson = await AsyncStorage.getItem(NOTIFICATION_EMAILS_KEY);
-      if (emailsJson) {
-        const emails: string[] = JSON.parse(emailsJson);
-        setNotificationEmails(emails);
-        console.log('[NOTIFICATIONS] Emails carregados:', emails);
+      if (!currentUser?.id) {
+        console.log('[NOTIFICATIONS] Usuário não logado, pulando carregamento');
+        return;
       }
+
+      console.log('[NOTIFICATIONS] Carregando emails do Supabase...');
+
+      // Buscar emails do Supabase
+      const { data, error } = await supabase
+        .from('notification_emails')
+        .select('email')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('[NOTIFICATIONS] Erro ao carregar do Supabase:', error);
+        // Fallback: tentar carregar do AsyncStorage local
+        const emailsJson = await AsyncStorage.getItem(NOTIFICATION_EMAILS_KEY);
+        if (emailsJson) {
+          const emails: string[] = JSON.parse(emailsJson);
+          setNotificationEmails(emails);
+          console.log('[NOTIFICATIONS] Emails carregados do AsyncStorage (fallback):', emails);
+        }
+        return;
+      }
+
+      const emails = data?.map(row => row.email) || [];
+      setNotificationEmails(emails);
+      console.log('[NOTIFICATIONS] ✅ Emails carregados do Supabase:', emails);
+
+      // Sincronizar com AsyncStorage local para cache offline
+      await AsyncStorage.setItem(NOTIFICATION_EMAILS_KEY, JSON.stringify(emails));
     } catch (error) {
       console.error('[NOTIFICATIONS] Erro ao carregar emails:', error);
     }
