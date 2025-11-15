@@ -496,7 +496,10 @@ export const [DataProvider, useData] = createContextHook(() => {
       };
 
       console.log('[DATA] Arquivando máquina:', machine.model);
-      await db.updateMachine(archivedMachine);
+      await db.updateMachine(machineId, {
+        archived: true,
+        archivedAt: new Date().toISOString(),
+      });
 
       const updated = allMachines.map(m =>
         m.id === machineId ? archivedMachine : m
@@ -520,7 +523,10 @@ export const [DataProvider, useData] = createContextHook(() => {
       };
 
       console.log('[DATA] Desarquivando máquina:', machine.model);
-      await db.updateMachine(unarchivedMachine);
+      await db.updateMachine(machineId, {
+        archived: false,
+        archivedAt: undefined,
+      });
 
       const updated = allMachines.map(m =>
         m.id === machineId ? unarchivedMachine : m
@@ -1670,6 +1676,7 @@ export const [DataProvider, useData] = createContextHook(() => {
   return useMemo(
     () => ({
       machines,
+      allMachines,
       archivedMachines,
       refuelings,
       maintenances,
@@ -1708,6 +1715,7 @@ export const [DataProvider, useData] = createContextHook(() => {
     }),
     [
       machines,
+      allMachines,
       archivedMachines,
       refuelings,
       maintenances,

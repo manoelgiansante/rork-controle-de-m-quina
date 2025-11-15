@@ -171,6 +171,8 @@ export async function updateMachine(
   if (updates.type !== undefined) updateData.type = updates.type;
   if (updates.model !== undefined) updateData.model = updates.model;
   if (updates.currentHourMeter !== undefined) updateData.current_hour_meter = updates.currentHourMeter;
+  if (updates.archived !== undefined) updateData.archived = updates.archived;
+  if (updates.archivedAt !== undefined) updateData.archived_at = updates.archivedAt;
 
   const { error } = await supabase.from('machines').update(updateData).eq('id', machineId);
 
