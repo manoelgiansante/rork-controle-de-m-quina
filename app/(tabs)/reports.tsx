@@ -46,7 +46,10 @@ export default function ReportsScreen() {
   const [editingRefueling, setEditingRefueling] = useState<Refueling | null>(null);
 
   const alertsData = useMemo(() => {
-    const sorted = [...alerts].sort((a, b) => {
+    // Filtrar apenas alertas críticos (vermelho e amarelo) - alertas verdes não precisam aparecer!
+    const critical = alerts.filter(alert => alert.status === 'red' || alert.status === 'yellow');
+
+    const sorted = [...critical].sort((a, b) => {
       const statusPriority: Record<AlertStatus, number> = {
         red: 0,
         yellow: 1,
