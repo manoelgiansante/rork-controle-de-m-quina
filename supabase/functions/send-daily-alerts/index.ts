@@ -325,14 +325,8 @@ serve(async (req) => {
     for (const authUser of users.users) {
       console.log(`\n👤 Processando usuário: ${authUser.email}`)
 
-      // Buscar nome do usuário
-      const { data: userData } = await supabase
-        .from('users')
-        .select('name')
-        .eq('id', authUser.id)
-        .single()
-
-      const userName = userData?.name || authUser.email?.split('@')[0] || 'Usuário'
+      // Usar email do auth como nome (tabela users não existe)
+      const userName = authUser.email?.split('@')[0] || authUser.email || 'Usuário'
 
       // Buscar propriedades
       const { data: properties } = await supabase
