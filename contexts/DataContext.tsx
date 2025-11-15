@@ -590,20 +590,18 @@ export const [DataProvider, useData] = createContextHook(() => {
 
   const calculateTankAlertStatus = useCallback(
     (currentLiters: number, alertLevelLiters: number, capacityLiters: number): AlertStatus => {
-      const percentageFilled = (currentLiters / capacityLiters) * 100;
-
-      // Verde: acima de 50% ou acima do nível de alerta + 25%
-      if (currentLiters > alertLevelLiters * 1.25 && percentageFilled > 50) {
-        return 'green';
+      // 🔴 Vermelho: No nível de alerta configurado ou abaixo
+      if (currentLiters <= alertLevelLiters) {
+        return 'red';
       }
 
-      // Amarelo: entre o nível de alerta e 25% acima dele
-      if (currentLiters > alertLevelLiters) {
+      // 🟡 Amarelo: Até 10% acima do nível de alerta (chegando perto!)
+      if (currentLiters <= alertLevelLiters * 1.10) {
         return 'yellow';
       }
 
-      // Vermelho: no nível de alerta ou abaixo
-      return 'red';
+      // 🟢 Verde: Acima de 10% do alerta (tudo OK)
+      return 'green';
     },
     []
   );
